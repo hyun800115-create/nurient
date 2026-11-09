@@ -84,8 +84,11 @@ export class Depot {
       const per = Number(S.perMin && S.perMin[cat]) || 0;
       if (per <= 0) continue;
       this.acc[cat] = (this.acc[cat] || 0) + (per / 60) * dt;
+      // ((v4.3 hotfix, designer: "물류창고가 아무 작업도 못 하고 있어") the buyers leave sell.keep[cat] pieces on the racks: the
+      //  depot shows a working stock instead of emptying the racks as fast as the sleigh fills them
+      const keep = Math.max(0, Number(S.keep && S.keep[cat]) || 0);
       while (this.acc[cat] >= 1) {
-        const items = this.stock.of(cat);
+        const items = this.stock.total(cat) > keep ? this.stock.of(cat) : [];
         if (!items.length) { this.acc[cat] = 0; break; }
         const ty = items.find((k) => RAW.indexOf(k) < 0) || items[0];
         this.acc[cat] -= 1;
@@ -97,7 +100,8 @@ export class Depot {
       this.acc.raw = (this.acc.raw || 0) + (rp / 60) * dt;
       while (this.acc.raw >= 1) {
         let best = null;
-        for (const ty of RAW) { const n = this.stock.count(ty); if (n > 0 && (!best || n > this.stock.count(best))) best = ty; }
+        const rk = Math.max(0, Number(S.rawKeep) || 0);
+        for (const ty of RAW) { const n = this.stock.count(ty); if (n > rk && (!best || n > this.stock.count(best))) best = ty; }
         if (!best) { this.acc.raw = 0; break; }
         this.acc.raw -= 1;
         sale(best);

@@ -28,7 +28,7 @@ export const Audio = {
   holds: new Set(),       // (v4.2.0.1) reasons to be silent now ('hidden', 'blur', 'app:android', ...)
   htmlHeld: false,        // (v4.2.0.1) HTML5-audio fallback: the playing sounds were paused for the holds
 
-  init(game) { this.game = game; this.autoStart(false); this.installHolds(); },
+  init(game) { this.game = game; this.autoStart(false); this.installHolds(); this.applyCats(); },
 
   exists(key) {
     const g = this.game;
@@ -60,6 +60,22 @@ export const Audio = {
 
   baseVolume(key) { const d = Assets.audioDef(key); return d && d.volume !== undefined ? d.volume : 0.7; },
 
+  /** ((v4.3 hotfix) 소리 세부 조절) a category's slider 0..1: 'master' | 'music' | 'sfx' | 'amb' */
+  cat(name) { const V = Settings.data.vol; const v = V && typeof V[name] === 'number' ? V[name] : 1; return Math.max(0, Math.min(1, v)); },
+
+  /** set one slider (saved) and apply it at once: the master to the sound manager, the music / the loops to what plays */
+  setCat(name, v, noSave) {
+    const V = Settings.data.vol || (Settings.data.vol = { master: 1, music: 1, sfx: 1, amb: 1 });
+    V[name] = Math.max(0, Math.min(1, Math.round(Number(v) * 100) / 100 || 0));
+    if (!noSave) Settings.save();
+    this.applyCats();
+  },
+
+  applyCats() {
+    try { if (this.sm) this.sm.volume = this.cat('master'); } catch (e) { /* */ }
+    if (this.music && this.musicKey) { try { this.music.setVolume(this.baseVolume(this.musicKey) * this.cat('music')); } catch (e) { /* */ } }
+  },
+
   /** play a one-shot sfx (or a random variant of an audioGroup) */
   play(key, opts) {
     if (!this.started || !Settings.data.sound || !this.live) return;
@@ -79,8 +95,10 @@ export const Audio = {
     if (now - last < throttle) return;
     this.lastPlay.set(k, now);
     try {
-      const vol = this.baseVolume(k) * ((opts && opts.volume) !== undefined ? opts.volume : 1);
+      const vol = this.baseVolume(k) * ((opts && opts.volume) !== undefined ? opts.volume : 1) * this.cat('sfx');
+      if (vol <= 0.001) return;
       const cfg = { volume: vol };
+      if (opts && opts.pan) cfg.pan = Math.max(-1, Math.min(1, opts.pan));     // ((v4.3 hotfix) left / right by where it is
       if (opts && opts.rate) cfg.rate = opts.rate;
       if (opts && opts.detune) cfg.detune = opts.detune;
       this.sm.play(k, cfg);
@@ -108,7 +126,7 @@ export const Audio = {
       if (!this.music) {
         this.music = this.sm.add(key, { loop: true, volume: 0 });
         this.music.play();
-        this.fade(this.music, this.baseVolume(key), 1200);
+        this.fade(this.music, this.baseVolume(key) * this.cat('music'), 1200);
       } else if (this.music.isPaused) this.music.resume();
       else if (!this.music.isPlaying) this.music.play();
     } catch (e) { /* ignore */ }
@@ -143,7 +161,7 @@ export const Audio = {
     const on = Settings.data.sound;
     for (const key in this.ambTarget) {
       let s = this.amb[key];
-      const target = on ? this.ambTarget[key] * this.baseVolume(key) : 0;
+      const target = on ? this.ambTarget[key] * this.baseVolume(key) * this.cat('amb') : 0;
       if (!s) {
         if (target <= 0.001 || !this.exists(key) || !this.live) continue;
         try {

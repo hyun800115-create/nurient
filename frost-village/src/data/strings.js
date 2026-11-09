@@ -304,6 +304,9 @@ export const STRINGS = {
     // ---- (v4.2) 촌장의 하루 (docs/기획서_v4_2_촌장.md)
     // 설정 › 놀이
     set_tab_av: '소리·화면', set_tab_play: '놀이',
+    // ((v4.3 hotfix) 소리 세부 조절
+    set_tab_snd: '소리 조절', set_mixer: '소리 세부 조절', vol_master: '전체 소리', vol_music: '배경 음악', vol_sfx: '효과음', vol_amb: '주변 소리', vol_voice: '주민 목소리',
+    mixer_hint: '마을 곳곳에 가까이 가면 그곳 소리가 더 크게 들려요',
     set_pickup: '자동 줍기', pickup_auto: '켬', pickup_still: '멈추면', pickup_off: '끔',
     set_nav: '길 안내', set_halo: '촌장 후광', set_observe: '관망 자동',
     observe_0: '끔', observe_30: '30초', observe_60: '1분', observe_120: '2분',
@@ -777,6 +780,8 @@ export const STRINGS = {
     obj_rest_pantry: 'Bring grilled fish, bread or smoked meat to the pantry', obj_hall_tax: 'Collect the coins in the town hall tax box',
     // ---- (v4.2) The chief's day
     set_tab_av: 'Sound & screen', set_tab_play: 'Play',
+    set_tab_snd: 'Volume', set_mixer: 'Volume levels', vol_master: 'All sound', vol_music: 'Music', vol_sfx: 'Effects', vol_amb: 'Surroundings', vol_voice: 'Voices',
+    mixer_hint: 'Walk close to a place to hear it better',
     set_pickup: 'Auto pick-up', pickup_auto: 'On', pickup_still: 'When still', pickup_off: 'Off',
     set_nav: 'Directions', set_halo: 'Chief halo', set_observe: 'Auto watch',
     observe_0: 'Off', observe_30: '30 s', observe_60: '1 min', observe_120: '2 min',

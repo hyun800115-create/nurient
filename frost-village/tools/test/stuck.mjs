@@ -34,6 +34,8 @@ const ALL = argv.includes('--all');
 const PICK = arg('--pick') ? arg('--pick').toUpperCase().split(',') : null;      // --pick V1,V13: only those checks
 const want = (id) => !PICK || PICK.includes(id);
 const CENSUS_S = Number(arg('--secs')) || 75;
+// --wedge N: the census's wedge window in game s (default 8); a shorter one lists the short hold-ups too (a probe, not a gate)
+const WEDGE_S = Number(arg('--wedge')) || 8;
 const FX = path.join(ROOT, 'tools/test/fixtures');
 const LATE = ['v35_save_38min.json', 'v41_save_pure_45min.json', 'v41_save_smart_35min.json', 'v41_save_smart_46min.json', 'v42_save_office_ttal.json', 'v42_village_late.json'];
 const CENSUS = arg('--fixtures') ? arg('--fixtures').split(',').map((f) => (f === 'fresh' ? null : f.endsWith('.json') ? f : f + '.json')) : [null].concat(ALL ? fs.readdirSync(FX).filter((f) => f.endsWith('.json')).sort() : LATE);
@@ -96,7 +98,7 @@ async function boot(fixture) {
 
 // ---------------------------------------------------------------- A: the census (observe only)
 async function census(label, secs) {
-  await ev(() => {
+  await ev((WS) => {
     const gs = window.__FV.scene, gd = window.__gd;
     const S = window.__S = { t: 0, ws: new Map(), cases: [], n: 0, kinds: {} };
     const reg = (a) => { let w = S.ws.get(a); if (!w) { w = { a, cls: (a.constructor && a.constructor.name) || '?', smp: [], want: -1, tx: 0, ty: 0, floorT: 0, last: {} }; S.ws.set(a, w); } return w; };
@@ -127,23 +129,23 @@ async function census(label, secs) {
         if (a.alive === false || (a.sprite && a.sprite.active === false)) { S.ws.delete(a); continue; }
         const wanting = S.t - w.want < 0.3;
         w.smp.push([S.t, a.x, a.y, wanting]);
-        while (w.smp.length && w.smp[0][0] < S.t - 8) w.smp.shift();
-        if (wanting && w.smp.length >= 30 && w.smp[0][0] <= S.t - 7.9 && w.smp.every((s) => s[3])) {
+        while (w.smp.length && w.smp[0][0] < S.t - WS) w.smp.shift();
+        if (wanting && w.smp.length >= WS * 4 - 2 && w.smp[0][0] <= S.t - (WS - 0.1) && w.smp.every((s) => s[3])) {
           let cx = 0, cy = 0; for (const s of w.smp) { cx += s[1]; cy += s[2]; } cx /= w.smp.length; cy /= w.smp.length;
           let r = 0; for (const s of w.smp) r = Math.max(r, gd(s[1], s[2], cx, cy));
           const td = gd(a.x, a.y, w.tx, w.ty);
-          if (r < 30 && td > 40) flag('wedge', w, { r: Math.round(r), to: [Math.round(w.tx), Math.round(w.ty)], td: Math.round(td), why: window.__why(a.x + (w.tx - a.x) * 20 / Math.max(20, td), a.y + (w.ty - a.y) * 20 / Math.max(20, td), 14) });
+          if (r < 30 && td > 40) flag('wedge', w, { item: a.stack && a.stack.items && a.stack.items.length ? a.stack.items[a.stack.items.length - 1].type : null, r: Math.round(r), to: [Math.round(w.tx), Math.round(w.ty)], td: Math.round(td), why: window.__why(a.x + (w.tx - a.x) * 20 / Math.max(20, td), a.y + (w.ty - a.y) * 20 / Math.max(20, td), 14) });
         }
         const f = window.__floorAt(a.x, a.y);
         if (f && wanting && window.__floorAt(w.tx, w.ty) !== f) { if ((w.floorT += 0.25) >= 15) { flag('trap', w, { floor: f, to: [Math.round(w.tx), Math.round(w.ty)] }); w.floorT = 0; } }
         else w.floorT = 0;
       }
     };
-  });
+  }, WEDGE_S);
   for (let s = 0; s < secs; s += 5) { await run(5); if (s % 30 === 0) await render(page, 1); }
   const S = await ev(() => { window.__hook = null; const S = window.__S; const P = window.__FV.scene.v42 && window.__FV.scene.v42.pilot; if (P && P.on) try { P.stop('test'); } catch (e) { /* */ } return { walkers: S.ws.size, kinds: S.kinds, cases: S.cases }; });
   const k = S.kinds;
-  step('A ' + label + ': no walker wedged 8 s, trapped behind walls or arriving far off (' + S.walkers + ' walkers, ' + secs + ' s)', !(k.wedge || k.trap || k.far), { kinds: k, cases: S.cases.slice(0, 6) });
+  step('A ' + label + ': no walker wedged ' + WEDGE_S + ' s, trapped behind walls or arriving far off (' + S.walkers + ' walkers, ' + secs + ' s)', !(k.wedge || k.trap || k.far), { kinds: k, cases: S.cases.slice(0, WEDGE_S < 8 ? 40 : 6) });
 }
 
 // ---------------------------------------------------------------- B: one check per finding

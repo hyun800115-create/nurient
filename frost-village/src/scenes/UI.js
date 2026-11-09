@@ -1030,27 +1030,31 @@ export class UI extends Phaser.Scene {
       };
       this.settingsRows = [];
       const S = Settings.data;
-      const tab = this.settingsTab === 'play' ? 'play' : 'av';
+      const tab = this.settingsTab === 'play' ? 'play' : this.settingsTab === 'snd' ? 'snd' : 'av';
+      // ((v4.3 hotfix) three tabs: 소리·화면 · 소리 조절 (the sliders) · 놀이
+      const TW = 164;
       const tabBtn = (x, key, id) => {
         const on = tab === id;
-        const b = add(this.makeButton(x, cy - 348, 236, 66, on ? 'blue' : 'gray', t(key), () => { if (this.settingsTab !== id) { this.settingsTab = id; this.buildPanelContent(false); } }, 26));
+        const b = add(this.makeButton(x, cy - 348, TW, 66, on ? 'blue' : 'gray', t(key), () => { if (this.settingsTab !== id) { this.settingsTab = id; this.buildPanelContent(false); } }, 24));
         b.setAlpha(on ? 1 : 0.86);
         b.tabId = id;
-        // ((v4.2 CODE-2) the tab's little picture: ui5's snowflake-over-a-joystick for 놀이, the speaker for 소리·화면)
-        const ik = id === 'play' ? Assets.pick('ui_icon_play_tab', '') : Assets.pick('ui_icon_sound_on', '');
+        // ((v4.2 CODE-2) the tab's little picture: ui5's snowflake-over-a-joystick for 놀이, the speaker for 소리·화면 / 소리 조절)
+        const ik = id === 'play' ? Assets.pick('ui_icon_play_tab', '') : id === 'snd' ? Assets.pick('ui_icon_music_on', 'ui_icon_sound_on', '') : Assets.pick('ui_icon_sound_on', '');
+        const ix = -TW / 2 + 26;
         if (ik) {
-          const im = add(Assets.image(this, x - 88, cy - 348, ik).setOrigin(0.5)); im.setScale(40 / Math.max(1, im.frame.realWidth, im.frame.realHeight)).setAlpha(on ? 1 : 0.8);
+          const im = add(Assets.image(this, x + ix, cy - 348, ik).setOrigin(0.5)); im.setScale(34 / Math.max(1, im.frame.realWidth, im.frame.realHeight)).setAlpha(on ? 1 : 0.8);
           // ((v4.2 fix, visual M6) the label sits right of the icon and shrinks to fit ('Sound & screen' ran under it)
-          const tx = b.text, room = 236 / 2 - 14 - (-88 + 24);
-          tx.setOrigin(0.5).setX(-88 + 24 + room / 2);
+          const tx = b.text, room = TW / 2 - 10 - (ix + 20);
+          tx.setOrigin(0.5).setX(ix + 20 + room / 2);
           if (tx.width > room) tx.setScale(room / tx.width);
         }
         return b;
       };
-      this.settingsTabs = [tabBtn(cx - 122, 'set_tab_av', 'av'), tabBtn(cx + 122, 'set_tab_play', 'play')];
+      this.settingsTabs = [tabBtn(cx - 176, 'set_tab_av', 'av'), tabBtn(cx, 'set_tab_snd', 'snd'), tabBtn(cx + 176, 'set_tab_play', 'play')];
       if (window.__FV) window.__FV.settingsTab = tab;
       const Y = (i) => cy - 262 + i * 84;
       if (tab === 'play') { this.buildPlayTab(row, Y, add); this.panelFooter(add, cx, cy); return; }
+      if (tab === 'snd') { this.buildSoundTab(Y, add); this.panelFooter(add, cx, cy); return; }
       row(Y(0), t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
       row(Y(1), t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
       // globe icon for the language row (drawn, there is no icon sprite for it)
@@ -1084,16 +1088,8 @@ export class UI extends Phaser.Scene {
         this.gs.waterBudget = null;          // the player chose: no automatic switch any more
         this.buildPanelContent(false);
       });
-      // ---- (v4-C2) 주민 목소리 (눈꽃말 voices): 끔 / 작게 / 보통 / 크게
-      const VOL = [0, 0.35, 0.7, 1];
-      const vv = typeof S.voice === 'number' ? S.voice : 1;
-      let vi = 0;
-      for (let i = 0; i < VOL.length; i++) if (Math.abs(VOL[i] - vv) < Math.abs(VOL[vi] - vv)) vi = i;
-      row(Y(6), t('voiceVol'), t('voice_' + vi), vi === 0 ? 'gray' : 'green', () => {
-        S.voice = VOL[(vi + 1) % VOL.length]; Settings.save();
-        if (this.gs.voice) this.gs.voice.setVolume(S.voice);
-        this.buildPanelContent(false);
-      }, Assets.pick('emote_music', 'ui_icon_people'));
+      // ---- ((v4.3 hotfix) 주민 목소리 moved to the 소리 조절 tab with the other sliders: this row opens it)
+      row(Y(6), t('set_mixer'), t('set_tab_snd') + ' ›', 'blue', () => { this.settingsTab = 'snd'; this.buildPanelContent(false); }, Assets.pick('ui_icon_music_on', 'emote_music', 'ui_icon_sound_on'));
       this.panelFooter(add, cx, cy);
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));
@@ -1118,6 +1114,59 @@ export class UI extends Phaser.Scene {
     if (mv.text.width > 200) mv.text.setScale(200 / mv.text.width);
     mv.moveBtn = true;
     add(this.makeButton(cx + 130, cy + 428, 240, 80, 'blue', t('close'), () => this.closeSettings(), 30));
+  }
+
+  /** ((v4.3 hotfix, designer: "설정에서 볼륨을 세분화: 전체 볼륨, 효과음, 배경음, 주민 소리") the 소리 조절 tab: five sliders (tap or drag
+   *  on the bar, 5 % steps), applied while dragging, saved on release; 효과음 and 주민 목소리 play a sample on release */
+  buildSoundTab(Y, add) {
+    const S = Settings.data, cx = this.W / 2;
+    const rows = [
+      ['master', 'vol_master', 'ui_icon_sound_on'], ['music', 'vol_music', 'ui_icon_music_on'], ['sfx', 'vol_sfx', 'ui_icon_coin'],
+      ['amb', 'vol_amb', 'ui_icon_explore'], ['voice', 'vol_voice', 'emote_music'],
+    ];
+    const get = (id) => (id === 'voice' ? (typeof S.voice === 'number' ? S.voice : 1) : Audio.cat(id));
+    const set = (id, v, final) => {
+      if (id === 'voice') { S.voice = v; if (final) Settings.save(); if (this.gs.voice) this.gs.voice.setVolume(v); }
+      else Audio.setCat(id, v, !final);
+    };
+    const X0 = cx - 40, BW = 200;
+    this.volBars = {};
+    rows.forEach(([id, key, icon], i) => {
+      const y = Y(i) + 6;
+      const ik = Assets.pick(icon, 'ui_icon_sound_on', '');
+      if (ik) { const ic = add(Assets.image(this, cx - 236, y, ik).setOrigin(0.5)); ic.setScale(44 / Math.max(1, ic.frame.realWidth, ic.frame.realHeight)); }
+      const lt = add(this.add.text(cx - 206, y, t(key), TXT(26, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
+      if (lt.width > 156) lt.setScale(156 / lt.width);
+      const g = add(this.add.graphics());
+      const val = add(this.add.text(cx + 250, y, '', TXT(24, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(1, 0.5));
+      const draw = (v) => {
+        g.clear();
+        g.fillStyle(0xd9dfe8, 1); g.fillRoundedRect(X0, y - 9, BW, 18, 9);
+        if (v > 0.001) { g.fillStyle(0x4f9be8, 1); g.fillRoundedRect(X0, y - 9, Math.max(18, BW * v), 18, 9); }
+        g.fillStyle(0xffffff, 1); g.fillCircle(X0 + BW * v, y, 17);
+        g.lineStyle(4, 0x2f6fb5, 1); g.strokeCircle(X0 + BW * v, y, 17);
+        val.setText(Math.round(v * 100) + '%');
+      };
+      draw(get(id));
+      // the touch area: the bar ±24 px, a full row high
+      const zone = add(this.add.zone(X0 + BW / 2, y, BW + 48, 70).setInteractive());
+      const pick = (lx) => Math.max(0, Math.min(1, Math.round(((lx - 24) / BW) * 20) / 20));
+      let down = false;
+      zone.on('pointerdown', (p, lx) => { down = true; const v = pick(lx); draw(v); set(id, v, false); });
+      zone.on('pointermove', (p, lx) => { if (!down || !p.isDown) return; const v = pick(lx); draw(v); set(id, v, false); });
+      const up = () => {
+        if (!down) return;
+        down = false;
+        const v = get(id);
+        set(id, v, true);
+        if (id === 'sfx' || id === 'master') Audio.play('sfx_coin', { volume: 0.8, throttle: 120 });
+        if (id === 'voice' && this.gs.voice && this.gs.voice.sample) { try { this.gs.voice.sample(); } catch (e) { /* */ } }
+      };
+      zone.on('pointerup', up);
+      zone.on('pointerout', up);
+      this.volBars[id] = { zone, draw };
+    });
+    add(this.add.text(cx, Y(5) + 20, t('mixer_hint'), Object.assign(TXT(22, '#5b6676', '#ffffff', 0, '700'), { align: 'center', wordWrap: { width: 470 } })).setOrigin(0.5));
   }
 
   /** (v4.2, docs/v42_plan.md §8.2) the 놀이 tab: 자동 줍기 · 길 안내 · 촌장 후광 · 관망 자동 · 관망 볼거리 · 관망 중 돈 쓰기 */

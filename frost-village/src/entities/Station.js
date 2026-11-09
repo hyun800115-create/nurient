@@ -148,11 +148,11 @@ export class Station {
         onDone: (s) => {
           this.outStack.arrive(this.output);
           this.outStack.push(this.output, s);
-          if (gs.isOnScreen(this.outPad.x, this.outPad.y, 60)) Audio.play('sfx_drop', { volume: 0.35, rate: 1.1 + Math.random() * 0.2, throttle: 60 });
+          if (gs.isOnScreen(this.outPad.x, this.outPad.y, 60)) gs.sfxAt('sfx_drop', this.outPad.x, this.outPad.y, { volume: 0.35, rate: 1.1 + Math.random() * 0.2, throttle: 60 });
         },
       });
       // (v3.5) an operator's own work sounds carry the station; without one the station sounds as before
-      if (gs.isNear(this.x, this.y, 520)) Audio.play(this.cfg.sfx, { volume: this.op && this.op.operator ? 0.22 : 0.45, throttle: 400 });
+      if (gs.isNear(this.x, this.y, 520)) gs.sfxAt(this.cfg.sfx, this.x, this.y, { volume: this.op && this.op.operator ? 0.22 : 0.45, throttle: 400 });
       gs.effects.pop(this.img, 0.06, 90);
     });
   }

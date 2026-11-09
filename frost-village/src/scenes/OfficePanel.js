@@ -52,7 +52,10 @@ export class OfficePanel {
     bg.on('pointerup', () => {});
     c.add([dim, bg]);
     c.add(fit(Assets.image(ui, this.box.x0 + 50, top + 46, Assets.pick('ui_icon_office', 'ui_icon_mission', 'ui_icon_story', 'ui_icon_lock')).setOrigin(0.5), 46));
-    c.add(ui.add.text(this.box.x0 + 84, top + 46, t('officeTitle'), TXT(32, '#2b2f3a', '900')).setOrigin(0, 0.5));
+    // ((v4.3 hotfix, designer: "물류창고를 누르면 촌장 사무실이 나와") opened at the depot's door: the panel is titled after the depot
+    //  (its 재고 view, the same office panel and tabs underneath)
+    this.titleText = ui.add.text(this.box.x0 + 84, top + 46, t((tab || 'stock') === 'depot' ? 'depotTitle' : 'officeTitle'), TXT(32, '#2b2f3a', '900')).setOrigin(0, 0.5);
+    c.add(this.titleText);
     if (ui.makeIconButton) c.add(ui.makeIconButton(W / 2 + pw / 2 - 40, top + 40, 'ui_icon_close', 60, () => this.close()));
     this.tabsC = ui.add.container(0, 0);
     this.body = ui.add.container(0, 0);
@@ -74,6 +77,7 @@ export class OfficePanel {
     const ui = this.ui, c = this.c;
     if (!c) return;
     this.c = null;
+    this.titleText = null;
     ui.v42PanelOpen = false;
     if (window.__FV) window.__FV.officePanel = null;
     ui.tweens.add({ targets: c, alpha: 0, duration: 110, onComplete: () => c.destroy() });
@@ -92,6 +96,7 @@ export class OfficePanel {
     const ui = this.ui, B = this.box;
     this.tab = tab;
     if (window.__FV) window.__FV.officePanel = tab;
+    if (this.titleText) this.titleText.setText(t(tab === 'depot' ? 'depotTitle' : 'officeTitle'));
     this.tabsC.removeAll(true);
     const tw = (B.pw - 40) / TABS.length;
     const art = Assets.has('ui_office_tab');

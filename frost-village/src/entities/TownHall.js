@@ -108,7 +108,7 @@ export class TownHall {
     const ck = gs.v4 && gs.v4.clock;
     if (ck && ck.on && ck.hour) {
       const h = Math.floor(ck.hour());
-      if (h !== this.bellHour) { if (h === 12 && this.bellHour >= 0 && gs.isOnScreen(this.x, this.y, 400)) Audio.play(Audio.exists('sfx_bell_hall') ? 'sfx_bell_hall' : 'sfx_unlock', { volume: 0.6 }); this.bellHour = h; }
+      if (h !== this.bellHour) { if (h === 12 && this.bellHour >= 0 && gs.isOnScreen(this.x, this.y, 400)) gs.sfxAt(Audio.exists('sfx_bell_hall') ? 'sfx_bell_hall' : 'sfx_unlock', this.x, this.y, { volume: 0.7, range: 1.4 }); this.bellHour = h; }
     }
   }
 

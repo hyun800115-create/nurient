@@ -275,7 +275,7 @@ export class Visitor extends Customer {
     if (this.stage === 'gone') return;
     this.stage = 'gone';
     const gs = this.gs;
-    if (gs.isOnScreen(this.x, this.y, 200)) Audio.play('sfx_door', { volume: 0.4, throttle: 300 });
+    if (gs.isOnScreen(this.x, this.y, 200)) gs.sfxAt('sfx_door', this.x, this.y, { volume: 0.4, throttle: 300 });
     // ((v4.2 fix, gameplay L2) still short of the door when the 6 s run out: the last steps to it while fading (they
     //  vanished 55–72 px before the coach)
     const d = this.boardDoor;

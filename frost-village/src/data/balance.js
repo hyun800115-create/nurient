@@ -632,9 +632,15 @@ export const BALANCE = {
       site: { coins: 6000, item_plank: 40, item_ingot: 20, time: 20 },              // 짓는 값 (코인 + 자재), 짓는 시간(초)
       caps: { materials: 160, food: 160, goods: 120, tools: 60 },                   // 선반 종류별 최대 개수
       sleigh: { cap: 60, speed: 2.5, loadS: 8, secondCost: 2500, offerS: 120 },     // 화물 썰매: 한 번에 싣는 개수, 속도(m/초), 싣는 시간(초), 한 대 더 값, 한 대 더 제안까지(썰매 한 번 분량이 역에서 기다린 초)
+      // ((v4.3 hotfix, designer: "물류창고가 아무 작업도 못 하고 있어") the sleigh no longer waits for what the next train cannot carry:
+      //  once minLoad pieces wait at the dock it takes depotShare of them (and, as before, all the next train cannot carry);
+      //  the racks pay sell.rate 0.6 of the price, the train's export 0.5
+      sleighShare: { depotShare: 0.5, minLoad: 8 },
       sell: { every: 8, rate: 0.6, open: 7, close: 20,                              // 상인이 오는 간격(초), 값 비율, 여는 시각 ~ 닫는 시각
               perMin: { materials: 20, food: 30, goods: 20, tools: 6 },             // 종류별 1분에 팔 수 있는 최대 개수 (완성품 먼저)
-              rawPerMin: 40 },                                                      // (CODE-2) 날것 손님: 1분에 사 가는 날것 최대 개수 (종류 합)
+              rawPerMin: 40,                                                        // (CODE-2) 날것 손님: 1분에 사 가는 날것 최대 개수 (종류 합)
+              // ((v4.3 hotfix) 손님이 선반에 남겨 두는 개수: 종류별 · 날것 (물류창고가 늘 일하는 모습)
+              keep: { materials: 12, food: 12, goods: 10, tools: 4 }, rawKeep: 8 },
       rawPrice: { item_fish_raw: 1, item_log: 1, item_wheat: 1, item_ore: 2, item_meat_raw: 3 },   // 날것을 팔 때 값 (기차 수출도 이 값 × exportRate)
       rawRack: 0.5,                                                                 // (CODE-2) 날것이 차지할 수 있는 선반 비율 (0~1, 나머지는 완성품 자리)
     },

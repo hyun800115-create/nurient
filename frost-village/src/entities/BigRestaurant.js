@@ -923,7 +923,7 @@ export class BigRestaurant {
     gs.events.emit('restMeal', price, g.order.combo);
     for (const s of g.plates || []) gs.effects.releaseItem(s);
     g.plates = [];
-    if (gs.isOnScreen(ch.x, ch.y, 120)) { gs.effects.burst('heart', ch.x, ch.y + ch.headTop - 4, 3); Audio.play('sfx_customer_happy', { volume: 0.55, throttle: 300 }); }
+    if (gs.isOnScreen(ch.x, ch.y, 120)) { gs.effects.burst('heart', ch.x, ch.y + ch.headTop - 4, 3); gs.sfxAt('sfx_customer_happy', ch.x, ch.y, { volume: 0.55, throttle: 300 }); }
     this.leave(g, 1);
   }
 

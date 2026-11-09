@@ -1772,7 +1772,15 @@ export class Game extends Phaser.Scene {
     const dd = gdist(a.x, a.y, w.x, w.y);
     if (a._wpX !== w.x || a._wpY !== w.y) { a._wpX = w.x; a._wpY = w.y; a._wpBest = dd; a._wpT = 0; }
     else if (dd < a._wpBest - 6) { a._wpBest = dd; a._wpT = 0; }
-    else if ((a._wpT += dt) > 3) {
+    // ((v4.3 hotfix, designer: "짐꾼이 판자를 싣고 나올 때 울타리·풀숲에 걸려요") held up for 1.2 s on the way to a point
+    //  more than 40 px off: a way round what stands there (the walker's own radius), once per point, before the 3 s
+    //  skip below — a carrier no longer pushes a fence or a bush for seconds
+    else if ((a._wpT += dt) > 1.2 && dd > 40 && (a._wdX !== w.x || a._wdY !== w.y) && a._wpT <= 3) {
+      a._wdX = w.x; a._wdY = w.y;
+      const way = this.roads.detour(a.x, a.y, w.x, w.y, [], a.radius);
+      if (way && way.length > 1) { r.splice(a.ri, 1, ...way); a._wdX = way[way.length - 1].x; a._wdY = way[way.length - 1].y; a._wpX = undefined; return false; }
+    }
+    else if (a._wpT > 3) {
       a._wpT = 0; a._wpBest = Infinity;
       if (!last) { a.ri++; return false; }
       // ((v4.2.0.1) the end of the route but still far from it (a fence corner, a wall, the fog's edge): a new way
@@ -1834,12 +1842,22 @@ export class Game extends Phaser.Scene {
   unseen(x, y) { return !this.isOnScreen(x, y, 120) && !this.isOnScreen(x, y - 220, 120); }
 
   /** positional sfx: only when (x, y) is on or near the screen, softer just outside it. `force` = always (the chief's own actions) */
+  /** ((v4.3 hotfix, designer: "그 장소에 가면 주변 소리가 더 잘 들리게") a sound at a place in the village: full near the middle of
+   *  the view, softer towards its edges, fading out about a screen beyond (opts.range > 1: heard farther, a train's
+   *  whistle), panned left / right by where it is. force: always at full volume (still panned) */
   sfxAt(key, x, y, opts, force) {
+    const cam = this.cameras.main, z = Math.max(0.05, cam.zoom || 1);
+    const hw = Math.max(1, cam.width / 2), hh = Math.max(1, cam.height / 2);
+    const dx = ((x - (cam.scrollX + hw)) * z) / hw, dy = ((y - (cam.scrollY + hh)) * z) / hh;
+    const d = Math.hypot(dx, dy) / Math.max(0.5, (opts && opts.range) || 1);
+    let f = 1;
     if (!force) {
-      if (!this.isOnScreen(x, y, 220)) return;
-      if (!this.isOnScreen(x, y, 0)) opts = Object.assign({}, opts, { volume: ((opts && opts.volume) !== undefined ? opts.volume : 1) * 0.5 });
+      if (d > 2) return;
+      f = d <= 0.55 ? 1 : d <= 1.25 ? 1 - ((d - 0.55) / 0.7) * 0.55 : 0.45 * (1 - (d - 1.25) / 0.75);
+      if (f < 0.04) return;
     }
-    Audio.play(key, opts);
+    const v = (opts && opts.volume) !== undefined ? opts.volume : 1;
+    Audio.play(key, Object.assign({}, opts, { volume: v * f, pan: Math.max(-1, Math.min(1, dx)) * 0.55 }));
   }
 
   findGatherable(x, y, range) {

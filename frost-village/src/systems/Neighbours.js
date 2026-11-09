@@ -379,12 +379,12 @@ export class Neighbours {
     gs.events.emit('v4:train', ev, stop);
     if (ev === 'whistle') {
       const p = stop === 'ours' ? this.ours : this.townStation;
-      if (p && gs.isOnScreen(p.x, p.y, 900)) Audio.play(Audio.exists('sfx_steam_whistle') ? 'sfx_steam_whistle' : 'sfx_boat_horn', { volume: gs.isOnScreen(p.x, p.y, 0) ? 0.9 : 0.45 });
+      if (p && gs.isOnScreen(p.x, p.y, 900)) gs.sfxAt(Audio.exists('sfx_steam_whistle') ? 'sfx_steam_whistle' : 'sfx_boat_horn', p.x, p.y, { volume: 0.95, range: 1.8 });
       return;
     }
     if (ev === 'arrive') {
       const p = stop === 'ours' ? this.ours : this.townStation;
-      if (p && gs.isOnScreen(p.x, p.y, 400)) { Audio.play('sfx_brakes', { volume: 0.7 }); if (this.train) this.train.puffs(3); }
+      if (p && gs.isOnScreen(p.x, p.y, 400)) { gs.sfxAt('sfx_brakes', p.x, p.y, { volume: 0.8, range: 1.4 }); if (this.train) this.train.puffs(3); }
       if (stop === 'ours') this.arriveOurs(); else this.arriveTown();
       for (const fn of this.waitNext[stop].splice(0)) { try { fn(); } catch (e) { console.error(e); } }
       return;
@@ -465,7 +465,7 @@ export class Neighbours {
     const doors = this.rail.doorPoints ? this.rail.doorPoints() : null;
     const pts = doors && doors.length ? doors : st ? st.board : [{ x: 3300, y: 1360 }];
     riders.forEach((c, i) => gs.time.delayedCall(450 + i * 250, () => this.alightVisitor(c, pts[i % pts.length])));
-    if (riders.length && gs.isOnScreen(st.x, st.y, 500)) for (let i = 0; i < Math.min(3, riders.length); i++) gs.time.delayedCall(400 + i * 300, () => Audio.play('sfx_door', { volume: 0.45, throttle: 300 }));
+    if (riders.length && gs.isOnScreen(st.x, st.y, 500)) for (let i = 0; i < Math.min(3, riders.length); i++) gs.time.delayedCall(400 + i * 300, () => gs.sfxAt('sfx_door', st.x, st.y, { volume: 0.45, throttle: 300 }));
     if (this.arrivals <= 3 && riders.length) gs.ui.toast(t('trainArrive', { n: riders.length }));
     if (gs.v42 && gs.v42.freight) gs.v42.freight.arrived(riders.length);
     if (first) {

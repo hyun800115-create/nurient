@@ -291,7 +291,7 @@ export class Civic {
       if (gs.followRoute(w, 80, dt, 14) || w.t > 70) {
         w.gone = true;
         gs.tweens.add({ targets: [w.sprite, w.shadow], alpha: 0, duration: 400, onComplete: () => this.dropWalker(w) });
-        if (gs.isOnScreen(w.x, w.y, 100)) { Audio.play('sfx_door', { volume: 0.4, throttle: 300 }); if (gs.life) gs.life.bubbles.emote(w, 'emote_heart', 1.2); }
+        if (gs.isOnScreen(w.x, w.y, 100)) { gs.sfxAt('sfx_door', w.x, w.y, { volume: 0.4, throttle: 300 }); if (gs.life) gs.life.bubbles.emote(w, 'emote_heart', 1.2); }
         continue;
       }
       w.sync(dt);

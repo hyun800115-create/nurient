@@ -35,8 +35,14 @@ export class CargoSleigh {
   /** the dock surplus the next train cannot take (the train first: its free room after the order-card crates stays) */
   spare(F) {
     const G = this.gs.v4 && this.gs.v4.growth;
-    const keep = Math.max(0, F.cap() - Math.max(0, Number(G && G.cargo) || 0));
-    return Math.max(0, F.dockCount() - keep);
+    const room = Math.max(0, F.cap() - Math.max(0, Number(G && G.cargo) || 0));
+    const over = Math.max(0, F.dockCount() - room);
+    // ((v4.3 hotfix) the depot also takes depotShare of the dock once minLoad pieces wait (it took only what the next
+    //  train could not carry: the depot stood empty in most villages)
+    const S = (BALANCE.v42 && BALANCE.v42.depot && BALANCE.v42.depot.sleighShare) || {};
+    const share = Math.max(0, Math.min(1, Number(S.depotShare) || 0));
+    const part = F.dockCount() >= Math.max(1, Number(S.minLoad) || 1) ? Math.floor(F.dockCount() * share) : 0;
+    return Math.max(over, part);
   }
 
   get B() { return (BALANCE.v42 && BALANCE.v42.depot && BALANCE.v42.depot.sleigh) || { cap: 60, speed: 2.5, loadS: 8 }; }
@@ -73,7 +79,7 @@ export class CargoSleigh {
           this.load = F && n > 0 ? F.takeSurplus(n, (ty) => this.sys.model.room(ty)) : [];
           this.state = this.count() > 0 ? 'go' : 'wait';
           this.t = 0;
-          if (this.count() > 0 && gs.isOnScreen(this.x, this.y, 300) && Audio.exists('sfx_sleigh_bells')) Audio.play('sfx_sleigh_bells', { volume: 0.6 });
+          if (this.count() > 0 && gs.isOnScreen(this.x, this.y, 300) && Audio.exists('sfx_sleigh_bells')) gs.sfxAt('sfx_sleigh_bells', this.x, this.y, { volume: 0.7, range: 1.3 });
         }
         break;
       }

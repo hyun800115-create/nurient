@@ -620,7 +620,9 @@ export const Settings = {
   // (v4-C2) water: '물결 품질' 'high' | 'low' | null (automatic); voice: '주민 목소리' volume 0..1 (0 = off)
   data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto', water: null, voice: 1,
     // (v4.2) 놀이 tab: 자동 줍기 / 길 안내 / 촌장 후광 / 관망 자동 (s) / 관망 볼거리 / 관망 중 돈 쓰기
-    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none' },
+    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none',
+    // ((v4.3 hotfix) 소리 세부 조절: 전체 · 배경 음악 · 효과음 · 주변 소리, each 0..1 (주민 목소리 stays `voice`)
+    vol: { master: 1, music: 1, sfx: 1, amb: 1 } },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -640,6 +642,10 @@ export const Settings = {
       this.data.observeAfter = [0, 30, 60, 120].indexOf(s.observeAfter) >= 0 ? s.observeAfter : 60;
       this.data.observeEvents = s.observeEvents !== false;
       this.data.observeSpend = s.observeSpend === 'hire' ? 'hire' : 'none';
+      // ---- (v4.3 hotfix) 소리 세부 조절
+      const V = s.vol && typeof s.vol === 'object' ? s.vol : {};
+      const vv = (x) => (typeof x === 'number' && x >= 0 && x <= 1 ? Math.round(x * 100) / 100 : 1);
+      this.data.vol = { master: vv(V.master), music: vv(V.music), sfx: vv(V.sfx), amb: vv(V.amb) };
     }
     return this.data;
   },

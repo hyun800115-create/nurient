@@ -52,6 +52,9 @@ console.log('raw share (CODE-2)');
 
 console.log('buyers');
 {
+  // ((v4.3 hotfix) the rates without the rack keep (it has its own block below)
+  const KEEP = D.sell.keep, RKEEP = D.sell.rawKeep;
+  D.sell.keep = {}; D.sell.rawKeep = 0;
   const M = new Depot();
   M.take([{ ty: 'item_bread', n: 100 }, { ty: 'item_plank', n: 100 }, { ty: 'item_axe', n: 30 }, { ty: 'item_log', n: 40 }]);
   ok(M.sell(60, 3).length === 0 && M.sell(60, 21).length === 0, 'closed before 07:00 and from 20:00');
@@ -76,6 +79,23 @@ console.log('buyers');
   let n = 0;
   for (let s = 0; s < 1200; s++) n += E.sell(0.1, 10).length;
   ok(n === 2 && E.stock.total('tools') === 0, 'two axes: two sales, then nothing');
+  D.sell.keep = KEEP; D.sell.rawKeep = RKEEP;
+}
+
+console.log('the rack keep (v4.3 hotfix)');
+{
+  const K = D.sell.keep || {}, RK = Number(D.sell.rawKeep) || 0;
+  ok((K.tools || 0) > 0 && RK > 0, 'balance has a keep per category and for the raw', { K, RK });
+  const M = new Depot();
+  M.take([{ ty: 'item_axe', n: 10 }, { ty: 'item_log', n: 40 }]);
+  for (let s = 0; s < 6000; s++) M.sell(0.1, 12);
+  ok(M.stock.total('tools') === K.tools, 'the buyers leave keep.tools axes on the racks', { tools: M.stock.total('tools') });
+  ok(M.stock.count('item_log') === RK, 'the raw buyers leave the raw keep', { log: M.stock.count('item_log') });
+  const E = new Depot();
+  E.take([{ ty: 'item_axe', n: Math.max(0, (K.tools || 0) - 1) }]);
+  let n = 0;
+  for (let s = 0; s < 1200; s++) n += E.sell(0.1, 10).length;
+  ok(n === 0, 'fewer than the keep: nothing sold');
 }
 
 console.log('days and the v8 slice');

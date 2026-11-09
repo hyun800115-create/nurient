@@ -74,7 +74,7 @@ export class RailProps {
       if (y !== st.yellow) {
         st.yellow = y;
         st.img.setFrame(y ? 'rail_switch_stand_idle_1' : 'rail_switch_stand_idle_0');
-        if (gs.isOnScreen(st.img.x, st.img.y, 160)) Audio.play(Audio.exists('sfx_switch_clack') ? 'sfx_switch_clack' : 'sfx_click', { volume: 0.55 });
+        if (gs.isOnScreen(st.img.x, st.img.y, 160)) gs.sfxAt(Audio.exists('sfx_switch_clack') ? 'sfx_switch_clack' : 'sfx_click', st.img.x, st.img.y, { volume: 0.6 });
       }
     }
     // water towers: pour when the engine rounds their loop

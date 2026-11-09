@@ -227,7 +227,7 @@ export class Workshop extends Station {
           onDone: (s) => {
             this.outStack.arrive(outType);
             this.outStack.push(outType, s);
-            if (gs.isOnScreen(this.outPad.x, this.outPad.y, 60)) Audio.play('sfx_drop', { volume: 0.35, rate: 1.1 + Math.random() * 0.2, throttle: 60 });
+            if (gs.isOnScreen(this.outPad.x, this.outPad.y, 60)) gs.sfxAt('sfx_drop', this.outPad.x, this.outPad.y, { volume: 0.35, rate: 1.1 + Math.random() * 0.2, throttle: 60 });
           },
         });
       });
