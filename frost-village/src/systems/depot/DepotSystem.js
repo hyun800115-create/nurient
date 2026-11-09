@@ -15,6 +15,7 @@ import { Assets } from '../../core/Assets.js';
 import { Depot } from './Depot.js';
 import { ITEMS } from '../../data/items.js';
 import { t } from '../../data/strings.js';
+import { UnlockPad } from '../../entities/UnlockPad.js';
 
 const D = () => (BALANCE.v42 && BALANCE.v42.depot) || {};
 
@@ -36,6 +37,54 @@ export class DepotSystem {
     this.buyers = [];
     this.buyT = 4;
     this.camReveal = false;
+    // ((v4.3 a2.2, designer: "물류창고 직원 채용과 지게차도 없는데") the hired 물류창고 직원 (0–3, on top of the 3 who came with the
+    //  building) and the forklift; hp: coins already paid into the next pad of each
+    this.hires = Math.max(0, Math.min(3, Math.floor(Number(s.hires) || 0)));
+    this.fork = s.fork ? 1 : 0;
+    const hp = s.hp && typeof s.hp === 'object' ? s.hp : {};
+    this.hp = { staff: Math.max(0, Math.floor(Number(hp.staff) || 0)), fork: Math.max(0, Math.floor(Number(hp.fork) || 0)) };
+    this.pads = {};
+  }
+
+  /** the buyers' pace: the hired staff and the forklift each sell a share faster */
+  sellMult() { const H = D().hire || {}; return 1 + this.hires * (Number(H.staffSell) || 0) + (this.fork ? Number(H.forkSell) || 0 : 0); }
+
+  /** the two pay pads on the forecourt: the next 물류창고 직원 (3 at most) and the forklift (once) */
+  makePads() {
+    const gs = this.gs, B = this.building, H = D().hire || {};
+    if (!B) return;
+    const costs = Array.isArray(H.staff) && H.staff.length ? H.staff : [1200, 2000, 3000];
+    const want = {};
+    if (this.hires < Math.min(3, costs.length)) want.staff = { cost: Math.max(1, Math.floor(Number(costs[this.hires]) || 1500)), pt: B.padSpot('staff') };
+    if (!this.fork) want.fork = { cost: Math.max(1, Math.floor(Number(H.forklift) || 3500)), pt: B.padSpot('fork') };
+    for (const k in this.pads) if (!want[k] || this.pads[k].cost !== want[k].cost) { this.pads[k].destroy(); delete this.pads[k]; }
+    for (const k in want) {
+      if (this.pads[k]) continue;
+      const w = want[k];
+      const pad = new UnlockPad(gs, 'depot_' + k, w.pt.x, w.pt.y, {
+        kind: k === 'staff' ? 'hire' : 'upgrade', cost: w.cost, paid: Math.min(this.hp[k] || 0, w.cost - 1),
+        labelFn: () => (k === 'staff' ? t('depotStaff_pad', { n: 3 + this.hires + 1 }) : t('depotFork_pad')),
+        icon: k === 'staff' ? Assets.pick('ui_icon_worker', 'ui_icon_porter', 'ui_icon_people', 'ui_icon_lock') : Assets.pick('ui_icon_delivery', 'ui_icon_upgrade', 'ui_icon_lock'),
+        iconSize: 48,
+        padTex: k === 'staff' ? Assets.pick('ui_pad_hire', '') || undefined : undefined,
+        onComplete: (p) => this.hired(k, p),
+      });
+      if (gs.player && pad.pad && pad.pad.contains(gs.player.x, gs.player.y)) pad.needsLeave = true;
+      if (gs.popIn) gs.popIn(pad);
+      this.pads[k] = pad;
+    }
+  }
+
+  hired(k, pad) {
+    const gs = this.gs;
+    delete this.pads[k];
+    this.hp[k] = 0;
+    if (pad && pad.vanish) pad.vanish();
+    if (k === 'staff') { this.hires = Math.min(3, this.hires + 1); gs.ui.banner(t('depotStaffDone'), t('depotStaffSub')); }
+    else { this.fork = 1; gs.ui.banner(t('depotForkDone'), t('depotForkSub')); }
+    if (this.building) this.building.setCrew(this.hires, this.fork);
+    this.makePads();
+    if (gs.save) gs.save(true);
   }
 
   get built() { return !!this.building; }
@@ -55,6 +104,9 @@ export class DepotSystem {
     //  collected) and come back on a reload)
     if (this.model.cash > 0) { this.building.till.restore(this.model.cash); this.model.cash = 0; }
     this.addSleighs();
+    // ((v4.3 a2.2) the hired crew and the forklift, the pads for the next ones
+    this.building.setCrew(this.hires, this.fork);
+    this.makePads();
     // goods that were on the sleigh at the save go back to the dock pile
     const F = this.v42.freight;
     if (F) for (const k in this.loadSaved) if (ITEMS.indexOf(k) >= 0) F.addSurplus(k, Math.max(0, Math.floor(Number(this.loadSaved[k]) || 0)));
@@ -84,7 +136,8 @@ export class DepotSystem {
     for (const s of this.sleighs) s.update(dt);
     if (c) this.model.newDay(c.day());
     // the buyers (analytic: coins into the 물류 금고; a few walkers when on screen)
-    const sold = this.model.sell(dt, c ? c.hour() : 12);
+    for (const k in this.pads) this.pads[k].update(dt);
+    const sold = this.model.sell(dt, c ? c.hour() : 12, this.sellMult());
     if (sold.length) {
       const coins = sold.reduce((a, q) => a + q.coins, 0);
       const till = this.building.till;
@@ -149,6 +202,9 @@ export class DepotSystem {
     for (const s of this.sleighs) for (const q of s.load) load[q.ty] = (load[q.ty] || 0) + q.n;
     const st = this.building ? 2 : (this.gs.sites && this.gs.sites.v42_depot && this.gs.sites.v42_depot.state !== 'plot' ? 1 : 0);
     o.depot = { st, sleighs: this.sleighN, load, porters34: Math.max(0, ((this.gs.v4 && this.gs.v4.growth && this.gs.v4.growth.porters.length) || 0) - 2), sales: [Math.max(0, this.model.day), this.model.today.sales, this.model.today.coins] };
+    // ((v4.3 a2.2) the crew, the forklift, the coins in the pads
+    o.depot.hires = this.hires; o.depot.fork = this.fork;
+    o.depot.hp = { staff: this.pads.staff ? Math.floor(this.pads.staff.paid || 0) : 0, fork: this.pads.fork ? Math.floor(this.pads.fork.paid || 0) : 0 };
   }
 
   /** the v8 logistics slice (only once the depot stands) */
@@ -160,7 +216,7 @@ export class DepotSystem {
   }
 
   state() {
-    return { built: this.built, total: this.total(), cap: this.capTotal(), stock: this.model.stock.snapshot(), today: Object.assign({}, this.model.today), sleighs: this.sleighs.map((s) => ({ state: s.state, s: +s.s.toFixed(1), load: s.count(), trips: s.trips })), till: this.building ? this.building.till.value : 0, buyers: this.buyers.length, revealed: this.building ? this.building.revealed : false };
+    return { hires: this.hires, fork: this.fork, pads: Object.keys(this.pads), sellMult: this.sellMult(), built: this.built, total: this.total(), cap: this.capTotal(), stock: this.model.stock.snapshot(), today: Object.assign({}, this.model.today), sleighs: this.sleighs.map((s) => ({ state: s.state, s: +s.s.toFixed(1), load: s.count(), trips: s.trips })), till: this.building ? this.building.till.value : 0, buyers: this.buyers.length, revealed: this.building ? this.building.revealed : false };
   }
 
   hooks(H) {
@@ -168,9 +224,10 @@ export class DepotSystem {
       const gs = this.gs;
       if (o && o.build) { const st = gs.sites && gs.sites.v42_depot; if (st && !gs.isBuilt('depot42')) { st.setShown(true); if (st.state === 'plot') st.start('depot42', { instant: true }); if (st.state !== 'done') st.finish(true); } }
       if (o && o.stock) for (const k in o.stock) this.model.take([{ ty: k, n: o.stock[k] }]);
+      if (o && o.hire && this.pads[o.hire]) { const p = this.pads[o.hire]; p.paid = p.cost; p.complete(); }
       return this.state();
     };
   }
 
-  destroy() { if (this.building) this.building.destroy(); for (const s of this.sleighs) s.destroy(); for (const b of this.buyers) if (b.alive) b.destroy(); }
+  destroy() { for (const k in this.pads) this.pads[k].destroy(); this.pads = {}; if (this.building) this.building.destroy(); for (const s of this.sleighs) s.destroy(); for (const b of this.buyers) if (b.alive) b.destroy(); }
 }

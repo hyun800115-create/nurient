@@ -636,6 +636,9 @@ export const BALANCE = {
       //  once minLoad pieces wait at the dock it takes depotShare of them (and, as before, all the next train cannot carry);
       //  the racks pay sell.rate 0.6 of the price, the train's export 0.5
       sleighShare: { depotShare: 0.5, minLoad: 8 },
+      // ((v4.3 a2.2, designer: "물류창고 직원 채용과 지게차도 없는데") 물류창고 직원 3명까지 (값: 1·2·3번째) · 지게차 1대: 손님이 사 가는
+      //  속도가 직원 한 명마다 staffSell, 지게차가 forkSell 만큼 빨라지고, 지게차는 썰매 짐 내리는 시간을 forkUnload 배로 줄여요
+      hire: { staff: [1200, 2000, 3000], forklift: 3500, staffSell: 0.25, forkSell: 0.25, forkUnload: 0.5 },
       sell: { every: 8, rate: 0.6, open: 7, close: 20,                              // 상인이 오는 간격(초), 값 비율, 여는 시각 ~ 닫는 시각
               perMin: { materials: 20, food: 30, goods: 20, tools: 6 },             // 종류별 1분에 팔 수 있는 최대 개수 (완성품 먼저)
               rawPerMin: 40,                                                        // (CODE-2) 날것 손님: 1분에 사 가는 날것 최대 개수 (종류 합)

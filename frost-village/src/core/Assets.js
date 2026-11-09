@@ -36,7 +36,7 @@ export const WATER_DATA = /^water_(waves_a|waves_b|foam|lut|shore_ramp|field_vil
 export const MARKET_LATE = /^market_s[2-9]$/;
 // (v4-C2) fragments of which the game uses only some keys yet; the rest is never loaded and the artifact build
 // leaves those files out (tools/build/build_artifact.mjs reads this line: keep it one JSON-like object)
-export const USED_ONLY = { "civic": ["civ_bank"], "logistics": ["lgx_center_a", "lgx_center_b", "lgx_center_c", "lgx_center_d", "lgx_items"], "vehicles": ["veh_cargo_sleigh"], "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
+export const USED_ONLY = { "civic": ["civ_bank"], "logistics": ["lgx_center_a", "lgx_center_b", "lgx_center_c", "lgx_center_d", "lgx_items", "lgx_forklift"], "vehicles": ["veh_cargo_sleigh"], "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
 // (v2 read only the staff points of the buildings fragment; v3 loads all of it)
 export const MANIFEST_ONLY_FRAGMENTS = [];
 // (v4-A) fragments that are never loaded at boot: Assets.loadFragment() fetches them while the village

@@ -149,7 +149,7 @@ export class OfficePanel {
       case 'letters': return v.news ? v.news.inbox.map((r) => r.id + ':' + r.state).join(',') : '';
       case 'staff': return O.staffRows().map((r) => r.text).join('|');
       case 'bank': return O.log.length + ':' + O.depositedTotal + ':' + JSON.stringify(O.income);
-      case 'depot': { const Dp = v.depot; return Dp && Dp.built ? Dp.model.stock.ver + ':' + Dp.sleighs.map((x) => x.state + x.count()).join(',') : 'none'; }
+      case 'depot': { const Dp = v.depot; return Dp && Dp.built ? Dp.model.stock.ver + ':' + Dp.sleighs.map((x) => x.state + x.count()).join(',') + ':' + (Dp.hires || 0) + (Dp.fork || 0) : 'none'; }
       default: return '';
     }
   }
@@ -299,6 +299,8 @@ export class OfficePanel {
     this.text(B.x0 + 40, y0 + 92, t('depotIn', { n: T.inflow }), 21, '#2b2f3a');
     this.text(B.x0 + 40, y0 + 138, t('depotExp', { n: F ? F.stats.exported : 0 }), 21, '#2b2f3a');
     Dp.sleighs.forEach((sl, i) => this.text(B.x0 + 40, y0 + 190 + i * 40, '🛷 ' + t(sl.stateText()) + ' · ' + sl.count(), 20, '#5b6676'));
+    // ((v4.3 a2.2) the depot's crew: the 3 who came with it + the hired ones, and the forklift
+    this.text(B.x0 + 40, y0 + 190 + Dp.sleighs.length * 40 + 10, t('depotCrew', { n: 3 + (Dp.hires || 0), f: t(Dp.fork ? 'depotForkYes' : 'depotForkNo') }), 20, '#2b2f3a');
   }
 
   update(dt) {
