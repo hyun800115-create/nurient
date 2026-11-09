@@ -371,6 +371,11 @@ Launch candidate: 95–111 builder-days + ≈ 3–5 weeks of tester windows not 
 13. **Rating:** launch draft said "stays 13+". The content rating is expected all ages (`console_answers_ko.md:59`); 13+ is the target-audience setting (`:67`). Re-run the questionnaire when conflict cards, the farewell or incidents ship.
 14. **Effort:** engineering draft's 108–132 to 시장 + safety left out v4.6, the prototype, 세금 날, A/B, title, attendance and away earnings; the critique added more (§0) → 224–272.
 
+## 9b. Requests parked for later (2026-11-08/09, plan only)
+
+- **Central plaza + festivals:** a large central plaza that hosts village festivals and calendar events (Christmas, New Year, 설날, 추석, Halloween, 부처님 오신 날, other countries' days) with event decor objects, effects, residents in event outfits and event audio, driven by the real date. Proposed: reserve the plaza's plot in v4.3 step B's new plot table (with question 25's school/clinic plots), ship the plaza + the first two events in v4.6, the rest as seasonal post-launch updates. Texture: event decor must be paged per event (only the running event's page resident). Needs its own plan doc and the 대표's review first.
+- **Depot crew + forklift:** in progress as preview a2.2 (branch local/v43-depotcrew).
+
 ## 10. Open questions
 
 **Decided 2026-11-07:** the 대표 accepted every ★ recommendation below (5 → A launch at v4.5; 10 → B policy window; 21 → A no refund, thank-you letter; 22 → B; 23 → A). Question 6: the Play closed test starts now.
