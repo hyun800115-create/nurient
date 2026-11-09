@@ -1773,12 +1773,14 @@ export class Game extends Phaser.Scene {
     if (a._wpX !== w.x || a._wpY !== w.y) { a._wpX = w.x; a._wpY = w.y; a._wpBest = dd; a._wpT = 0; }
     else if (dd < a._wpBest - 6) { a._wpBest = dd; a._wpT = 0; }
     // ((v4.3 hotfix, designer: "짐꾼이 판자를 싣고 나올 때 울타리·풀숲에 걸려요") held up for 1.2 s on the way to a point
-    //  more than 40 px off: a way round what stands there (the walker's own radius), once per point, before the 3 s
-    //  skip below — a carrier no longer pushes a fence or a bush for seconds
-    else if ((a._wpT += dt) > 1.2 && dd > 40 && (a._wdX !== w.x || a._wdY !== w.y) && a._wpT <= 3) {
-      a._wdX = w.x; a._wdY = w.y;
+    //  more than 40 px off: a way round what stands there (the walker's own radius), ONCE per trip (keyed by the
+    //  route's end: a detour's own points never start another one), before the 3 s skip below — a carrier no longer
+    //  pushes a fence or a bush for seconds, and a crowd on its way never keeps it re-planning
+    else if ((a._wpT += dt) > 1.2 && dd > 40 && a._wpT <= 3 && (a._wdX !== r[r.length - 1].x || a._wdY !== r[r.length - 1].y)) {
+      const end = r[r.length - 1];
+      a._wdX = end.x; a._wdY = end.y;
       const way = this.roads.detour(a.x, a.y, w.x, w.y, [], a.radius);
-      if (way && way.length > 1) { r.splice(a.ri, 1, ...way); a._wdX = way[way.length - 1].x; a._wdY = way[way.length - 1].y; a._wpX = undefined; return false; }
+      if (way && way.length > 1) { r.splice(a.ri, 1, ...way); a._wpX = undefined; return false; }
     }
     else if (a._wpT > 3) {
       a._wpT = 0; a._wpBest = Infinity;
