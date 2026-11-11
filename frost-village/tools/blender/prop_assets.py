@@ -273,6 +273,113 @@ def fish_model(name='fish', length=0.86, height=0.42, thick=0.2, cooked=False, l
     return L.group(objs, name, loc=loc, rot=rot)
 
 
+def _stripes(nb, u, period, half_w, soft):
+    """1 on bands of full width 2 * half_w * period every `period` along the value socket u (soft edges)."""
+    f = nb.math('FRACT', nb.math('DIVIDE', u, period))
+    d = nb.math('ABSOLUTE', nb.math('SUBTRACT', f, 0.5))          # 0 at a band's centre, 0.5 halfway between bands
+    return nb.map_range(d, half_w + soft, half_w)
+
+
+# (v4.3) whole grilled fish looks: colours (belly -> flank -> back), char spots, grill bars, body proportions
+GRILLED_FISH = {
+    # 고등어구이: dark roasted back, golden belly, black grill bars, a few charred spots (item_fish_cooked)
+    'mackerel': dict(belly='#F4C46C', flank='#C9732B', back='#4E2814', back_lo=-0.15, spot='#3A1A0B', spots=0.55,
+                     bar='#24100A', bars=(0.17, 0.1, 0.05), length=0.83, height=0.42, edge=0.55),
+    # 조기구이: yellower all over, a lighter back
+    'croaker': dict(belly='#F8D47A', flank='#E59B37', back='#9C4D1C', back_lo=0.0, spot='#5A2A10', spots=0.4,
+                    bar='#2E140A', bars=(0.17, 0.1, 0.05), length=0.83, height=0.42, edge=0.4),
+    # well done: darker roast, more char, a slimmer body
+    'charred': dict(belly='#E9B060', flank='#B05E22', back='#3E1F10', back_lo=-0.2, spot='#2A1208', spots=0.85,
+                    bar='#1C0C06', bars=(0.16, 0.1, 0.05), length=0.85, height=0.38, edge=0.7),
+}
+
+
+def grilled_fish_model(name='gfish', style='mackerel', thick=0.17, loc=(0, 0, 0), rot=(0, 0, 0)):
+    """(v4.3 designer feedback 「처음 생선 잡으면 생선구이 모습이 아닌 일반 고기 모습이야. 생선구이 모습으로」) a WHOLE
+    grilled fish, Korean 생선구이 style, instead of the salmon steak that read as ham next to the drumsticks:
+    fish_model's silhouette (the item_fish_raw body, tail, dorsal fin, eye, gill) with a roasted, glossy skin - golden
+    belly, dark back, charred spots, three black grill bars across the up-facing flank - and charred fin / tail tips.
+    The countershading (dark back / gold belly) and the oily highlight keep it a real fish, not a fish-shaped bun.
+    style: a key of GRILLED_FISH.  Local X = tail(-X) -> head(+X), +Y = dorsal side, flank up (+Z).  Origin at the
+    body centre."""
+    S = GRILLED_FISH[style]
+    length, height = S['length'], S['height']
+    objs = []
+    nb = L.NB(name + '_skin', rough=0.32)
+    tc = nb.n('ShaderNodeTexCoord')
+    sep = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(tc.outputs['Object'], sep.inputs[0])
+    X, Y = sep.outputs['X'], sep.outputs['Y']
+    geo = nb.n('ShaderNodeNewGeometry')
+    nsep = nb.n('ShaderNodeSeparateXYZ')
+    nb.link(geo.outputs['Normal'], nsep.inputs[0])
+    up = nb.map_range(nsep.outputs['Z'], 0.3, 0.75)                 # the up-facing flank (grill bars only there)
+    hy = height * 0.5
+    col = nb.mix_rgb(nb.map_range(Y, -hy * 0.8, -hy * 0.15), C(S['belly']), C(S['flank']))
+    col = nb.mix_rgb(nb.map_range(Y, hy * S['back_lo'], hy * 0.7), col, C(S['back']))
+    # charred, blistered spots: on the back half, none on the belly or at the tail root (they read as a mouth there)
+    tl = length * 0.36
+    nz = nb.noise(13.0, 3.0)
+    sp = nb.math('MULTIPLY', nb.map_range(nz, 0.6, 0.7), S['spots'])
+    where = nb.math('MULTIPLY', nb.map_range(Y, -hy * 0.3, hy * 0.3), nb.map_range(X, -tl * 0.7, -tl * 0.45))
+    sp = nb.math('MULTIPLY', sp, where)
+    col = nb.mix_rgb(sp, col, C(S['spot']))
+    # toasted ends (the thin tail root and the snout brown first; flank colour: the back colour left a dark smudge
+    #  on the belly at the tail root)
+    endf = nb.map_range(nb.math('ABSOLUTE', X), length * 0.24, length * 0.36)
+    col = nb.mix_rgb(nb.math('MULTIPLY', endf, 0.6), col, C(S['flank']))
+    # grill bars: three diagonal bands across the body, faded out on the head (the face stays readable)
+    span = nb.math('MULTIPLY', nb.map_range(X, -tl * 0.95, -tl * 0.75), nb.map_range(X, tl * 0.62, tl * 0.4))
+    period, hw, soft = S['bars']
+    g = _stripes(nb, nb.math('ADD', nb.math('ADD', X, nb.math('MULTIPLY', Y, 0.75)), 0.03), period, hw, soft)
+    col = nb.mix_rgb(nb.math('MULTIPLY', g, nb.math('MULTIPLY', up, span)), col, C(S['bar']))
+    # roasted silhouette: the skin darkens where it turns away from the camera (a soft edge, no outline)
+    lw = nb.n('ShaderNodeLayerWeight')
+    lw.inputs['Blend'].default_value = 0.35
+    col = nb.mix_rgb(nb.math('MULTIPLY', nb.map_range(lw.outputs['Facing'], 0.55, 0.95), S['edge']), col, C(S['back']))
+    nb.base(col)
+    body_m = nb.m
+    bm = L.bmesh.new()
+    L.bmesh.ops.create_uvsphere(bm, u_segments=28, v_segments=16, radius=1.0)
+    for v_ in bm.verts:
+        x, y, z = v_.co
+        taper = 1.0 + 0.18 * x
+        v_.co = Vector((x * length * 0.36, y * height * 0.5 * taper, z * thick * 0.5 * (0.9 + 0.12 * x)))
+    objs.append(L.finish(name + '_body', bm, [body_m]))
+
+    def fin_mat(key, axis, tip_lo):
+        """fin / tail: roasted brown, charred toward its tip (Generated coords: 0..1 over the fin's own box)"""
+        if key in L._CUSTOM:
+            return L._CUSTOM[key]
+        fb = L.NB(key, rough=0.5)
+        t2 = fb.n('ShaderNodeTexCoord')
+        s2 = fb.n('ShaderNodeSeparateXYZ')
+        fb.link(t2.outputs['Generated'], s2.inputs[0])
+        a = s2.outputs[axis]
+        f = fb.map_range(a, 0.75, 0.15) if tip_lo else fb.map_range(a, 0.25, 0.85)
+        fb.base(fb.mix_rgb(f, C('#A85523'), C('#2E150A')))
+        L._CUSTOM[key] = fb.m
+        return fb.m
+    tail_m = fin_mat('gfish_tail', 'X', True)
+    tail = extrude(name + '_tail', [(0.0, 0.0), (-0.22, -0.18), (-0.16, 0.0), (-0.22, 0.18)],
+                   thick * 0.45, top=tail_m, side=tail_m, bevel=0.025)
+    tail.location = (-tl * 0.85, 0, -thick * 0.22)
+    objs.append(tail)
+    dors_m = fin_mat('gfish_dorsal', 'Y', False)
+    dors = extrude(name + '_dorsal', [(-0.14, 0.0), (0.1, 0.0), (0.0, 0.1), (-0.12, 0.08)],
+                   thick * 0.35, top=dors_m, side=dors_m, bevel=0.02)
+    dors.location = (-0.02, height * 0.42, -thick * 0.17)
+    objs.append(dors)
+    # the eye: white with a dark pupil that sits just above it (still a face at 24 px)
+    ex, ey, ez = tl * 0.6, height * 0.06, thick * 0.33
+    objs.append(sphere(name + '_eye', 0.056, (ex, ey, ez), flat('#F4EEDF', 0.35), scale=(1, 1, 0.4), segs=16, rings=10))
+    objs.append(sphere(name + '_pupil', 0.034, (ex * 1.03, ey, ez + 0.0136), flat('#1E120A', 0.25),
+                       scale=(1, 1, 0.4), segs=12, rings=8))
+    objs.append(L.smooth_tube(name + '_gill', [(tl * 0.38, -height * 0.25, thick * 0.3), (tl * 0.32, 0, thick * 0.44),
+                                               (tl * 0.38, height * 0.25, thick * 0.3)], 0.014, flat('#4A2210', 0.5)))
+    return L.group(objs, name, loc=loc, rot=rot)
+
+
 def salmon_top_mat(cooked=True):
     key = 'salmon_top%d' % cooked
     if key in L._CUSTOM:
@@ -1924,9 +2031,13 @@ def b_item_fish_raw():
 
 
 @asset('item_fish_cooked', 'item', 'props_items', item={'thickness': 0.17},
-       notes='Grilled salmon steak (like the reference tower).')
+       notes='Whole grilled fish (Korean saengseon-gui): the raw fish silhouette, roasted golden belly / dark back, '
+             'black grill bars, charred fins.')
 def b_item_fish_cooked():
-    steak_model('steak', R=0.37, thick=0.17, cooked=True, rot=(0, 0, 45))
+    # (v4.3 designer feedback) was steak_model (a round salmon steak that read as ham next to the drumsticks); the
+    # thickness stays 0.17 m so stackStep (9) and every tower height stay as they were.  Put back into the atlas in
+    # place with tools/blender/prop_item_swap.py (the other frames stay byte-identical).
+    grilled_fish_model('gfish', style='mackerel', thick=0.17, loc=(0, 0, 0.085), rot=(0, 0, 45))
 
 
 @asset('item_log', 'item', 'props_items', item={'thickness': 0.24},
