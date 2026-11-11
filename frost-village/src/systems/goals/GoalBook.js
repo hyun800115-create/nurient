@@ -11,6 +11,7 @@
 
 import { STEPS, GOALS, COMES_WITH, stepCost, workerLook } from '../Progression.js';
 import { WORLD } from '../../data/world.js';
+import { BALANCE } from '../../data/balance.js';
 import { Assets } from '../../core/Assets.js';
 import { t, fmt } from '../../data/strings.js';
 import { buildCost } from '../../entities/Site.js';
@@ -33,7 +34,9 @@ export class GoalBook {
     if (pad && pad.opts && pad.opts.icon) return pad.opts.icon;
     if (s.type === 'hire' || s.type === 'hire2' || s.type === 'hire3') return pick('portrait_' + workerLook(gs, s), 'portrait_' + s.worker, 'ui_icon_worker');
     if (s.type === 'operator') { const w = WORLD.labour && WORLD.labour.ops[s.station]; return pick(w && w.who ? 'portrait_' + w.who : null, 'ui_icon_worker'); }
-    if (s.type === 'clerk') return pick('portrait_npc_clerk_a', 'ui_icon_clerk', 'ui_icon_worker');
+    // ((bakefix) the 자재 점원 and the 빵집 판매원 are npc_clerk_b (their pads show her face: Progression.syncPads)
+    if (s.type === 'clerk') return pick(s.seller === 'trade' || s.seller === 'bakery' ? 'portrait_npc_clerk_b' : 'portrait_npc_clerk_a', 'ui_icon_clerk', 'ui_icon_worker');
+    if (s.type === 'shop' || s.type === 'bakery') return pick('ui_icon_hammer', 'ui_icon_lock_open', 'ui_icon_lock');
     if (s.type === 'zone' || s.type === 'tower') return pick('ui_icon_lock_open', 'ui_icon_lock');
     if (s.type === 'boat') return s.level >= 2 ? 'item_fish_big' : 'item_fish_raw';
     if (s.type === 'rank') return pick('ui_badge_rank_2', 'ui_icon_fame', 'ui_icon_lock');
@@ -53,6 +56,8 @@ export class GoalBook {
     const done = pr.isDone(s.id);
     const r = { id: s.id, kind: 'step', name: this.stepName(s), icon: this.stepIcon(s), coins: pad ? pad.remaining : stepCost(s) || 0, items: null, state: done ? 'done' : state, place: null, why: null };
     if (pad && pad.items) { r.items = {}; for (const k in pad.items) { const left = pad.items[k] - (pad.got[k] || 0); if (left > 0) r.items[k] = left; } }
+    // ((bakefix) 빵집 짓기 before its pad stands: its planks too (balance.js bakery43.build, every key but coins), not coins alone
+    else if (!pad && !done && s.type === 'bakery') { const B = (BALANCE.bakery43 && BALANCE.bakery43.build) || {}; const it = {}; for (const k in B) if (k !== 'coins' && Number(B[k]) > 0) it[k] = Math.floor(Number(B[k])); r.items = Object.keys(it).length ? it : null; }
     if (!done && pad && pad.active && !pad.done) r.place = { x: pad.x, y: pad.y, pad: pad.pad, ref: pad };
     else if (!done && state === 'now') r.why = 'wait';
     return r;

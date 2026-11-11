@@ -336,7 +336,9 @@ export class Navigator {
   /** the place a type would go to were it not full (the chip's '광장 판매대 가득') */
   fullPlace(ty) {
     if (!ty) return null;
-    if (/fish_cooked|bread|meat_cooked/.test(ty)) return 'place_market';
+    // ((v4.3 밀밭 · 빵집) bread sells at the bakery's own stall: '빵집 가판대 가득', not the shop's counter
+    if (/bread/.test(ty)) return 'place_bakery';
+    if (/fish_cooked|meat_cooked/.test(ty)) return 'place_market';
     if (/plank|ingot/.test(ty)) return 'place_trade';
     if (/can|axe|pickaxe|rod|sickle|bow/.test(ty)) return 'place_store';
     // ((v4.2 fix) a raw item: its station's input ('제련소 입구 가득')

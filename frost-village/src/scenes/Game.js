@@ -172,6 +172,8 @@ export class Game extends Phaser.Scene {
     // ((v4.2.0.1 final, review #3) the safety net's way round is planned for the walker's own radius (Roads.detour)
     this.roads.blockedR = (x, y, r) => !!(this.collision && this.collision.blocked(x, y, r));
     this.roads.offLand = (x, y) => !!(this.collision && this.collision.offLand(x, y));
+    // ((bakefix) walls a long straight route must go round (Roads.routeOpen): the bakery cottage and the wheat field's fence
+    this.roads.walls = (x, y) => this.routeWallAt(x, y);
     // (v3) who needs what (porters ask), the pictures that arrive after the title
     this.logistics = new Logistics(this);
     this.lazyImgs = [];
@@ -284,6 +286,8 @@ export class Game extends Phaser.Scene {
     for (const id in this.piles) spot(this.piles[id], 80);
     spot(this.market.shelf, 70); spot(this.market.cash.pad, 70); spot(this.market.register, 64);
     spot(this.trade.shelf, 70); spot(this.trade.cash.pad, 70); spot(this.trade.register, 64); spot(this.trash, 64);
+    // ((v4.3 밀밭 · 빵집) a reloaded bakery was built (Progression.init) before this list existed: its stall's pads join it here
+    if (this.bakery && this.bakery.built) { const S = this.bakery.stall; spot(S.shelf, 70); spot(S.cash.pad, 70); spot(S.register, 64); }
     // ((review SHOP-5) every counter's register open now (a reload at stage 3: seat B's 빵·고기 register too)
     for (const k in this.market.seats || {}) if (this.market.seats[k].enabled) spot(this.market.seats[k], 64);
     // ((v4.3) the deck's reel spot on land (where the net's gather point was): nobody stands on it but the chief
@@ -536,6 +540,30 @@ export class Game extends Phaser.Scene {
     this.statics.push(img);
     if (/^tree_pine|lodge|hut|tent|mine_entrance|market|trade_post|station_/.test(key)) this.addOccluder(img);
     return img;
+  }
+
+  /**
+   * ((bakefix) a point on something a long straight route must go round, not slide along (Roads.routeOpen's `walls` hook):
+   * the bakery cottage's ring of wall circles (an open doorway, an open floor: no round collider) and the wheat field's
+   * fence (a box with two gates and an open south side). A straight line from the east to the bakery's stall ran through
+   * both: its customers pressed into the fence by the 농막 (stuck.mjs), the navigator's line crossed the cottage (nav.mjs)
+   */
+  routeWallAt(x, y) {
+    const bk = !!(this.bakery && this.bakery.built), fo = !!(this.zones && this.zones.farm && this.zones.farm.unlocked);
+    const key = (bk ? 1 : 0) + (fo ? 2 : 0);
+    let W = this._routeWalls;
+    if (!W || W.key !== key) {
+      const list = [];
+      if (bk && this.bakery.station && this.bakery.station.walls) for (const w of this.bakery.station.walls) list.push(w);
+      const z = WORLD.zones.farm;
+      if (fo && z && this.collision) for (const o of this.collision.all) if (!o.seg && o.tag && /^fence/.test(o.tag) && inIsoRect(o.x, o.y, z.center[0], z.center[1], z.size[0] + 1.2, z.size[1] + 1.2)) list.push(o);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const o of list) { const R = o.r + 12; x0 = Math.min(x0, o.x - R); x1 = Math.max(x1, o.x + R); y0 = Math.min(y0, o.y - R / 2); y1 = Math.max(y1, o.y + R / 2); }
+      W = this._routeWalls = { key, list, x0, x1, y0, y1 };
+    }
+    if (!W.list.length || x < W.x0 || x > W.x1 || y < W.y0 || y > W.y1) return false;
+    for (const o of W.list) if (o.active && Math.hypot(x - o.x, (y - o.y) * 2) < o.r + 12) return true;
+    return false;
   }
 
   /** tall things fade out when the player walks behind them */
@@ -1678,7 +1706,13 @@ export class Game extends Phaser.Scene {
     if (R) {
       const key = 'rest:' + type + ':' + index, C = this._homes || (this._homes = {});
       if (C[key]) return C[key].slice();
-      const q = this.freeSpot(R.at[0] + index * 34, R.at[1] + index * 17, 16, 120);
+      // ((bakefix) each worker's own rest spot (spots[index]); none left: he rests at home. The spot stays inside its land
+      //  (zone): the old row (at + 34, 17 a worker) put 농부 2 · 3 outside the field's east fence)
+      const sp = Array.isArray(R.spots) ? R.spots[index] : Array.isArray(R.at) ? [R.at[0] + index * 34, R.at[1] + index * 17] : null;
+      if (!Array.isArray(sp)) return this.workerHome(type, index);
+      const Z = R.zone && WORLD.zones[R.zone];
+      const inZone = Z ? (qx, qy) => inIsoRect(qx, qy, Z.center[0], Z.center[1], Z.size[0], Z.size[1], 0.3) : undefined;
+      const q = this.freeSpot(sp[0], sp[1], 16, 120, inZone);
       const out = [Math.round(q.x), Math.round(q.y)];
       if (this.collision.walk) C[key] = out;
       return out.slice();

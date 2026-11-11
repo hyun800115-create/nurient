@@ -82,6 +82,9 @@ export class BakeryStation extends Station {
 
   get batch() { return Math.max(1, Math.floor(num(B43().batch, 3))); }
 
+  /** a sound at a place in the village (Game.sfxAt: softer toward the view's edges, panned), else plain */
+  sfx(key, x, y, opts) { const gs = this.gs; if (gs.sfxAt) gs.sfxAt(key, x, y, opts); else Audio.play(key, opts); }
+
   makeSign() {
     const gs = this.gs, d = this.def, q = d && d.signQuad;
     if (!Array.isArray(q) || q.length < 4) return null;
@@ -115,6 +118,8 @@ export class BakeryStation extends Station {
   /** room for loaves: the stall's case (incl. what flies there) and the rack */
   stallRoom() { const s = this.stall; return s && s.enabled ? Math.max(0, s.maxPerType - s.stock.countWithIncoming('item_bread')) : 0; }
   rackRoom() { return Math.max(0, this.outStack.max - this.outStack.count - this.outStack.incoming); }
+  /** somewhere for a loaf now (the case or the rack) */
+  hasRoom() { return this.stallRoom() + this.rackRoom() > 0; }
 
   /** wheat there, the oven not over-full, and somewhere to put the loaves */
   canWork() { return this.operated() && this.inStack.count > 0 && this.oven < this.batch * 2 && this.stallRoom() + this.rackRoom() > this.oven; }
@@ -131,13 +136,15 @@ export class BakeryStation extends Station {
     // the oven keeps a few loaves while it bakes: the baker takes them out (BakerOperator), the chief's batch comes out as it
     // is full — and whatever is left comes out once nobody bakes on (he stepped off the doorway pad / the wheat ran out)
     const op = this.op && this.op.operator;
+    // (a full case and a full rack: the loaves wait in the oven until a place frees up — no empty release every frame)
+    const room = this.hasRoom();
     if (this.oven > 0 && !this.working) {
       this.idleOven += dt;
-      if (!op && this.idleOven > 0.6) this.releaseBatch();
+      if (room && !op && this.idleOven > 0.6) this.releaseBatch();
       // (a baker who cannot reach her motion — an old asset build, a stand-in look: the loaves never wait for long)
-      if (op && this.idleOven > 4) this.releaseBatch();
+      if (room && op && this.idleOven > 4) this.releaseBatch();
     } else this.idleOven = 0;
-    if (op && this.oven >= this.batch * 2 && this.gs.time.now - this.lastRelease > 5000) this.releaseBatch();
+    if (room && op && this.oven >= this.batch * 2 && this.gs.time.now - this.lastRelease > 5000) this.releaseBatch();
   }
 
   /** one loaf baked: a wheat hops into the oven mouth; it stays in the oven until its batch comes out */
@@ -150,7 +157,8 @@ export class BakeryStation extends Station {
     gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: mx, y: my }, { dur: 260, height: 50, scaleTo: 0.35, onDone: (spr) => gs.effects.releaseItem(spr) });
     this.oven++;
     this.baked = (this.baked || 0) + 1;
-    if (gs.isNear(this.x, this.y, 520)) Audio.play(this.cfg.sfx, { volume: this.op && this.op.operator ? 0.18 : 0.35, throttle: 600 });
+    // ((v4.3 a2.2 place-based sound) at the cottage, like every station (Game.sfxAt)
+    if (gs.isNear(this.x, this.y, 520)) this.sfx(this.cfg.sfx, this.x, this.y, { volume: this.op && this.op.operator ? 0.18 : 0.35, throttle: 600 });
     // the chief's batch: out as soon as it is full (his give motion keeps the beat)
     if (!(this.op && this.op.operator) && this.oven >= this.batch) gs.time.delayedCall(280, () => { if (this.oven >= this.batch && !(this.op && this.op.operator)) this.releaseBatch(); });
   }
@@ -180,18 +188,17 @@ export class BakeryStation extends Station {
             dst.arrive(this.output);
             if (toStall) { this.toStall = Math.max(0, this.toStall - 1); S.stock.push(this.output, s, gs.effects); S.caseChanged(); }
             else this.outStack.push(this.output, s);
-            if (gs.isOnScreen(mx, my, 80)) Audio.play('sfx_drop', { volume: 0.3, rate: 1.1 + Math.random() * 0.2, throttle: 70 });
+            if (gs.isOnScreen(mx, my, 80)) this.sfx('sfx_drop', mx, my, { volume: 0.3, rate: 1.1 + Math.random() * 0.2, throttle: 70 });
           },
         });
       });
       sent++;
     }
-    (this.batches || (this.batches = [])).push(sent);
-    if (this.batches.length > 40) this.batches.shift();
+    if (sent) { (this.batches || (this.batches = [])).push(sent); if (this.batches.length > 40) this.batches.shift(); }
     if (sent && gs.isOnScreen(this.x, this.y, 120)) {
       gs.effects.burst('flour', mx, my, 3);
       gs.effects.pop(this.img, 0.03, 90);
-      if (gs.isNear(this.x, this.y, 520)) Audio.play(this.cfg.sfx, { volume: 0.3, throttle: 400 });
+      if (gs.isNear(this.x, this.y, 520)) this.sfx(this.cfg.sfx, this.x, this.y, { volume: 0.3, throttle: 400 });
     }
     return sent;
   }
@@ -389,7 +396,7 @@ export class BakerOperator extends Operator {
       // (no impact frame came — a stand-in look, a page still on its way: the batch comes out at the motion's end)
       if (!this.released) { this.released = true; st.releaseBatch(); this.cycles++; }
       if (st.working) this.startPhase('knead');
-      else if (st.oven > 0) this.startPhase('wait');
+      else if (st.oven > 0 && st.hasRoom()) this.startPhase('wait');
       else { this.phase = null; if (this.sprite.anims) this.sprite.anims.timeScale = 1; this.dir = DIR.SE; this.play('idle', true); this.idleT = 0.01; }
     }
   }
@@ -433,7 +440,8 @@ export class BakerOperator extends Operator {
     }
     this.reskinCheck(dt);
     this.vx = this.vy = 0;
-    const busy = st.enabled && (st.working || st.oven > 0 || (this.phase && this.phase !== 'knead'));
+    // (loaves in the oven with the case and the rack full: she waits by her table — no empty oven_out over and over)
+    const busy = st.enabled && (st.working || (st.oven > 0 && st.hasRoom()) || (this.phase && this.phase !== 'knead'));
     if (busy || (this.phase && st.working)) {
       this.idleT = 0;
       this.bake(dt);
