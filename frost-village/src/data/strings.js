@@ -63,6 +63,7 @@ export const STRINGS = {
     obj_hunt_4: '훈제 고기를 판매대에 놓으세요',
     obj_upgrade: '옷·신발 공방에서 가방을 키우세요',
     obj_next: '다음 목표: {name} ({cost} 코인)',
+    obj_next_items: '다음 목표: {name} ({item} {n}개 더 가져오기)',
     obj_trash: '받아 줄 곳이 없어요 — 모닥불 발판에서 버리세요',
     obj_sell_any: '들고 있는 것을 먼저 파세요',
     obj_courier: '배달꾼을 고용하면 일꾼이 물건을 대신 날라요',
@@ -445,7 +446,7 @@ export const STRINGS = {
     // 직원 · 통장
     staffTitle: '사무실 직원', bankTitle: '서리 은행 통장', bankNone: '아직 입금이 없어요', pbDeposit: '수금 입금',
     pbRow: '{day}일 {time} · {what} · +{n}', incomeToday: '오늘 수입',
-    inc_market: '가게', inc_trade: '자재 창구', inc_store: '잡화점', inc_rest: '식당', inc_tax: '세금', inc_station: '역 금고', inc_export: '수출', inc_depot: '물류창고',
+    inc_market: '가게', inc_trade: '자재 창구', inc_bakery: '빵집', inc_store: '잡화점', inc_rest: '식당', inc_tax: '세금', inc_station: '역 금고', inc_export: '수출', inc_depot: '물류창고',
     // 새로워진 것
     wn_title: '새로워진 것', wn_1: '촌장님 발밑의 반짝이는 후광', wn_2: '물건을 들면 갈 곳을 알려 줘요', wn_3: '가만히 두면 촌장님이 알아서 지내요 (관망 모드)',
     wn_4: '기차가 이제 앞으로 달려요', wn_ok: '좋아요',
@@ -577,6 +578,7 @@ export const STRINGS = {
     obj_hunt_4: 'Put the smoked meat on the counter',
     obj_upgrade: 'Get a bigger backpack at the Clothes & Shoes workshop',
     obj_next: 'Next goal: {name} ({cost} coins)',
+    obj_next_items: 'Next goal: {name} (bring {n} more {item})',
     obj_trash: 'Nobody takes these — throw them in the fire',
     obj_sell_any: 'Sell what you are carrying first',
     obj_courier: 'Hire couriers to carry goods for you',
@@ -922,7 +924,7 @@ export const STRINGS = {
     letterThanks: 'Letter sent · happiness +1', snowmanContest: 'Snowman contest! The children build snowmen on the plaza',
     staffTitle: 'Office staff', bankTitle: 'Frost Bank passbook', bankNone: 'No deposits yet', pbDeposit: 'Courier deposit',
     pbRow: 'Day {day} {time} · {what} · +{n}', incomeToday: "Today's income",
-    inc_market: 'Shop', inc_trade: 'Materials', inc_store: 'Store', inc_rest: 'Restaurant', inc_tax: 'Taxes', inc_station: 'Station till', inc_export: 'Exports', inc_depot: 'Depot',
+    inc_market: 'Shop', inc_trade: 'Materials', inc_bakery: 'Bakery', inc_store: 'Store', inc_rest: 'Restaurant', inc_tax: 'Taxes', inc_station: 'Station till', inc_export: 'Exports', inc_depot: 'Depot',
     wn_title: "What's new", wn_1: "A sparkling halo at the chief's feet", wn_2: 'Carry something and see where it goes', wn_3: 'Leave the chief be and he lives his day (watch mode)',
     wn_4: 'The train runs forwards now', wn_ok: 'Great',
     obs_caption: 'Watching · the chief is {act}', obs_hint: 'Tap the binoculars to stop watching', obs_back: 'You have control',

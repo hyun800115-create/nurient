@@ -320,7 +320,14 @@ export class Roads {
     //  retry, into the pen's fence corner). Small things on the line (a lamp, a table, a tree) the walker slides round
     if (p.len + gd(ax, ay, this.nodes[na].x, this.nodes[na].y) + gd(this.nodes[nb].x, this.nodes[nb].y, bx, by) > direct * DETOUR + 120 && (strict ? this.clear(ax, ay, bx, by) : this.onLand(ax, ay, bx, by))) {
       if (strict) { out.push({ x: bx, y: by }); return out; }
-      return this.straight(ax, ay, bx, by, out);
+      // ((bakefix) a long straight line through what must be gone round, not slid along (the `walls` hook: the bakery cottage —
+      //  a ring of wall circles round an open doorway and floor — and the wheat field's fence): round it on the grid, as a
+      //  short leg goes (leg()); no grid way (none / this frame's budget spent): the road below
+      const walled = !!this.walls && !segClear(this.walls, ax, ay, bx, by);
+      if (walled) {
+        const g = this.gridLeg(ax, ay, bx, by, 520);
+        if (g) { for (let i = 0; i < g.length - 1; i++) out.push({ x: g[i].x, y: g[i].y }); out.push({ x: bx, y: by }); return out; }
+      } else return this.straight(ax, ay, bx, by, out);
     }
     const A = this.nodes[na];
     // polyline through the nodes (and the curved points of each edge)

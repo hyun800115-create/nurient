@@ -111,6 +111,11 @@ export class Tutorial {
     if (idle && this.house43Hint(set)) return;
     const nx = prog.nextPad();
     let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
+    // ((bakefix) its coins paid, only materials left (빵집 짓기's planks): say what it still waits for, not 「(0 코인)」
+    if (goal && nx.remaining <= 0 && nx.items) {
+      const k = Object.keys(nx.items).find((q) => (nx.got[q] || 0) < nx.items[q]);
+      if (k) goal = { key: 'obj_next_items:' + nx.id + ':' + k + ':' + (nx.got[k] || 0), text: t('obj_next_items', { name: t(nx.id), item: t(k), n: nx.items[k] - (nx.got[k] || 0) }) };
+    }
     if (prog.complete) goal = this.goalText();
     // ---- (v4.2, docs/v42_plan.md §8.3) after the v4 goals (읍): office site → its hire pads → bank → depot → offers
     if (prog.complete && !goal) {
@@ -492,6 +497,17 @@ export class Tutorial {
           else set(ws.outPad.x, ws.outPad.y, 80, 'obj_tool', t('obj_tool', { name: t(k) }));
           return true;
         }
+        // ((bakefix) a pad that wants materials (빵집 짓기's planks, the first on the main road; 눈꽃 시장's): the station that makes
+        //  them, while no porter brings them (as a building site's materials, section 2) — it said only 「다음 목표 … (0 코인)」)
+        if (MATERIALS.indexOf(k) >= 0 && p.room > 0 && (idle || pd.remaining <= gs.economy.coins)) {
+          const brings = gs.porters.some((w) => (w.station && w.station.output === k) || (w.wh && gs.warehouse && gs.warehouse.count(k) > 0) || w.dest === pd);
+          const src = brings ? null : this.sourceOf(k);
+          if (src) {
+            const key = 'obj_site_take_' + (k === 'item_plank' ? 'plank' : 'ingot');
+            if (src.outPad.contains(p.x, p.y)) this.textKey = key; else set(src.outPad.x, src.outPad.y, 80, key);
+            return true;
+          }
+        }
       }
     }
     // 4. the next building: point at a free plot once it is affordable
@@ -849,7 +865,14 @@ export class Tutorial {
     // customers wait to pay at the stall with nobody at R
     if (!S.register.clerk && S.waitingPay) { if (S.register.pad.contains(p.x, p.y)) this.textKey = 'obj_register_wait'; else set(S.register.x, S.register.y, 46, 'obj_farm_4'); return true; }
     const op = st.op, baker = !op || !!op.operator;
-    if (raw > 0 && (room <= 0 || raw >= 3)) { if (st.inPad.contains(p.x, p.y)) { this.textKey = 'obj_farm_2'; return true; } set(st.inPad.x, st.inPad.y, 50, 'obj_farm_2'); return true; }
+    // ((bakefix) the wheat goes where the navigator line leads too (stationDest, as every other line's lesson): the doorway pad W
+    //  while nobody bakes (standing there puts the wheat in and bakes it), the oven door I once the baker works — the arrow sat
+    //  on I while the line led to W)
+    if (raw > 0 && (room <= 0 || raw >= 3)) {
+      const sd = this.stationDest(st);
+      if (sd.pad.contains(p.x, p.y)) { this.textKey = sd.pad === st.inPad ? 'obj_farm_2' : 'obj_operating'; return true; }
+      set(sd.pad.x, sd.pad.y, 50, sd.pad === st.inPad ? 'obj_farm_2' : sd.key); return true;
+    }
     if (!baker && (st.inStack.count > 0 || st.oven > 0) && raw === 0) { if (op.pad.contains(p.x, p.y)) this.textKey = 'obj_operating'; else set(op.x, op.y, 50, 'obj_op_bakery'); return true; }
     // bread on the case and a line: the register (the customers pay there)
     if (!S.register.clerk && S.stock.count > 0 && S.queue.some((c) => c.arrived)) { if (S.register.pad.contains(p.x, p.y)) this.textKey = 'obj_register_wait'; else set(S.register.x, S.register.y, 46, 'obj_farm_4'); return true; }

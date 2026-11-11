@@ -132,7 +132,9 @@ export const WORLD = {
     // ((v4.3 밀밭 · 빵집) the bakery cottage (entities/Bakery43.js): in = the wheat in-pad I beside the field's wheat gate (bakery-local
     //  2.0, 0.3), out = the bread rack O at the cottage's front-right (2.0, −1.2: the bread porter's pickup); gate = the step that builds
     //  it (it is not part of the field zone's reveal); smoke = the chimney (the art's fxPoints.chimney wins when it is there)
-    { id: 'bakery',     sprite: 'bakery43_back',      x: bakery[0], y: bakery[1], in: BKL(2.0, 0.3), out: BKL(2.0, -1.2), input: 'item_wheat', output: 'item_bread', zone: 'farm', gate: 'bld_bakery', sfx: 'sfx_oven', smoke: [-60, -199], fire: [-37, -23], porterHome: [30, 24] },
+    //  ((bakefix) porterHome = the bread porter's waiting spot beside the rack, on the cottage's side of the field's tl fence: [30, 24] lay on
+    //   the fence line and resolved INTO the wheat field (1367, 1251), so he waited behind the fence and walked round through the field)
+    { id: 'bakery',     sprite: 'bakery43_back',      x: bakery[0], y: bakery[1], in: BKL(2.0, 0.3), out: BKL(2.0, -1.2), input: 'item_wheat', output: 'item_bread', zone: 'farm', gate: 'bld_bakery', sfx: 'sfx_oven', smoke: [-60, -199], fire: [-37, -23], porterHome: [-30, 18] },
     { id: 'smelter',    sprite: 'station_smelter',    x: smelter[0], y: smelter[1], in: [-122, 4], out: [112, 52], input: 'item_ore', output: 'item_ingot', zone: 'mine', sfx: 'sfx_smelt', smoke: [-14, -150] },
     { id: 'smokehouse', sprite: 'station_smokehouse', x: smokehouse[0], y: smokehouse[1], in: [122, 26], out: [-124, 40], input: 'item_meat_raw', output: 'item_meat_cooked', zone: 'hunt', sfx: 'sfx_sizzle', smoke: [-10, -140] },
   ],
@@ -401,7 +403,10 @@ export const WORLD = {
       ['village', 'gate'],
       // 구역 안 길 (구역이 열리면 나타남)
       ['forest_gate', 'forest_in', { zone: 'forest' }], ['farm_gate', 'farm_in', { zone: 'farm' }],
-      ['farm_in', 'field_gate', { zone: 'farm', draw: false }],      // ((v4.3) along the field's tl fence to the wheat gate (the bakery's oven door)
+      // ((v4.3) along the field's tl fence to the wheat gate (the bakery's oven door). ((bakefix) walk: false — not a road anybody takes:
+      //  it made the field a short cut (plaza east ↔ the wheat gate ↔ the field ↔ farm_gate) for porters, residents and the bakery's
+      //  customers, through the 1.4 m gate by the oven door; the wheat porter's pile → oven door trip is a short off-road leg anyway)
+      ['farm_in', 'field_gate', { zone: 'farm', draw: false, walk: false }],
       ['mine_gate', 'mine_in', { zone: 'mine' }], ['hunt_gate', 'hunt_in', { zone: 'hunt' }],
       // (v3) 새 땅의 길: region = 이 땅이 열려야 생김
       ['plaza_e', 'east_link', { region: 'east' }], ['east_link', 'east_gate', { region: 'east' }], ['east_gate', 'e_mid', { region: 'east' }],
@@ -698,7 +703,9 @@ export const WORLD = {
   // 두 번째 일꾼이 쉬는 곳 (첫 일꾼 자리에서 이만큼 떨어짐)
   worker2Offset: [52, 26],
   // ((v4.3 밀밭 · 빵집) 일이 없는 농부는 잠시 뒤 농막 문 옆에서 쉬어요 (농막 앞 오른쪽: 밀 더미 발판과는 떨어져서). afterS = 쉬러 가기까지(초)
-  workerRest: { farmer: { at: [1642, 1307], afterS: 8 } },
+  //  ((bakefix) spots = 몇 번째 농부가 쉬는 곳 (밭 울타리 안, 농막 문 오른쪽 · 곡식 자루 왼쪽). 자리가 없는 농부는 제자리(workerHome)에서 쉬어요.
+  //   (예전 at + 한 명마다 34, 17 씩: 농부 2 · 3 의 자리가 밭 동쪽 울타리 밖이라 밭을 빙 돌아 나가서 쉬었어요) zone = 쉬는 곳은 이 땅 안에서만
+  workerRest: { farmer: { spots: [[1666, 1307], [1583, 1273]], zone: 'farm', afterS: 8 } },
 
   // ── 마을 생활 (v2, docs/주민기획.md) ─────────────────────
   life: {

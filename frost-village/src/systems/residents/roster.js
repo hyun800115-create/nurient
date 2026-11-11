@@ -247,7 +247,7 @@ export class Roster {
     const L = lang();
     if (p.kind === 'v') {
       if (p.bodyKind === 'op' && p.bodyHost) { const S = STATION[spotId(p.bodyHost)] || STATION.grill; return rt('r_job_at', { place: S[L], job: S.role[L] }); }
-      if (p.bodyKind === 'clerk') return rt('r_job_at', { place: rt('wp_market'), job: L === 'en' ? 'clerk' : '점원' });
+      if (p.bodyKind === 'clerk') { const bk = this.gs.bakery; return rt('r_job_at', { place: rt(bk && p.bodyHost && p.bodyHost.seller === bk.stall ? 'wp_bakery' : 'wp_market'), job: L === 'en' ? 'clerk' : '점원' }); }
       if (p.jobId === 'none') return rt('r_job_seek');
       if (p.jobId === 'retired') return p.d ? rt('r_job_retired') + ' · ' + p.d[L].job : rt('r_job_retired');
       return p.d ? p.d[L].job : (JOB[p.jobId] || JOB.none)[L];
@@ -301,6 +301,8 @@ export class Roster {
       if (o.lanes) for (const k in o.lanes) add(o.lanes[k] && o.lanes[k].register);
     };
     scan(gs.market); scan(gs.trade); scan(gs.store); scan(gs.civic && gs.civic.restaurant);
+    // ((v4.3 밀밭 · 빵집) the bakery stall's 판매원 (after the shop's seats: the 자재 점원 shares her look and is found first)
+    if (gs.bakery && gs.bakery.built) scan(gs.bakery.stall);
     return R;
   }
 

@@ -312,8 +312,9 @@ try {
     await advance(b2.page, 0.2);
     const after = await ev(b2.page, () => {
       const g = window.__FV.scene, st = g.stations.bakery, S = g.bakery.stall, fb = g.foodBox;
-      const fbB = fb ? fb.stock.countOf('item_bread') : 0, whB = g.warehouse ? g.warehouse.count('item_bread') : 0;
-      const pr = g.porters.filter((w) => w.station === st).reduce((n, w) => n + w.stack.count, 0);
+      const fbB = fb ? fb.stock.countWithIncoming('item_bread') : 0, whB = g.warehouse ? g.warehouse.count('item_bread') : 0;
+      // ((bakefix) + what is flying from the rack into his bag (popped from the rack, not yet in his stack): the save side counts it too
+      const pr = g.porters.filter((w) => w.station === st).reduce((n, w) => n + w.stack.count + w.stack.incoming, 0);
       const parts = { stall: S.stock.countWithIncoming('item_bread'), rack: st.outStack.count + st.outStack.incoming, oven: st.oven, porter: pr, fb: fbB, wh: whB };
       // (loaves baked since the load — the baker works on with the wheat that came back — are new bread: not counted)
       return { sum: Object.values(parts).reduce((a, b) => a + b, 0) - (st.baked || 0), baked: st.baked || 0, parts, till: S.cash.value, built: g.bakery.built, clerk: !!S.register.clerk, baker: !!st.op.operator, stall: S.stock.count, rack: st.outStack.count, wheat: st.inStack.count };
