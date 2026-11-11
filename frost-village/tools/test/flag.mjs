@@ -233,8 +233,10 @@ if (ONLY.includes('B')) {
     for (let i = 0; i < 40; i++) { f = await F(page); if (f.hall) break; await page.evaluate(() => window.__step.run(0.5)); await sleep(150); }
     ok(!!f.hall && f.hall.patch && f.hall.patchPx > 80, 'the 마을회관\'s right pole flies the village flag; its baked banner painted out', f.hall || f.patchErr);
     const hp = f.poles.findIndex((q) => q.kind === 'hall');
-    const h1 = await wave(page, hp); await page.evaluate(() => window.__step.run(0.4)); const h2 = await wave(page, hp);
-    ok(h1 && h2 && Math.abs(h1.dy - h2.dy) > 0.1, 'the hall flag waves too', { h1, h2 });
+    // (five samples 0.23 s apart: two samples a fixed step apart can land on the same phase of the wave)
+    const hs = []; for (let i = 0; i < 5; i++) { if (i) await page.evaluate(() => window.__step.run(0.23)); hs.push(await wave(page, hp)); }
+    const hdy = hs.filter(Boolean).map((q) => q.dy);
+    ok(hdy.length === 5 && Math.max(...hdy) - Math.min(...hdy) > 0.1, 'the hall flag waves too', hs);
     // nothing of it is interactive: pads / labels / taps untouched
     const inter = await page.evaluate(() => { const gs = window.__FV.scene; return gs.children.list.filter((o) => o.texture && /^fv_flag/.test(o.texture.key) && o.input).length; });
     ok(inter === 0, 'no flag picture takes taps');
