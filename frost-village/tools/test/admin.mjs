@@ -160,7 +160,9 @@ const SAVE_KEY = 'frostVillage.save.v1', SETTINGS_KEY = 'frostVillage.settings.v
 const allErrors = [];
 
 async function newPage(keys, opts = {}) {
-  const init = (opts.webdriverFalse ? "Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });\n" : '') + `window.__FV_ADMIN_TEST_DIGEST = '${TEST_DIGEST}';`;
+  // ((v4.3) a phone (webdriver false) gets the new-game 「우리 마을 깃발」 first; these checks are about the admin keypad,
+  //  so the maker is switched off for them (flagUiAllowed: __FV_FLAGMAKER = false))
+  const init = (opts.webdriverFalse ? "Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });\nwindow.__FV_FLAGMAKER = false;\n" : '') + `window.__FV_ADMIN_TEST_DIGEST = '${TEST_DIGEST}';`;
   const o = await openPage(browser, srv.url + 'index.html', { viewport: opts.viewport || { width: 412, height: 915 }, dpr: opts.dpr || 2, locale: opts.locale || 'ko-KR', init });
   await o.page.evaluate((k) => { localStorage.clear(); for (const n in k) localStorage.setItem(n, k[n]); }, keys || {});
   await o.page.reload({ waitUntil: 'load' });
