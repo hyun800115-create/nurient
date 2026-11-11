@@ -138,10 +138,10 @@ if (ONLY.includes('A')) {
   // waving: offsets and light change with time (the beach pole in view)
   await look(page, 1280, 380);
   const bi = f.poles.findIndex((q) => q.kind === 'decor' && q.x === 1250);
-  const a1 = await wave(page, bi);
-  await page.evaluate(() => window.__step.run(0.4));
-  const a2 = await wave(page, bi);
-  ok(a1 && a2 && Math.abs(a1.dy - a2.dy) > 0.2 && a1.tint !== a2.tint, 'the beach pole waves (strip offset and shade change)', { a1, a2 });
+  // (five samples 0.23 s apart: two samples a fixed step apart can land near the same phase of the wave)
+  const as = []; for (let i = 0; i < 5; i++) { if (i) await page.evaluate(() => window.__step.run(0.23)); as.push(await wave(page, bi)); }
+  const ady = as.filter(Boolean).map((q) => q.dy), atn = new Set(as.filter(Boolean).map((q) => q.tint));
+  ok(ady.length === 5 && Math.max(...ady) - Math.min(...ady) > 0.2 && atn.size > 1, 'the beach pole waves (strip offset and shade change)', as);
   await shot(page, 'ko412_day_pole_a');
   await page.evaluate(() => window.__step.run(0.27));
   await shot(page, 'ko412_day_pole_b');
