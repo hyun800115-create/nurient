@@ -159,6 +159,9 @@ const BOT = ([secs, stopAt]) => {
         // (L2) the skip chip goes with the fisherman (the 길 안내 chip may come up under it)
         if (s2.mode === 'act2' && gs.progress.isDone('hire_fisherman') && s2.skipVisible) now.skip_after_fisher = 1;
       }
+      // ((v4.3) the 목표 창 stays out of the tutorial's way: no button, no window, the goal panel not a button, no walk)
+      const gp = ui.goals, gw = gs.v42 && gs.v42.goalwalk;
+      if ((s2.mode === 'act1' || s2.mode === 'act2') && gp && (gp.btn.visible || gp.isOpen() || (ui.objPanel.input && ui.objPanel.input.enabled) || (gw && gw.on))) now.goals_early = s2.step || s2.mode;
       // (a rule counts as broken when it is broken in two samples in a row: the camera's pan and the 0.5 s slot rule)
       for (const k in now) if (prev[k]) out.viol[k] = (out.viol[k] || []).concat([now[k]]).slice(-6);
       for (const k in prev) delete prev[k];
@@ -254,6 +257,9 @@ try {
       return { card: ov.cardC.visible, skip: ov.skipC.visible, finger: ov.fingers.some((f) => f.visible), ghost: ov.gBase.visible, spot: ov.spotC.visible, ring: !!(o.ring && o.ring.visible), tip: ov.tipC.visible, held: o.held.length, enabled: true };
     });
     ok(!left.card && !left.skip && !left.finger && !left.ghost && !left.spot && !left.ring && !left.tip && left.held === 0, 'after the hand-over nothing is left on screen (no card, chip, finger, ghost, spotlight, ring) and no banner is held', left);
+    // ((v4.3) the 목표 창 comes with the hand-over (hidden through Act 1 and Act 2: the bot's layout samples say so)
+    const gq = await page.evaluate(() => { window.__step.run(1.2); const G = window.__FV.v42.goals; return G ? G.panel() : null; });
+    ok(gq && gq.button && !gq.open, '(v4.3) after the hand-over the 목표 button shows (it was hidden all through Act 1 / 2)', gq);
     const inp = await page.evaluate(() => { const gs = window.__FV.scene; return { enabled: gs.scene.systems.game ? true : true, inputEnabled: (window.__FV.game.scene.getScene('UI').input.enabled), override: null }; });
     ok(inp.inputEnabled, 'input stays enabled');
     // perf: the onboarding's own update + overlay

@@ -16,6 +16,7 @@ import { VillageNews } from '../VillageNews.js';
 import { ChiefPilot } from '../pilot/ChiefPilot.js';
 import { DepotSystem } from '../depot/DepotSystem.js';
 import { V42Art } from './art.js';
+import { GoalWalk } from '../goals/GoalWalk.js';
 
 // [name, factory(gs, v42, savedV42, wholeSave)] — in construction order
 const SYSTEMS = [
@@ -32,6 +33,7 @@ const SYSTEMS = [
   ['news', (gs, v, s) => new VillageNews(gs, v, s)],
   ['depot', (gs, v, s) => new DepotSystem(gs, v, s)],
   ['pilot', (gs, v, s, sv) => new ChiefPilot(gs, v, sv)],
+  ['goalwalk', (gs, v) => new GoalWalk(gs, v)],                  // (v4.3) 목표 창's 자동 이동 (after the pilot: it wraps its input slot)
 ];
 
 export function buildV42(gs, sv) {

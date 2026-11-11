@@ -38,8 +38,8 @@ try {
   const TYPES = ['item_fish_cooked', 'item_bread', 'item_meat_cooked', 'item_plank', 'item_ingot', 'item_fish_raw', 'item_log', 'item_wheat', 'item_ore', 'item_meat_raw', 'item_can'];
   let seed = 7;
   const rnd = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
-  let agree = 0, routeOk = 0, objOk = 0, chipOk = 0, n = 0;
-  const bad = [], badRoute = [];
+  let agree = 0, routeOk = 0, objOk = 0, chipOk = 0, drawnOk = 0, n = 0;
+  const bad = [], badRoute = [], badDrawn = [];
   const spots = await page.evaluate(() => { const gs = window.__FV.scene; return [[gs.market.x + 120, gs.market.y + 160], [gs.stations.sawmill.x + 100, gs.stations.sawmill.y + 120], [gs.stations.smelter.x + 80, gs.stations.smelter.y + 120], [gs.trade.x + 140, gs.trade.y + 150]]; });
   for (let k = 0; k < 40; k++) {
     const kinds = 1 + Math.floor(rnd() * 3), bagT = [];
@@ -70,7 +70,11 @@ try {
       const sticky = !!(V.nav.dest && V.nav.dest.pad && V.nav.stillTakes(V.nav.dest, counts));
       const tie = (list.length > 1 && list[1].n === list[0].n) || !!(gotE && gotE.n + 2 > list[0].n) || sticky;
       const dg = st.dest && st.dest.x !== null ? Math.hypot(st.dest.x - p.x, (st.dest.y - p.y) * 2) : 0;
-      return { want, got: st.dest, routeLen: st.routeLen, ref, dg, objects: st.objects, chip: st.chip, tie, active: st.active, counts };
+      // ((v4.3) the drawn path runs from his boots to the exact place (the 16 dots stopped ≈ 816 px out): the route
+      //  itself reaches the place (its last point), the drawing is his boots + the route (nothing appended), the marker on it
+      const rl = st.route[st.route.length - 1];
+      const drawnOk = !st.dest || st.dest.x === null || !!(st.drawn && rl && rl[0] === st.dest.x && rl[1] === st.dest.y && st.drawn.n === st.route.length + 1 && st.drawn.last[0] === st.dest.x && st.drawn.last[1] === st.dest.y && Math.hypot(st.drawn.first[0] - p.x, st.drawn.first[1] - p.y) < 2 && st.drawn.runs >= 1 && (!st.drawn.marker || (st.drawn.ring && st.drawn.ring[0] === st.dest.x && st.drawn.ring[1] === st.dest.y)));
+      return { want, got: st.dest, routeLen: st.routeLen, ref, dg, objects: st.objects, chip: st.chip, tie, active: st.active, counts, drawnOk, drawn: st.drawn };
     });
     n++;
     const same = (!r.want && (!r.got || r.got.none)) || (r.want && r.got && r.got.x === r.want.x && r.got.y === r.want.y);
@@ -79,11 +83,13 @@ try {
     if (!r.ref || r.ref < 360 || r.dg < 360 || Math.abs(r.routeLen - r.ref) <= r.ref * 0.1 + 40) routeOk++; else badRoute.push({ len: r.routeLen, ref: Math.round(r.ref), dg: Math.round(r.dg) });
     if (r.objects <= 20) objOk++;
     if (!r.want || (r.chip && r.chip.text)) chipOk++;
+    if (r.drawnOk) drawnOk++; else badDrawn.push({ dest: r.got, drawn: r.drawn });
   }
   ok(agree === n, 'navigator place = the place that takes the most bag items (' + agree + ' / ' + n + ')', bad.slice(0, 3));
   ok(routeOk === n, 'route length within 10 % of the A* walk route (' + routeOk + ' / ' + n + ')', badRoute.slice(0, 3));
   ok(objOk === n, '≤ 20 display objects while carrying (' + objOk + ' / ' + n + ')');
   ok(chipOk === n, 'the chip names the place while carrying (' + chipOk + ' / ' + n + ')');
+  ok(drawnOk === n, '(v4.3) the drawn path runs from his boots to the exact place (' + drawnOk + ' / ' + n + ')', badDrawn.slice(0, 3));
   // (CODE-1 review H2) standing still with a mixed bag the place does not flip while porters top the food box up
   {
     const flips = await page.evaluate(() => {
@@ -128,7 +134,34 @@ try {
   await page.evaluate(() => { window.__FV.v42.settings({ nav: true }); window.__FV.clearStack(); });
   await advance(page, 0.5);
   const off2 = await page.evaluate(() => window.__FV.v42.v.nav.state());
-  ok(!off1.active && off1.objects === 0 && !off2.dest, 'off with the setting and with an empty bag', { off1: off1.active, off2: off2.dest });
+  ok(!off1.active && off1.objects === 0 && !off2.active && !off2.chip && (!off2.dest || off2.dest.mission), 'off with the setting and with an empty bag (no chip; at most the line to the arrow\'s place)', { off1: off1.active, off2: off2.dest });
+  // ((v4.3 review M4) an empty bag: while the yellow arrow shows a place far away, the line leads there (no chip, no edge
+  //  badge, no end marker under the arrow); the setting switches it off too
+  {
+    const m = await page.evaluate(() => {
+      const F = window.__FV, gs = F.scene, T = gs.tutorial, N = F.v42.v.nav, ui = F.game.scene.getScene('UI');
+      F.clearStack(); F.setInput(0, 0);
+      const keep = gs.economy.coins;
+      gs.economy.coins = 1e6;                // (an affordable pad: the arrow's first pick)
+      window.__step.run(3);
+      let tg = T.shownTarget();
+      const spots = [[gs.market.x + 120, gs.market.y + 160], [gs.stations.sawmill.x + 100, gs.stations.sawmill.y + 120], [gs.stations.smelter.x + 80, gs.stations.smelter.y + 120]];
+      for (const s of spots) { if (!tg || Math.hypot(tg.x - gs.player.x, (tg.y - gs.player.y) * 2) >= 500) break; F.teleport(s[0], s[1]); window.__step.run(2); tg = T.shownTarget(); }
+      window.__step.run(0.6);
+      tg = T.shownTarget();
+      const st = N.state(), h = ui.hud42 ? ui.hud42.state() : {};
+      const r = { arrow: T.arrow.visible, tg: tg ? [Math.round(tg.x), Math.round(tg.y)] : null, d: tg ? Math.round(Math.hypot(tg.x - gs.player.x, (tg.y - gs.player.y) * 2)) : 0, active: st.active, chip: h.chip, edge: h.edge, dest: st.dest, drawn: st.drawn };
+      F.v42.settings({ nav: false }); window.__step.run(0.4);
+      r.off = N.state().drawn;
+      F.v42.settings({ nav: true }); window.__step.run(0.4);
+      gs.economy.coins = keep;
+      return r;
+    });
+    const near = (a, b) => a && b && Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
+    ok(m.arrow && m.tg && m.d > 200 && m.dest && m.dest.mission && m.drawn && near(m.drawn.last, m.tg) && !m.drawn.marker, '(v4.3) an empty bag: the line leads to the yellow arrow\'s place (' + m.d + ' px) and ends on it', m);
+    ok(!m.active && !m.chip && !m.edge, '…without the chip or the edge badge (the arrow has its own)', { active: m.active, chip: m.chip, edge: m.edge });
+    ok(!m.off, '…and the 길 안내 setting switches it off', m.off);
+  }
   // 관망: the pilot turns the guide off
   const pil = await page.evaluate(() => !!(window.__FV.v42.v.pilot));
   if (pil) {
