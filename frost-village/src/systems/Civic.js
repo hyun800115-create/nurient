@@ -20,6 +20,7 @@ import { gdist } from '../core/Iso.js';
 import { buildCost } from '../entities/Site.js';
 import { Character } from '../entities/Character.js';
 import { BUILD_UNLOCK } from './Progression.js';
+import { settlerIdentity } from './residents/identity.js';
 
 // where a late picture lives: [fragment, atlas or 'atlas@page'] (the manifest arrives with the fragment)
 export const ART_SRC = {
@@ -227,7 +228,9 @@ export class Civic {
     gs.events.emit('settlers', n);
     if (instant) return n;
     const house = this.pickHouse();
-    if (house) for (let i = 0; i < Math.min(2, n); i++) gs.time.delayedCall(i * 900, () => this.walkIn(house));
+    // ((v4.3) each walker is the settler the 마을 주민 창 lists (their number: residents/identity.js gives the look)
+    const first = this.settlers - n + 1;
+    if (house) for (let i = 0; i < Math.min(2, n); i++) gs.time.delayedCall(i * 900, () => this.walkIn(house, first + i));
     gs.ui.toast(t('settlersCame', { n }));
     if (gs.life && Math.random() < 0.5) gs.life.cheer();
     return n;
@@ -241,10 +244,10 @@ export class Civic {
   }
 
   /** a newcomer walks in along the road from the west gate (or the station road) to a house door and goes in */
-  walkIn(house) {
+  walkIn(house, idx) {
     const gs = this.gs;
     const from = this.entryPoint(house);
-    const look = this.walkerLook();
+    const look = this.walkerLook(idx);
     const w = new Character(gs, look.key, from.x, from.y, look.person ? { person: look.person, radius: 12 } : { radius: 12 });
     w.route = gs.roads.route(from.x, from.y, house.door.x, house.door.y + 20, []);
     w.ri = 0;
@@ -270,7 +273,10 @@ export class Civic {
     return best ? { x: best.x, y: best.y } : { x: house.x - 400, y: house.y + 200 };
   }
 
-  walkerLook() {
+  walkerLook(idx) {
+    // ((v4.3) settler `idx` wears their own look (the 마을 주민 창 shows the same person: villager_a / villager_b)
+    const own = idx ? settlerIdentity(this.gs.cid, idx).look : null;
+    if (own && Assets.charReady(own)) return { key: own, person: null };
     // a townsperson (once the neighbours' pictures are here), else a parka villager
     if (TF.ok && TF.readyFor(Assets, 'adult')) {
       const seed = (this.settlers * 7919 + 17) >>> 0;

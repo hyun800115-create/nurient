@@ -18,6 +18,8 @@ import { HudV42 } from './UIv42.js';
 import { OfficePanel } from './OfficePanel.js';
 // ---- (v4.3) 목표 창: the goals left + a tap walks the chief there
 import { GoalPanel } from './GoalPanel.js';
+// ---- (v4.3) 마을 주민 창 (the population chip opens it), 주민 프로필, 따라가기
+import { ResidentsPanel } from './ResidentsPanel.js';
 // ---- (v4.2.0.1) the first-run tutorial's finger, coach card, skip chip, tips and spotlight
 import { OnboardOverlay } from './OnboardOverlay.js';
 // ---- (v4.2.1) 마을 옮기기 (the export / import sheet, DOM)
@@ -123,6 +125,7 @@ export class UI extends Phaser.Scene {
     this.hud42 = new HudV42(this);
     this.officePanel = new OfficePanel(this);     // (v4.2) 촌장 사무실 화면
     this.goals = new GoalPanel(this);             // (v4.3) 목표 창
+    this.residents = new ResidentsPanel(this);    // (v4.3) 마을 주민 창
     this.bannerQ = [];                            // ((v4.2.0.1) banners in turn: one at a time, 0.4 s apart)
     this.bannerUntil = 0;
     this.onboardOv = new OnboardOverlay(this);    // (v4.2.0.1) 첫 실행 튜토리얼
@@ -235,6 +238,7 @@ export class UI extends Phaser.Scene {
     if (this.hud4) this.hud4.layout();
     if (this.hud42) this.hud42.layout();
     if (this.goals) this.goals.layout();
+    if (this.residents) this.residents.layout();
     if (this.onboardOv) this.onboardOv.layout();
     if (this.admin) this.admin.layout();
     this.fitObjective();
@@ -732,7 +736,8 @@ export class UI extends Phaser.Scene {
     const first = !this.popKey;
     this.popKey = key;
     // shown once there is something to say about homes (the cap is reached or someone waits)
-    const show = this.popBox.visible || waiting > 0 || n >= cap;
+    // ((v4.3) and always once the tutorial has handed over: it opens the 마을 주민 창 (ResidentsPanel))
+    const show = (this.residents && this.residents.chipOn) || this.popBox.visible || waiting > 0 || n >= cap;
     this.popBox.setVisible(show);
     this.popText.setText(n + '/' + cap);
     this.popIcon.setPosition(26, 0);
@@ -743,6 +748,7 @@ export class UI extends Phaser.Scene {
       this.popWait.setText('+' + waiting).setVisible(true).setPosition(w + 24, 1);
       w += 34 + this.popWait.width + 12;
     } else { this.popHouse.setVisible(false); this.popWait.setVisible(false); }
+    if (this.residents) w = this.residents.chipSized(Math.max(110, w));     // (v4.3) the 「›」 and the tap area
     this.popBg.setSize(Math.max(110, w), 50);
     if (show && !first) { this.tweens.killTweensOf(this.popBox); this.popBox.setScale(1.15); this.tweens.add({ targets: this.popBox, scale: 1, duration: 260, ease: 'Back.easeOut' }); }
   }
@@ -1238,6 +1244,7 @@ export class UI extends Phaser.Scene {
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
     if (this.onboardOv) this.onboardOv.relabel();       // (v4.2.0.1)
     if (this.goals) this.goals.relabel();               // (v4.3) 목표 창
+    if (this.residents) this.residents.relabel();       // (v4.3) 마을 주민 창
     if (gs.market && gs.market.refreshSign) gs.market.refreshSign();     // (v4.2.0.2) 「눈꽃 노점」 / Snowbloom Stall
     if (gs.workshop43) gs.workshop43.refreshSign();                       // (v4.3) 「옷·신발 공방」 / Clothes & Shoes
   }
@@ -1290,6 +1297,7 @@ export class UI extends Phaser.Scene {
     if (this.hud42) this.hud42.update(dt);
     if (this.officePanel) this.officePanel.update(dt);
     if (this.goals) this.goals.update(dt);
+    if (this.residents) this.residents.update(dt);
     this.updateBuildThumbs(dt);
     this.pumpBanners();
     if (this.admin) this.admin.update(dt);
