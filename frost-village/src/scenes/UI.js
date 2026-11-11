@@ -16,6 +16,8 @@ import { HudV4 } from './UIv4.js';
 // ---- (v4.2) 관망 / 줍기 buttons, the navigator chip and edge badge, the 업무 chip, 새로워진 것, the train card
 import { HudV42 } from './UIv42.js';
 import { OfficePanel } from './OfficePanel.js';
+// ---- (v4.3) 목표 창: the goals left + a tap walks the chief there
+import { GoalPanel } from './GoalPanel.js';
 // ---- (v4.2.0.1) the first-run tutorial's finger, coach card, skip chip, tips and spotlight
 import { OnboardOverlay } from './OnboardOverlay.js';
 // ---- (v4.2.1) 마을 옮기기 (the export / import sheet, DOM)
@@ -120,6 +122,7 @@ export class UI extends Phaser.Scene {
     this.hud4 = new HudV4(this);
     this.hud42 = new HudV42(this);
     this.officePanel = new OfficePanel(this);     // (v4.2) 촌장 사무실 화면
+    this.goals = new GoalPanel(this);             // (v4.3) 목표 창
     this.bannerQ = [];                            // ((v4.2.0.1) banners in turn: one at a time, 0.4 s apart)
     this.bannerUntil = 0;
     this.onboardOv = new OnboardOverlay(this);    // (v4.2.0.1) 첫 실행 튜토리얼
@@ -231,6 +234,7 @@ export class UI extends Phaser.Scene {
     if (this.buildOpen) this.closeBuildMenu(true);
     if (this.hud4) this.hud4.layout();
     if (this.hud42) this.hud42.layout();
+    if (this.goals) this.goals.layout();
     if (this.onboardOv) this.onboardOv.layout();
     if (this.admin) this.admin.layout();
     this.fitObjective();
@@ -1233,6 +1237,7 @@ export class UI extends Phaser.Scene {
     for (const q of this.dogBtns || []) q.lab.setText(t(q.kind === 'treat' ? 'dogTreat' : q.kind === 'play' ? 'dogPlay' : 'dogPet'));
     if (this.objKey) { this.objKey = null; }   // the tutorial re-sends the objective (re-translated) within 0.2 s
     if (this.onboardOv) this.onboardOv.relabel();       // (v4.2.0.1)
+    if (this.goals) this.goals.relabel();               // (v4.3) 목표 창
     if (gs.market && gs.market.refreshSign) gs.market.refreshSign();     // (v4.2.0.2) 「눈꽃 노점」 / Snowbloom Stall
     if (gs.workshop43) gs.workshop43.refreshSign();                       // (v4.3) 「옷·신발 공방」 / Clothes & Shoes
   }
@@ -1284,6 +1289,7 @@ export class UI extends Phaser.Scene {
     if (this.hud4) this.hud4.update(dt);
     if (this.hud42) this.hud42.update(dt);
     if (this.officePanel) this.officePanel.update(dt);
+    if (this.goals) this.goals.update(dt);
     this.updateBuildThumbs(dt);
     this.pumpBanners();
     if (this.admin) this.admin.update(dt);

@@ -50,8 +50,9 @@ export class TrashPad {
     let lx = this.x;
     if (this.x > v.x - 40 && this.x < v.right + 40 && v.width > hw * 2) lx = Math.max(v.x + hw, Math.min(v.right - hw, this.x));
     if (this.label.x !== lx) this.label.x = lx;
-    const PL = gs.v42 && gs.v42.pilot;
-    const on = this.pad.contains(p.x, p.y) && !(PL && PL.on);
+    const PL = gs.v42 && gs.v42.pilot, GW = gs.v42 && gs.v42.goalwalk;
+    // ((v4.3 review L2) nor while the 목표 창's walk takes him somewhere: wedged here on the way, the bag stays)
+    const on = this.pad.contains(p.x, p.y) && !(PL && PL.on) && !(GW && GW.on);
     const la = on ? 0.35 : 1;
     if (Math.abs(this.label.alpha - la) > 0.01) this.label.setAlpha(this.label.alpha + (la - this.label.alpha) * Math.min(1, dt * 10));
     if (!on) { this.standT = 0; return false; }

@@ -24,6 +24,20 @@
 //   guided to the 잡화점 only.
 // ((v4.2 final, gameplay review #6) the pin's clock waits while 관망 drives, 관망's walking does not count as arriving,
 //   and a pin whose request was met under 관망 says so when the player takes over ('부탁을 다 채웠어요 · 길 안내 끝').
+// ((v4.3, the designer's "네비게이션 정확한 위치로 이어지게 해줘 · 선도 잘 안 보이는 듯") the 16 dots every 48 px stopped
+//   ≈ 816 px from his boots (25–31 % of a far trip) and 40 px before the place, pale teal on snow, gone under the night
+//   overlay. Now one continuous path is drawn (Graphics, redrawn each frame): his boots → the route → the place's exact
+//   spot, a dark outline + a gold core + white arrows flowing toward the place, the same width on screen at every zoom,
+//   an ADD pass above the night overlay after dark, and an end marker (ring + centre pin) on the exact spot. The chevron
+//   points along the line; the name plate is no longer pulled onto the screen edge from a place far away. The 목표 창's
+//   자동 이동 (goals/GoalWalk) pins its target here: the line then shows the walker's own route.
+// ((v4.3 review) cheaper and calmer: no disc at every corner (Phaser's strokePath fills its own joints above 2 px), only
+//   the runs of the line inside the view are stroked, the end marker is three pooled images (goals/navTex.js: the ring +
+//   pin, a pulse going out, an ADD glow above the night overlay after dark — only the marker glows: a line drawn over the
+//   overlay crossed people and buildings), and the line's core turns paler after dark instead. With an EMPTY bag after
+//   the tutorial (the designer's "네비게이션 정확한 위치로 이어지게"), while the yellow arrow shows a place more than
+//   MISSION_NEAR px away, the same line leads there (mission: no chip, no edge badge, no end marker — the arrow stands on
+//   the place and has its own edge arrow); the 길 안내 setting switches it off with the rest.
 
 import { BALANCE } from '../data/balance.js';
 import { Settings } from '../core/Save.js';
@@ -33,10 +47,22 @@ import { gdist } from '../core/Iso.js';
 import { DEPTH } from './DepthSort.js';
 import { panel } from '../core/Panel.js';
 import { makeAll } from './v42/fxTex.js';
+import { makeNavMarks, NAV_MARK_RES } from './goals/navTex.js';
 
-const N = () => (BALANCE.v42 && BALANCE.v42.nav) || { dotEvery: 48, maxDots: 16, hideNear: 90, replanEvery: 1, strayPx: 80, straightUnder: 360, pinMaxS: 240, pinArrivePx: 90 };
+// ((v4.3) balance.js v42.nav's dotEvery / maxDots / hideNear are no longer read (the dots are gone; the keys stay in
+//  balance.js until the merge — two other branches edit that file)
+const N = () => (BALANCE.v42 && BALANCE.v42.nav) || { replanEvery: 1, strayPx: 80, straightUnder: 360, pinMaxS: 240, pinArrivePx: 90 };
 const AHEAD = 56;
+// ((v4.3) the path's colours: a dark ink outline (reads on snow and in the sun), a gold core (reads on wood, stone and
+//  at night), a warm glow for the ADD pass after dark
+const NAV_INK = 0x1b3150, NAV_GOLD = 0xffc83d, NAV_GLOW = 0xffb43a, NAV_PALE = 0xffeeb0;
+const MISSION_NEAR = 160;      // ((v4.3) px: the empty-bag line to the arrow's place shows farther away than this (hides under 120)
 const SWITCH_S = 4;            // s a clearly better place must stay better before the guide changes its mind
+/** ((v4.3) colour a → b by f (0..1) */
+const mixRGB = (a, b, f) => {
+  const m = (sh) => Math.round(((a >> sh) & 255) + (((b >> sh) & 255) - ((a >> sh) & 255)) * f) << sh;
+  return m(16) | m(8) | m(0);
+};
 
 export class Navigator {
   constructor(gs, v42) {
@@ -55,16 +81,22 @@ export class Navigator {
     this.pinned = null;         // (v4.2 fix) a place picked on the notice board: { pad, label, lp, type, valid, t }
     makeAll(gs);
     this.chev = gs.add.image(0, 0, 'fv_nav_chevron', 'c0').setOrigin(0.5).setDepth(DEPTH.PAD + 3).setVisible(false);
-    this.dots = [];
-    for (let i = 0; i < 16; i++) this.dots.push(gs.add.image(0, 0, 'fv_nav_dot', 'd0').setOrigin(0.5).setDepth(DEPTH.PAD + 3).setVisible(false));
-    this.ring = gs.add.image(0, 0, 'fv_nav_ring').setOrigin(0.5).setDepth(DEPTH.PAD + 3).setVisible(false);
+    // ((v4.3) the path: one Graphics on the ground (under everyone); the end marker: the ring + pin and its pulse on the
+    //  ground, a glow (ADD, above the night overlay: after dark only) — images of goals/navTex.js
+    this.line = gs.add.graphics().setDepth(DEPTH.PAD + 3).setVisible(false);
+    this.pts = [];              // the drawn polyline (x, y pairs), his boots first, the exact place last
+    this.drawnN = 0;
+    makeNavMarks(gs);
+    this.ring = gs.add.image(0, 0, 'fv_nav_end').setOrigin(0.5).setDepth(DEPTH.PAD + 4).setVisible(false);
+    this.pulse = gs.add.image(0, 0, 'fv_nav_fx', 'ring').setOrigin(0.5).setDepth(DEPTH.PAD + 4).setTint(NAV_GOLD).setVisible(false);
+    this.glow = gs.add.image(0, 0, 'fv_nav_fx', 'glow').setOrigin(0.5).setDepth(DEPTH.FX - 29).setBlendMode(Phaser.BlendModes.ADD).setTint(NAV_GLOW).setVisible(false);
     // the badge over the place: a small panel with the item icon and the place's short name
     const b = this.badge = gs.add.container(0, 0).setDepth(DEPTH.LABEL - 40).setVisible(false);
     this.badgeBg = panel(gs, 0, 0, 'ui_panel', 150, 46).setOrigin(0.5).setAlpha(0.95);
     this.badgeIcon = Assets.image(gs, -48, 0, 'item_fish_cooked').setOrigin(0.5);
     this.badgeText = gs.add.text(-24, 0, '', { fontFamily: gs.font, fontSize: '19px', fontStyle: '800', color: '#1f5f66', resolution: 2 }).setOrigin(0, 0.5);
     b.add([this.badgeBg, this.badgeIcon, this.badgeText]);
-    for (const o of [this.chev, this.ring, this.badge].concat(this.dots)) o.noCull = true;
+    for (const o of [this.chev, this.ring, this.pulse, this.badge, this.line, this.glow]) o.noCull = true;
     this.artOn = false;
     if (Assets.has('nav_chevron')) this.reskin();
     this.onArrive = () => { if (!this.artOn && Assets.has('nav_chevron')) this.reskin(); };
@@ -78,14 +110,7 @@ export class Navigator {
     const r = Assets.sprite('nav_chevron');
     this.chevTex = r.tex;
     this.chev.setTexture(r.tex, 'nav_chevron_00');
-    for (const d of this.dots) d.setTexture(r.tex, 'nav_dot_0');
-    // the target ring: a sprite playing its own outward pulse
-    const vis = this.ring.visible, rx = this.ring.x, ry = this.ring.y;
-    this.ring.destroy();
-    this.ring = gs.add.sprite(rx, ry, r.tex, 'nav_ring_0').setOrigin(0.5).setDepth(DEPTH.PAD + 3).setVisible(vis);
-    this.ring.noCull = true;
-    const ra = Assets.spriteAnim('nav_ring', 'play');
-    if (ra) this.ring.play(ra);
+    // ((v4.3) the art's nav_ring loop is not used: the end marker is the path's own (goals/navTex.js))
     // the badge: nav_badge (pointer tip at the origin) + the item icon in its disc + a name plate (ui_chip)
     const b = this.badge;
     b.removeAll(true);
@@ -127,7 +152,9 @@ export class Navigator {
    */
   pin(o) {
     if (!o || !Number.isFinite(o.x) || !Number.isFinite(o.y)) return false;
-    this.pinned = { pad: { x: o.x, y: o.y }, label: o.label || null, lp: o.lp || null, type: o.icon || 'ui_icon_goal', valid: typeof o.valid === 'function' ? o.valid : null, t: 0, vt: 0.5 };
+    // ((v4.3) + name: the place's words as they are (the 목표 창's goals), quiet: no 'arrived' toast (the walk says it),
+    //  goal: the 목표 창's walk pinned it, restore: the pin it replaced (the notice board's), back when this one ends
+    this.pinned = { pad: { x: o.x, y: o.y }, label: o.label || null, lp: o.lp || null, name: o.name || null, quiet: !!o.quiet, goal: !!o.goal, restore: o.restore || null, type: o.icon || 'ui_icon_goal', valid: typeof o.valid === 'function' ? o.valid : null, t: 0, vt: 0.5 };
     // ((v4.2 final) an order picked by the player: its goods in the bag go to the order's place first afterwards too)
     if (o.order) this.orderPick = o.order;
     this.pinNote = null;
@@ -135,7 +162,13 @@ export class Navigator {
     this.dest = null; this.pickT = 0; this.replanT = 0; this.routeFor = null;
     return true;
   }
-  unpin() { if (!this.pinned) return; this.pinned = null; this.dest = null; this.pickT = 0; this.routeFor = null; }
+  unpin(all) {
+    if (!this.pinned) return;
+    const back = all ? null : this.pinned.restore;
+    this.pinned = null; this.dest = null; this.pickT = 0; this.routeFor = null;
+    // ((v4.3) a goal walk's pin ends: the notice board's pin it replaced comes back while its request still stands
+    if (back) { let ok = true; try { ok = !back.valid || !!back.valid(); } catch (e) { ok = false; } if (ok) { back.vt = 0.5; this.pinned = back; } }
+  }
 
   /** the pin ends: arrived, its request is done, or it is too old (true = it ended now) */
   pinCheck(dt) {
@@ -148,11 +181,13 @@ export class Navigator {
     P.vt -= dt;
     let end = P.t > (Number(c.pinMaxS) || 240), arrived = false, met = false;
     if (!end && P.vt <= 0) { P.vt = 0.5; try { if (P.valid && !P.valid()) end = met = true; } catch (e) { end = true; } }
-    if (!end && !pil && gdist(p.x, p.y, P.pad.x, P.pad.y) < (Number(c.pinArrivePx) || 90)) end = arrived = true;
+    // ((v4.3) while the 목표 창's walk takes him there the pin stays to the end of it (the walk unpins on arrival)
+    const W = this.walker();
+    if (!end && !pil && !(W && W.on) && gdist(p.x, p.y, P.pad.x, P.pad.y) < (Number(c.pinArrivePx) || 90)) end = arrived = true;
     if (!end) return false;
     this.unpin();
     const ui = this.gs.ui;
-    if (arrived && ui) ui.toast(t('navArrive', { place: this.placeName(P) }));
+    if (arrived && ui && !P.quiet) ui.toast(t('navArrive', { place: this.placeName(P) }));
     else if (met && ui) { const msg = t('navPinMet', { place: this.placeName(P) }); if (pil) this.pinNote = msg; else ui.toast(msg); }
     return true;
   }
@@ -210,18 +245,27 @@ export class Navigator {
     const want = this.wanted();
     // an empty bag ends the load: "hide for this load" and the chip's cycling start over
     if (p && p.stack.count + p.stack.incoming === 0) { this.hiddenLoad = false; this.cycle = 0; this.loadSig = null; }
-    if (!want) { this.hide(); this.dest = null; this.holdRoom(null); return; }
+    if (!want) {
+      // ((v4.3) an empty bag after the tutorial: the line to the yellow arrow's place (active stays false: no chip / edge)
+      const mt = this.missionTarget();
+      if (!mt) { this.hide(); this.dest = null; this.holdRoom(null); this.mission = false; return; }
+      this.active = false;
+      this.missionDest(mt);
+      this.follow(dt);
+      return;
+    }
+    this.mission = false;
     this.active = true;
     this.pickT -= dt;
     // (v4.2 fix) a place picked on the notice board comes before the bag's places
     const P = this.pinned;
     if (P) {
       if (!this.dest || !this.dest.pinned || this.dest.pad !== P.pad) {
-        this.dest = { type: P.type, n: 0, pad: P.pad, sink: null, types: [], label: P.label, lp: P.lp, others: 0, pinned: true };
+        this.dest = { type: P.type, n: 0, pad: P.pad, sink: null, types: [], label: P.label, lp: P.lp, name: P.name, others: 0, pinned: true };
         this.replanT = 0;
         this.holdRoom(null);
       }
-    } else if (this.pickT <= 0 || !this.dest || this.dest.pinned) {
+    } else if (this.pickT <= 0 || !this.dest || this.dest.pinned || this.dest.mission) {
       this.pickT = 0.25;
       const list0 = this.places();
       const prev = this.dest;
@@ -270,13 +314,19 @@ export class Navigator {
       if (!same || !prev) { this.routeFor = null; this.replanT = 0; }
       this.holdRoom(this.dest, list.counts);
     }
+    this.follow(dt);
+  }
+
+  /** ((v4.3) the route to this.dest (re-planned when needed) and the drawing */
+  follow(dt) {
     const d = this.dest;
     // ((gameplay review M2) nowhere takes the bag: the world guide goes, the chip stays and says so)
     if (!d.pad) { this.hideWorld(); this.pulseTrash(dt); this.aura(null); return; }
-    // the route (replan when the place changed or he strayed)
+    // the route (replan when the place changed or he strayed; (v4.3) or the walk taking him there found another way)
     this.replanT -= dt;
     const far = this.routeFor === d.pad && this.strayDist() > 3 * (N().strayPx || 80);     // (a jump: at once)
-    if ((this.replanT <= 0 || far) && (this.routeFor !== d.pad || far || this.strayed())) {
+    const W = this.walker(), wNew = !!(W && W.on && d.pinned && W.planN !== this.walkPlan && W.target && W.target.x === d.pad.x && W.target.y === d.pad.y);
+    if (wNew || ((this.replanT <= 0 || far) && (this.routeFor !== d.pad || far || this.strayed()))) {
       this.replanT = Math.max(0.1, N().replanEvery || 1);
       this.plan(d.pad);
     }
@@ -315,13 +365,53 @@ export class Navigator {
     this.held = out.length > 0;
   }
 
+  /**
+   * ((v4.3) the place the yellow arrow shows while the bag is empty (the line leads there too), or null: after the
+   * tutorial, the 길 안내 setting on, no pin, not under 관망 / a panel / the ceremony, the arrow up and its place farther
+   * than MISSION_NEAR px (under 120 px it goes again)
+   */
+  missionTarget() {
+    const gs = this.gs, p = gs.player, T = gs.tutorial;
+    if (!p || this.pinned || p.stack.count + p.stack.incoming > 0 || Settings.data.nav === false) return null;
+    if (!T || T.inTutorial || !T.arrow || !T.arrow.visible) return null;
+    const ob = gs.onboard;
+    if (ob && ((ob.owns && ob.owns()) || ob.mode === 'act1' || ob.mode === 'act2' || ob.mode === 'tour')) return null;
+    if (this.pilotOn()) return null;
+    const ui = gs.scene.get('UI');
+    if (ui && (ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen)) return null;
+    const rk = gs.v4 && gs.v4.rank;
+    if (rk && rk.ceremonyOn) return null;
+    const tg = T.shownTarget ? T.shownTarget() : T.target;
+    if (!tg || !Number.isFinite(tg.x) || !Number.isFinite(tg.y)) return null;
+    return gdist(p.x, p.y, tg.x, tg.y) > (this.mission ? 120 : MISSION_NEAR) ? tg : null;
+  }
+
+  /** ((v4.3) this.dest for the arrow's place: the same object while it stays put (a moving animal: its end follows) */
+  missionDest(tg) {
+    const d = this.dest;
+    if (d && d.mission && gdist(d.pad.x, d.pad.y, tg.x, tg.y) <= 120) { d.pad.x = tg.x; d.pad.y = tg.y; }
+    else {
+      this.dest = { type: 'ui_icon_goal', n: 0, pad: { x: tg.x, y: tg.y }, sink: null, types: [], label: null, lp: null, others: 0, mission: true };
+      this.replanT = 0;
+      this.routeFor = null;
+    }
+    this.mission = true;
+    if (this.held) this.holdRoom(null);
+  }
+
+  /** ((v4.3) the 목표 창's walk (gs.v42.goalwalk), when there is one */
+  walker() { return (this.v42 && this.v42.goalwalk) || null; }
+
   plan(pad) {
     const gs = this.gs, p = gs.player, c = N();
     this.routeFor = pad;
     this.routeStart = { x: p.x, y: p.y };
     const dist = gdist(p.x, p.y, pad.x, pad.y);
     this.route.length = 0;
-    if (dist < (c.straightUnder || 360) || !gs.roads) this.route.push({ x: pad.x, y: pad.y });
+    // ((v4.3) the walk is taking him there: the line is its own route (what he will really walk)
+    const W = this.walker(), wr = W && W.on && W.target && W.target.x === pad.x && W.target.y === pad.y ? W.routeLeft() : null;
+    if (wr && wr.length) { for (const q of wr) this.route.push({ x: q.x, y: q.y }); this.walkPlan = W.planN; }
+    else if (dist < (c.straightUnder || 360) || !gs.roads) this.route.push({ x: pad.x, y: pad.y });
     else gs.roads.route(p.x, p.y, pad.x, pad.y, this.route);
     this.plans = (this.plans || 0) + 1;
     this.measure();
@@ -350,53 +440,35 @@ export class Navigator {
   }
 
   draw(dt) {
-    const gs = this.gs, p = gs.player, d = this.dest, c = N();
+    const gs = this.gs, p = gs.player, d = this.dest;
     // trim route points he has passed (the next one is the first more than 40 px away that lies ahead)
     const R = this.route;
     while (R.length > 1 && gdist(p.x, p.y, R[0].x, R[0].y) < 40) this.routeStart = R.shift();
     this.measure();
-    // the tutorial arrow on the same pad: only the arrow + the dots
+    // the tutorial arrow on the same pad: the arrow + the path (no end marker / badge under it)
     // ((v4.2.0.1) where the arrow is DRAWN: the objective is debounced, the live one may not be on screen yet)
     const T = gs.tutorial, tg = T && (T.shownTarget ? T.shownTarget() : T.target);
     const samePad = !!(tg && d.pad && Math.abs(tg.x - d.pad.x) < 30 && Math.abs(tg.y - d.pad.y) < 60);
     const small = !!(tg && !samePad);
-    // the chevron: 56 px ahead of his boots toward the next route point
-    const nx = R[0] ? R[0].x : d.pad.x, ny = R[0] ? R[0].y : d.pad.y;
-    const ang = Math.atan2(ny - p.y, nx - p.x);
-    const k = (Math.round(ang / (Math.PI / 8)) + 16) % 16;
+    // ((v4.3) the drawn polyline: his boots → the route → the place's exact spot (always its last point)
+    const P = this.pts;
+    P.length = 0;
+    P.push(p.x, p.y);
+    for (const q of R) P.push(q.x, q.y);
+    if (P[P.length - 2] !== d.pad.x || P[P.length - 1] !== d.pad.y) P.push(d.pad.x, d.pad.y);
+    // the chevron: `ahead` px along the line, pointing the way the line goes there ((v4.3) not at the next road node)
     const near = gdist(p.x, p.y, d.pad.x, d.pad.y) < 70;
-    // (art: the chevron clears the halo ring at every zoom; the dots start past it)
+    // (art: the chevron clears the halo ring at every zoom)
     const au = this.v42 && this.v42.aura, rx = au && au.on ? au.ringWidth() * 0.46 : 0;
     const ahead = this.artOn ? Math.max(AHEAD, rx + 36) : AHEAD;
-    this.chev.setVisible(!near).setFrame(this.artOn ? 'nav_chevron_' + (k < 10 ? '0' : '') + k : 'c' + k).setPosition(p.x + Math.cos(ang) * ahead, p.y + Math.sin(ang) * ahead * 0.5 + 4).setScale(small ? 0.8 : 1);
+    const at = this.along(P, ahead, this._at || (this._at = { x: 0, y: 0, ang: 0 }));
+    const k = (Math.round(at.ang / (Math.PI / 8)) + 16) % 16;
+    this.chev.setVisible(!near).setFrame(this.artOn ? 'nav_chevron_' + (k < 10 ? '0' : '') + k : 'c' + k).setPosition(at.x, at.y + 4).setScale(small ? 0.8 : 1);
     this.chev.setAlpha(0.85 + Math.sin(gs.time.now / 180) * 0.15);
-    this.aura(near ? null : ang);
-    // dots along the route, from AHEAD on, every dotEvery px, up to maxDots (none within hideNear of him)
-    this.wave = (this.wave + dt / 1.2) % 1;
-    const every = c.dotEvery || 48, maxD = Math.min(16, c.maxDots || 16), hide = this.artOn ? Math.max(c.hideNear || 90, ahead + 30) : c.hideNear || 90;
-    let used = 0, s = every, px = p.x, py = p.y, along = 0;
-    const total = Math.max(1, this.routeLen);
-    for (let i = 0; i < R.length && used < maxD; i++) {
-      const q = R[i], L = Math.hypot(q.x - px, q.y - py);
-      while (s <= along + L && used < maxD) {
-        const f = (s - along) / Math.max(1e-6, L), x = px + (q.x - px) * f, y = py + (q.y - py) * f;
-        if (gdist(x, y, p.x, p.y) > hide && gdist(x, y, d.pad.x, d.pad.y) > 40) {
-          const dot = this.dots[used++];
-          const w = Math.abs(((s / total) - this.wave + 1) % 1);
-          const lit = w < 0.12;
-          dot.setVisible(true).setFrame(this.artOn ? (lit ? 'nav_dot_1' : 'nav_dot_0') : lit ? 'd1' : 'd0').setPosition(x, y).setAlpha(lit ? 1 : 0.8).setScale(small ? 0.8 : 1);
-        }
-        s += every;
-      }
-      along += L; px = q.x; py = q.y;
-    }
-    for (let i = used; i < this.dots.length; i++) if (this.dots[i].visible) this.dots[i].setVisible(false);
-    // the place: a pulsing ring + the badge (not when the tutorial arrow already points at it)
+    this.aura(near ? null : this.along(P, 1, at).ang);
     const show = !samePad;
-    const ph = (gs.time.now % 1000) / 1000;
-    // (art: the ring plays its own outward pulse at scale 1)
-    if (this.artOn) this.ring.setVisible(show).setPosition(d.pad.x, d.pad.y).setScale(small ? 0.8 : 1).setAlpha(1);
-    else this.ring.setVisible(show).setPosition(d.pad.x, d.pad.y).setScale((small ? 0.75 : 0.95) + ph * 0.25).setAlpha(1 - ph * 0.6);
+    // the path + (v4.3) the end marker on the exact spot (drawPath)
+    this.drawPath(P, small, show, dt);
     if (show && this.artOn) {
       // nav_badge with the item in its disc; the name on a ui_chip plate above it, the same size on screen at any zoom
       const name = this.placeName(d);
@@ -414,7 +486,9 @@ export class Navigator {
       this.badge.setVisible(true).setPosition(d.pad.x, d.pad.y - 22 + Math.sin(gs.time.now / 300) * 3).setScale(bs);
       const vw = gs.cameras.main.worldView, hw = (this.plateBg.width * ps) / 2;
       const px = vw.width > hw * 2 + 16 ? Math.max(vw.x + hw + 8, Math.min(vw.right - hw - 8, d.pad.x)) : d.pad.x;
-      this.plate.x = (px - d.pad.x) / bs;
+      // ((v4.3) slid in by at most half the plate: a place far off screen kept its name at the screen's edge, beside the
+      //  chief — "서리역 짐 싣는 곳" read as right here while it lay 2,200 px away)
+      this.plate.x = Math.max(-hw, Math.min(hw, px - d.pad.x)) / bs;
     } else if (show) {
       const name = this.placeName(d);
       if (this.badgeText.text !== name) {
@@ -427,14 +501,126 @@ export class Navigator {
       if (this.badgeType !== d.type) { this.badgeType = d.type; Assets.apply(this.badgeIcon, d.type); this.badgeIcon.setOrigin(0.5).setScale(34 / Math.max(1, this.badgeIcon.frame.realWidth, this.badgeIcon.frame.realHeight)); }
       this.badge.setVisible(true).setPosition(d.pad.x, d.pad.y - 90 + Math.sin(gs.time.now / 300) * 3).setScale(small ? 0.8 : 1);
     } else this.badge.setVisible(false);
-    this.objs = 3 + used + 1;
+    this.objs = 2 + (this.ring.visible ? 2 : 0) + (this.badge.visible ? 1 : 0) + (this.glow.visible ? 1 : 0);
+  }
+
+  /** ((v4.3) the point `s` px along polyline P (x, y pairs) and the direction of the line there (screen angle), into o */
+  along(P, s, o) {
+    let left = Math.max(0, s);
+    for (let i = 2; i < P.length; i += 2) {
+      const ax = P[i - 2], ay = P[i - 1], bx = P[i], by = P[i + 1], L = Math.hypot(bx - ax, by - ay);
+      if (L < 1e-6) continue;
+      if (left <= L || i === P.length - 2) { const f = Math.min(1, left / L); o.x = ax + (bx - ax) * f; o.y = ay + (by - ay) * f; o.ang = Math.atan2(by - ay, bx - ax); return o; }
+      left -= L;
+    }
+    o.x = P[0]; o.y = P[1]; o.ang = 0;
+    return o;
+  }
+
+  /**
+   * ((v4.3) the path itself: a dark outline + a gold core from his boots to the exact spot (only its runs inside the view),
+   * white arrows flowing along it toward the place (only the ones in view), the end marker (ring + pin, a pulse going
+   * out: images) unless the tutorial arrow stands there. Widths in screen terms (÷ zoom): the same on screen at every
+   * zoom. After dark the core turns paler and the marker glows above the night overlay (ADD; the marker only)
+   */
+  drawPath(P, small, marker, dt) {
+    const gs = this.gs, g = this.line, n = P.length;
+    const z = Math.max(0.55, gs.zoomCur || 1), sc = small ? 0.8 : 1;
+    const wc = (13 * sc) / z, wo = wc + 8 / z;
+    const C = gs.v4 && gs.v4.clock, night = C && C.overlay && C.overlay.visible && C.cur ? Math.min(1, (C.cur.a || 0) * 1.7) : 0;
+    g.clear();
+    g.setVisible(true);
+    // the view (+ a margin): segments wholly outside it are not stroked, arrows outside it not made
+    const vw = gs.cameras.main.worldView, m = 60 / z;
+    const x0 = vw.x - m, x1 = vw.right + m, y0 = vw.y - m, y1 = vw.bottom + m;
+    const runs = this.runsIn(P, x0, y0, x1, y1);
+    // outline, then core (Phaser fills the joints of a path wider than 2 px)
+    this.strokeRuns(g, P, runs, wo, NAV_INK, 0.9);
+    this.strokeRuns(g, P, runs, wc, night > 0.05 ? mixRGB(NAV_GOLD, NAV_PALE, night) : NAV_GOLD, 1);
+    // the arrows: every `gap` px, moving toward the place (1.1 gaps a second); skipped near him and on the marker
+    const gap = 92 / z;
+    this.flow = ((this.flow || 0) + dt * 1.1) % 1;
+    const p = gs.player, ex = P[n - 2], ey = P[n - 1];
+    const arrows = this._arrows || (this._arrows = []);
+    arrows.length = 0;
+    let s = this.flow * gap, acc = 0;
+    for (let i = 2; i < n; i += 2) {
+      const ax = P[i - 2], ay = P[i - 1], bx = P[i], by = P[i + 1], L = Math.hypot(bx - ax, by - ay);
+      if (L < 1e-6) continue;
+      const ux = (bx - ax) / L, uy = (by - ay) / L;
+      // (a segment wholly outside the view: skip its arrows)
+      const out = (ax < x0 && bx < x0) || (ax > x1 && bx > x1) || (ay < y0 && by < y0) || (ay > y1 && by > y1);
+      if (out) { acc += L; while (s <= acc) s += gap; continue; }
+      while (s <= acc + L) {
+        const f = s - acc, x = ax + ux * f, y = ay + uy * f;
+        if (x > x0 && x < x1 && y > y0 && y < y1 && gdist(x, y, p.x, p.y) > 40 / z && gdist(x, y, ex, ey) > 52) arrows.push(x, y, ux, uy);
+        s += gap;
+      }
+      acc += L;
+    }
+    // (a white arrowhead a little wider than the gold core, edged in ink: it reads on the gold, the snow and the wood)
+    this.drawArrows(g, arrows, wc * 1.5, wc * 0.62, Math.max(1.5, 2.5 / z));
+    // the end marker on the exact spot: the ring + pin, its pulse going out (the same size on screen at every zoom)
+    const ph = (gs.time.now % 1200) / 1200, ms = Math.min(1.7, Math.max(0.75, sc / z)) / NAV_MARK_RES;
+    if (marker) {
+      this.ring.setVisible(true).setPosition(ex, ey).setScale(ms);
+      this.pulse.setVisible(true).setPosition(ex, ey).setScale(ms * (1 + ph * 0.74)).setAlpha(1 - ph);
+    } else {
+      if (this.ring.visible) this.ring.setVisible(false);
+      if (this.pulse.visible) this.pulse.setVisible(false);
+    }
+    // after dark: the marker glows above the overlay (added; not on the light graphics setting / 저사양)
+    const S = Settings.data, lowGfx = S.gfx === 'low' || (S.gfx === 'auto' && S.gfxAuto === 'low');
+    if (marker && night > 0.05 && !lowGfx) this.glow.setVisible(true).setPosition(ex, ey).setScale(ms).setAlpha(Math.min(1, 0.8 * night + 0.1));
+    else if (this.glow.visible) this.glow.setVisible(false);
+    this.drawnN = n / 2;
+    this.markerOn = !!marker;
+  }
+
+  /** ((v4.3) the runs of polyline P inside the box: [first point index, last point index] pairs (x, y pair indices) */
+  runsIn(P, x0, y0, x1, y1) {
+    const R = this._runs || (this._runs = []);
+    R.length = 0;
+    let open = -1;
+    for (let i = 2; i < P.length; i += 2) {
+      const ax = P[i - 2], ay = P[i - 1], bx = P[i], by = P[i + 1];
+      const out = (ax < x0 && bx < x0) || (ax > x1 && bx > x1) || (ay < y0 && by < y0) || (ay > y1 && by > y1);
+      if (!out) { if (open < 0) open = i - 2; }
+      else if (open >= 0) { R.push(open, i - 2); open = -1; }
+    }
+    if (open >= 0) R.push(open, P.length - 2);
+    this.drawnRuns = R.length / 2;
+    return R;
+  }
+
+  /** ((v4.3) one stroke along each run */
+  strokeRuns(g, P, R, w, col, a) {
+    g.lineStyle(w, col, a);
+    for (let r = 0; r < R.length; r += 2) {
+      g.beginPath();
+      g.moveTo(P[R[r]], P[R[r] + 1]);
+      for (let i = R[r] + 2; i <= R[r + 1]; i += 2) g.lineTo(P[i], P[i + 1]);
+      g.strokePath();
+    }
+  }
+
+  /** ((v4.3) white arrowheads (al long, 2 aw wide) at (x, y, ux, uy) quads of A, edged in ink */
+  drawArrows(g, A, al, aw, edge) {
+    g.fillStyle(0xffffff, 1);
+    g.lineStyle(edge, NAV_INK, 0.85);
+    for (let i = 0; i < A.length; i += 4) {
+      const x = A[i], y = A[i + 1], ux = A[i + 2], uy = A[i + 3];
+      const ax = x + ux * al * 0.6, ay = y + uy * al * 0.6, bx = x - ux * al * 0.4 - uy * aw, by = y - uy * al * 0.4 + ux * aw, cx = x - ux * al * 0.4 + uy * aw, cy = y - uy * al * 0.4 - ux * aw;
+      g.fillTriangle(ax, ay, bx, by, cx, cy);
+      g.strokeTriangle(ax, ay, bx, by, cx, cy);
+    }
   }
 
   /** the halo's notch along the route */
   aura(ang) { const a = this.v42 && this.v42.aura; if (a) a.notch = ang; }
 
   /** a place's short name ('광장 판매대', '화덕 입구') */
-  placeName(d) { return d && d.label ? t(d.label, d.lp || undefined) : ''; }
+  placeName(d) { return d && d.name ? d.name : d && d.label ? t(d.label, d.lp || undefined) : ''; }
 
   /** the HUD chip: { icon, text, more } (null while the guide is off) */
   chip() {
@@ -449,7 +635,7 @@ export class Navigator {
   /** a tap on the chip: the next place of a mixed bag */
   next() { if (this.pinned) return; this.cycle++; this.pickT = 0; }
   /** a long press on the chip: hide the guide for this load */
-  hideLoad() { if (this.pinned) { this.unpin(); this.hide(); return; } this.hiddenLoad = true; this.hide(); }
+  hideLoad() { if (this.pinned) { this.unpin(true); this.hide(); return; } this.hiddenLoad = true; this.hide(); }
 
   /** nowhere takes the bag: the discard pad pulses softly */
   pulseTrash(dt) {
@@ -460,16 +646,19 @@ export class Navigator {
 
   hide() {
     if (this.held) this.holdRoom(null);
-    if (!this.active && !this.chev.visible) return;
+    if (!this.active && !this.chev.visible && !this.line.visible) return;
     this.active = false;
     this.hideWorld();
   }
-  /** the world pieces (chevron, dots, ring, badge) go; the chip state stays */
+  /** the world pieces (chevron, path, ring, badge) go; the chip state stays */
   hideWorld() {
     if (this.chev.visible) this.chev.setVisible(false);
     if (this.ring.visible) this.ring.setVisible(false);
     if (this.badge.visible) this.badge.setVisible(false);
-    for (const d of this.dots) if (d.visible) d.setVisible(false);
+    if (this.pulse.visible) this.pulse.setVisible(false);
+    if (this.line.visible) { this.line.clear(); this.line.setVisible(false); }
+    if (this.glow.visible) this.glow.setVisible(false);
+    this.drawnN = 0; this.markerOn = false;
     this.aura(null);
     this.objs = 0;
   }
@@ -494,14 +683,16 @@ export class Navigator {
   state() {
     const d = this.dest;
     return { active: this.active, pinned: this.pinned ? { x: Math.round(this.pinned.pad.x), y: Math.round(this.pinned.pad.y), label: this.pinned.label, t: Math.round(this.pinned.t) } : null,
-      dest: d ? { type: d.type, n: d.n, x: d.pad ? Math.round(d.pad.x) : null, y: d.pad ? Math.round(d.pad.y) : null, label: d.label, others: d.others || 0, none: !!d.none, pinned: !!d.pinned } : null,
-      route: this.route.map((q) => [Math.round(q.x), Math.round(q.y)]), routeLen: Math.round(this.routeLen), objects: this.objs, plans: this.plans || 0, chip: this.chip() };
+      dest: d ? { type: d.type, n: d.n, x: d.pad ? Math.round(d.pad.x) : null, y: d.pad ? Math.round(d.pad.y) : null, label: d.label, others: d.others || 0, none: !!d.none, pinned: !!d.pinned, mission: !!d.mission } : null,
+      route: this.route.map((q) => [Math.round(q.x), Math.round(q.y)]), routeLen: Math.round(this.routeLen), objects: this.objs, plans: this.plans || 0, chip: this.chip(),
+      // ((v4.3) the path as drawn: its first / last point (the last is the exact place), points, the end marker
+      drawn: this.drawnN && this.line.visible ? { n: this.drawnN, runs: this.drawnRuns || 0, route: this.route.length, first: [Math.round(this.pts[0]), Math.round(this.pts[1])], last: [Math.round(this.pts[this.pts.length - 2]), Math.round(this.pts[this.pts.length - 1])], marker: !!this.markerOn, ring: this.ring.visible ? [Math.round(this.ring.x), Math.round(this.ring.y)] : null, glow: this.glow.visible } : null };
   }
 
   destroy() {
     if (this.held && this.gs.logistics && this.gs.logistics.setChief) this.gs.logistics.setChief(null);
     const i = Assets.arrivals.indexOf(this.onArrive);
     if (i >= 0) Assets.arrivals.splice(i, 1);
-    for (const o of [this.chev, this.ring, this.badge].concat(this.dots)) if (o && o.scene) o.destroy();
+    for (const o of [this.chev, this.ring, this.pulse, this.badge, this.line, this.glow]) if (o && o.scene) o.destroy();
   }
 }

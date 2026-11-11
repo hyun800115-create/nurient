@@ -455,6 +455,22 @@ try {
     step('overview toggles back', !(await page.evaluate(() => window.__FV.zoom().overview)));
   }
 
+  // (v4.3) 목표 창: a real tap on the 목표 button opens the window with the current goal; a tap outside closes it
+  {
+    const c1 = await page.$('canvas'); const b1 = await c1.boundingBox(); const k1 = b1.width / 720;
+    const g0 = await page.evaluate(() => (window.__FV.v42 && window.__FV.v42.goals ? window.__FV.v42.goals.panel() : null));
+    if (g0 && g0.button) {
+      await page.touchscreen.tap(b1.x + g0.btnAt[0] * k1, b1.y + g0.btnAt[1] * k1);
+      await sleep(700);
+      const g1 = await page.evaluate(() => ({ p: window.__FV.v42.goals.panel(), b: window.__FV.v42.goals.book() }));
+      await shot('20b_goals');
+      step('(v4.3) the 목표 button opens the goal window (current goal first)', g1.p.open && g1.p.rows.length >= 2 && (!g1.b.cur || g1.p.rows[0] === g1.b.cur.id), `rows=${g1.p.rows.join(',')} cur=${g1.b.cur && g1.b.cur.id} done=${g1.b.done}/${g1.b.all}`);
+      await page.touchscreen.tap(b1.x + 20 * k1, b1.y + (b1.height / k1 - 30) * k1);
+      await sleep(500);
+      step('(v4.3) a tap outside closes it', !(await page.evaluate(() => window.__FV.v42.goals.panel().open)));
+    } else step('(v4.3) the 목표 button shows after the tutorial', false, JSON.stringify(g0));
+  }
+
   // settings panel (tap the gear)
   const c = await page.$('canvas'); const b = await c.boundingBox();
   const sx = b.width / 720;
