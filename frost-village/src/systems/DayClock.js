@@ -8,6 +8,7 @@ import { BALANCE } from '../data/balance.js';
 import { Audio } from '../core/Audio.js';
 import { Settings } from '../core/Save.js';
 import { DEPTH } from './DepthSort.js';
+import { Perf } from '../core/Perf.js';
 
 const HOUR = 25;
 
@@ -116,7 +117,7 @@ export class DayClock {
 
   drawGlows() {
     const gs = this.gs;
-    const maxG = (BALANCE.v4.perf && BALANCE.v4.perf.maxGlows) || 40;
+    const maxG = Math.min((BALANCE.v4.perf && BALANCE.v4.perf.maxGlows) || 40, Perf.p.glows || 40);   // ((v4.3 perf) 중 20, 저 8
     const night = this.cur.a > 0.05 && this.lightsOn;
     if (!night) { for (const g of this.glows) if (g.visible) g.setVisible(false); return; }
     const v = gs.cameras.main.worldView, cx = v.centerX, cy = v.centerY;

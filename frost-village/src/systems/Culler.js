@@ -11,6 +11,7 @@
 //     glides to, plus a margin
 
 import { Assets } from '../core/Assets.js';
+import { Perf } from '../core/Perf.js';
 
 const MARGIN = 300;          // px of world around the view that still draws
 const BOUNDS_EVERY = 400;    // ms a container's measured bounds are reused (labels rarely change shape)
@@ -36,14 +37,44 @@ export class Culler {
     this.parked = [];
     this.parkOn = true;
     this.okKey = new Map();
-    this.onPre = () => { try { this.pass(); } catch (e) { this.fail(); } };
+    // ((v4.3 perf) 중사양 / 저사양: the full pass every 2nd / 3rd drawn frame (Perf.p.cullEvery), and on any frame the
+    //  camera moved or zoomed; the margin (300 px) covers a walker's few frames, and a picture added to the scene in
+    //  between draws until the next pass (its old cull bit is cleared as it arrives: a pooled item reused far away)
+    this.every = Perf.p.cullEvery || 1;
+    this.skipN = 0;
+    this.last = { x: NaN, y: NaN, z: NaN };
+    this.skipped = 0;
+    this.onAdd = (o) => {
+      if (this.every <= 1 || !o) return;
+      const cam = gs.cameras && gs.cameras.main;
+      if (cam && (o.cameraFilter & cam.id)) o.cameraFilter &= ~cam.id;
+    };
+    gs.events.on('addedtoscene', this.onAdd);
+    this.onPre = () => { try { if (!this.skip()) this.pass(); } catch (e) { this.fail(); } };
     gs.events.on('prerender', this.onPre);
     gs.events.once('shutdown', () => {
       gs.events.off('prerender', this.onPre);
+      gs.events.off('addedtoscene', this.onAdd);
       // parked pictures are not on the display list, so the scene would not destroy them
       for (const img of this.parked) { try { if (img.scene) img.destroy(); } catch (e) { /* */ } }
       this.parked.length = 0;
     });
+  }
+
+  /** ((v4.3 perf) true: this frame keeps the last pass's decisions (nothing moved enough to matter) */
+  skip() {
+    const gs = this.gs, cam = gs.cameras && gs.cameras.main, L = this.last;
+    if (!cam || !this.enabled) return false;
+    if (this.every <= 1) return false;
+    // (the camera may drift up to 40 px from where the last full pass looked: the 300 px margin still covers it)
+    const moved = Math.abs(cam.scrollX - L.x) > 40 || Math.abs(cam.scrollY - L.y) > 40 || cam.zoom !== L.z || gs.zoomTarget !== gs.zoomCur;
+    if (moved || ++this.skipN >= this.every) {
+      this.skipN = 0;
+      L.x = cam.scrollX; L.y = cam.scrollY; L.z = cam.zoom;
+      return false;
+    }
+    this.skipped++;
+    return true;
   }
 
   /** a picture that may leave the display list while far away (texture checked every time: pools retexture) */

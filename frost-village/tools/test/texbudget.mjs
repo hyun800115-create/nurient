@@ -1,5 +1,7 @@
 // Texture budget (v4-B, docs/v4_plan.md §11.2 / §11.5), fixed-step clock:
-//   node tools/test/texbudget.mjs [--bot 20] [--out file.json]
+//   node tools/test/texbudget.mjs [--bot 20] [--out file.json] [--gfx auto|high|mid|low] [--vp 390x844x2]
+// ((v4.3 perf) --gfx: the 그래픽 사양 preset the page starts with (settings written before the first load; default: none,
+//  i.e. 자동 — under the test driver that is 고사양); --vp: viewport width x height x device pixel ratio
 // Scenarios: title; a new game (and, with --bot N, the smart bot to minute N, sampled every 5 game s); the v3.5
 // village complete (unlockV3); full v4 (station, town open, 5 shops, 50 people, rank 읍); a camera tour (plaza ->
 // station -> along the track -> town square -> zoom 0.6 -> overview -> back to the plaza).
@@ -18,6 +20,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const BOT = Number(opt('--bot', '0'));
+const GFX = opt('--gfx', '');
+const VP = (opt('--vp', '390x844x2')).split('x').map(Number);
 const OUT = opt('--out', path.join(HERE, '..', '..', 'docs', 'build_reports', 'texbudget_v4.json'));
 const results = [];
 const check = (name, ok, info = '') => { results.push({ name, ok: !!ok, info }); console.log((ok ? '  ok  ' : ' FAIL ') + name + (info !== '' ? '  — ' + (typeof info === 'string' ? info : JSON.stringify(info)) : '')); };
@@ -52,7 +56,7 @@ const GL_PROBE = `(() => {
 
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
-const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, init: GL_PROBE });
+const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: VP[0], height: VP[1] }, dpr: VP[2] || 2, init: GL_PROBE });
 const ev = (fn, a) => page.evaluate(fn, a);
 const nudge = (fn, ms = 120000) => waitFor(page, `(() => { const L = window.__FV.scene.load; if (L && L.isLoading()) L.update(); return (${fn})(); })()`, ms).then(() => true).catch(() => false);
 const samples = [];
@@ -68,7 +72,7 @@ const run = async (label, sec, every = 5) => { const out = []; for (let t = 0; t
 const overFor = (list, must) => list.filter((r) => r.MiB > must).length * 5;
 let fatal = null;
 try {
-  await ev(() => { try { localStorage.clear(); } catch (e) { /* */ } });
+  await ev((g) => { try { localStorage.clear(); if (g) localStorage.setItem('frostVillage.settings.v1', JSON.stringify({ gfx: g })); } catch (e) { /* */ } }, GFX);
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 180000);
   await sleep(1500);

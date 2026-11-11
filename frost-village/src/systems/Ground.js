@@ -13,6 +13,7 @@ import { rng } from '../core/Placeholders.js';
 import { Water, bakedField, suggestWaterQuality } from './Water.js';
 import { villageSeaPreset, FISH_BANDS } from './VillageSea.js';
 import { Settings } from '../core/Save.js';
+import { Perf } from '../core/Perf.js';
 const WATER_TEX = ['water_waves_a', 'water_waves_b', 'water_foam', 'water_lut', 'water_field_village'];
 
 function pattern(ctx, key, scale = 1) {
@@ -143,10 +144,14 @@ export class Ground {
     try {
       const wm = gs.cache.json.exists('manifest_water') ? gs.cache.json.get('manifest_water') : null;
       const gl = gs.sys.renderer && gs.sys.renderer.gl;
-      this.waitWater = !!(wm && gl);       // the water's textures come after the title: tryUpgradeSea() when they are here
-      if (wm && gl && this.waterTexReady()) {
+      // ((v4.3 perf) 저사양 keeps the old scrolling sea (the shore baked into the ground): the water shader is the biggest
+      //  single GPU cost of the village (20-24 % of a frame at the plaza)
+      const plain = Perf.p.water === 'static';
+      this.waitWater = !!(wm && gl) && !plain;       // the water's textures come after the title: tryUpgradeSea() when they are here
+      if (wm && gl && !plain && this.waterTexReady()) {
         this.waitWater = false;
-        const q = Settings.data.water || suggestWaterQuality(gl);      // '물결 품질' (null = automatic)
+        // '물결 품질' (null = automatic; ((v4.3 perf) 중사양: simple unless the player chose)
+        const q = Settings.data.water || (Perf.p.water === 'low' ? 'low' : suggestWaterQuality(gl));
         const fs = Assets.sprite('fish_school');
         const w = new Water(gs, Object.assign(villageSeaPreset(), {
           quality: q, fish: FISH_BANDS, fishKey: fs.tex, manifest: wm, baked: bakedField(gs, wm, 'village'),
@@ -810,7 +815,7 @@ export class Ground {
     if (this.checkT <= 0) {
       this.checkT = 0.12;
       const view = this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView;
-      if (!this.ensure(view, 2) && this.dirty.size) this.rebakeOne(view);
+      if (!this.ensure(view, this.bakeMax || 2) && this.dirty.size) this.rebakeOne(view);    // ((v4.3 perf) 중 / 저사양: 1
       this.trimT -= 0.12;
       if (this.trimT <= 0) { this.trimT = 2; this.trim(view); }
     }

@@ -23,6 +23,7 @@ import { Worker, Porter } from '../entities/Worker.js';
 import { Roads } from '../systems/Roads.js';
 import { VillageLife } from '../systems/VillageLife.js';
 import { Occlusion } from '../systems/Occlusion.js';
+import { Perf } from '../core/Perf.js';
 import { Culler } from '../systems/Culler.js';
 import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
@@ -1563,23 +1564,12 @@ export class Game extends Phaser.Scene {
   }
 
   /**
-   * (v4-B, docs/v4_plan.md §11.3e) graphics tier: '가볍게' (low) or, on 자동, a phone with little memory / a small
-   * GPU / the weak-GPU fallback: ground tiles at half resolution, fewer social pages and paper-doll rigs, a
-   * 200 MiB texture budget.
+   * (v4-B, docs/v4_plan.md §11.3e) graphics tier — ((v4.3 perf) now the 그래픽 사양 preset of Perf.js (자동 / 고 / 중 / 저):
+   * 저사양 = ground tiles at half resolution, fewer social pages and paper-doll rigs, the low texture budget; every
+   * preset sets its own culling rate, doll caps, ground bake rate and water quality (Perf.applyGame).
    */
   applyGfx() {
-    const g = (Settings.data && Settings.data.gfx) || 'auto';
-    let low = g === 'low';
-    if (g === 'auto') {
-      let maxTex = 4096;
-      try { const gl = this.game.renderer && this.game.renderer.gl; if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096; } catch (e) { /* canvas renderer */ }
-      const dm = typeof navigator !== 'undefined' ? navigator.deviceMemory : 0;
-      low = (!!dm && dm <= 3) || maxTex < 4096 || View.forceK === 1;
-    }
-    this.gfxLow = low;
-    if (this.ground && this.ground.setLow) this.ground.setLow(low);
-    if (this.dollPool) this.dollPool.low = low;
-    return low;
+    return Perf.applyGame(this);
   }
 
   focusCamera(x, y, ms) { this.camFocus = { x, y, until: this.time.now + ms }; }
@@ -2089,7 +2079,7 @@ export class Game extends Phaser.Scene {
     // ambient snow
     this.snowT -= dt;
     if (this.snowT <= 0) {
-      this.snowT = 0.09;
+      this.snowT = 0.09 / Math.max(0.05, Perf.p.snow);      // ((v4.3 perf) 중사양 0.6x, 저사양 0.3x
       const v = this.cameras.main.worldView;
       this.effects.emitters.snowfall.emitParticleAt(v.x + Math.random() * v.width, v.y - 20 + Math.random() * v.height * 0.6, 1);
     }

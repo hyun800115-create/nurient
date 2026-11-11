@@ -35,6 +35,19 @@ export async function openPage(browser, url, opts = {}) {
   });
   // (v4-B) a script that runs before the page's own (texbudget.mjs: the GL texture probe)
   if (opts.init) await ctx.addInitScript(opts.init);
+  // ((v4.3 perf) FV_GFX=high|mid|low|auto runs any suite on that 그래픽 사양 preset: written into the settings before every
+  //  load, also after a test clears the storage)
+  const G = process.env.FV_GFX;
+  if (G && /^(auto|high|mid|low)$/.test(G)) {
+    await ctx.addInitScript((g) => {
+      try {
+        const k = 'frostVillage.settings.v1';
+        let s = {};
+        try { s = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { s = {}; }
+        if (s.gfx !== g) { s.gfx = g; localStorage.setItem(k, JSON.stringify(s)); }
+      } catch (e) { /* */ }
+    }, G);
+  }
   const page = await ctx.newPage();
   const log = { errors: [], warnings: [], missing404: [], all: [] };
   page.on('pageerror', (e) => log.errors.push('pageerror: ' + (e && e.stack ? e.stack : e)));

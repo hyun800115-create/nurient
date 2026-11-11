@@ -620,7 +620,10 @@ export const Settings = {
   // (v4-C2) water: '물결 품질' 'high' | 'low' | null (automatic); voice: '주민 목소리' volume 0..1 (0 = off)
   data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto', water: null, voice: 1,
     // (v4.2) 놀이 tab: 자동 줍기 / 길 안내 / 촌장 후광 / 관망 자동 (s) / 관망 볼거리 / 관망 중 돈 쓰기
-    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none' },
+    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none',
+    // ((v4.3 perf) gfx: 'auto' | 'high' | 'mid' | 'low' (그래픽 사양); gfxAuto / gfxDev / gfxWhy: the automatic pick for
+    //  this phone (its facts' signature; why: 'device' | 'fps' | 'oom' | 'trim'); perfInfo: the 성능 정보 corner box)
+    gfxAuto: null, gfxDev: null, gfxWhy: null, perfInfo: false },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -630,7 +633,12 @@ export const Settings = {
       const z = typeof s.zoom === 'number' ? s.zoom : NaN;
       this.data.zoom = Number.isFinite(z) && z > 0.2 && z < 5 ? z : null;
       this.data.daynight = s.daynight !== false;     // (v4-A) 낮과 밤
-      this.data.gfx = s.gfx === 'high' || s.gfx === 'low' ? s.gfx : 'auto';     // (v4-B) 그래픽: 자동 / 선명하게 / 가볍게
+      // (v4-B) 그래픽: 자동 / 선명하게 / 가볍게 → ((v4.3 perf) 자동 / 고사양 / 중사양 / 저사양: 'high' and 'low' keep their meaning)
+      this.data.gfx = s.gfx === 'high' || s.gfx === 'mid' || s.gfx === 'low' ? s.gfx : 'auto';
+      this.data.gfxAuto = s.gfxAuto === 'high' || s.gfxAuto === 'mid' || s.gfxAuto === 'low' ? s.gfxAuto : null;
+      this.data.gfxDev = typeof s.gfxDev === 'string' && s.gfxDev.length < 80 ? s.gfxDev : null;
+      this.data.gfxWhy = typeof s.gfxWhy === 'string' && s.gfxWhy.length < 12 ? s.gfxWhy : null;
+      this.data.perfInfo = s.perfInfo === true;
       this.data.water = s.water === 'low' || s.water === 'high' ? s.water : null;  // (v4-C2) 물결 품질
       this.data.voice = typeof s.voice === 'number' && s.voice >= 0 && s.voice <= 1 ? s.voice : 1;   // (v4-C2) 주민 목소리
       // ---- (v4.2) 놀이

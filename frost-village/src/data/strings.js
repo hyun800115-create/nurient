@@ -248,7 +248,10 @@ export const STRINGS = {
     rank_panel: '서리마을 등급', rank_next: '읍이 되려면', rank_city_later: '도시는 다음 버전에서', rank_rewards: '읍이 되면',
     orders_title: '솔방울 주문판', order_to: '→ {shop}', order_swap: '다른 주문', order_reward: '보상 {n}', order_standing: '정기 납품',
     order_empty: '지금은 주문이 없어요', order_hint: '주문을 다 채우면 그 가게가 역 앞에 문을 열어요\n짐 싣는 곳에 놓은 물건은 값의 70%가 역 금고에 쌓여요',
-    set_gfx: '그래픽', gfx_auto: '자동', gfx_high: '선명하게', gfx_low: '가볍게',
+    set_gfx: '그래픽', gfx_auto: '자동', gfx_high: '고사양', gfx_mid: '중사양', gfx_low: '저사양',
+    // ((v4.3 perf) 그래픽 사양 (Perf.js): the automatic step down, a knob that waits for a restart, 성능 정보
+    gfx_auto_is: '자동·{p}', gfx_stepped: '휴대폰에 맞게 그래픽을 {p|(으)로} 낮췄어요', gfx_reload: '일부는 「새로고침」 뒤에 바뀌어요',
+    set_perfinfo: '성능 정보',
     // (v4-C2) 물결 품질 (살아 있는 바다), 주민 목소리 (눈꽃말), 주민과 수다
     waterQuality: '물결 품질', qualityHigh: '높음', qualityLow: '간단',
     voiceVol: '주민 목소리', voice_0: '끔', voice_1: '작게', voice_2: '보통', voice_3: '크게',
@@ -733,7 +736,9 @@ export const STRINGS = {
     rank_panel: 'Frost Village rank', rank_next: 'To become a town', rank_city_later: 'City comes in the next version', rank_rewards: 'As a town',
     orders_title: 'Pinecone order board', order_to: '→ {shop}', order_swap: 'Other order', order_reward: 'Reward {n}', order_standing: 'Regular delivery',
     order_empty: 'No orders right now', order_hint: 'Fill an order and its shop opens by the station\nGoods on the loading dock pay 70% of their price into the station till',
-    set_gfx: 'Graphics', gfx_auto: 'Auto', gfx_high: 'Sharp', gfx_low: 'Light',
+    set_gfx: 'Graphics', gfx_auto: 'Auto', gfx_high: 'High', gfx_mid: 'Medium', gfx_low: 'Low',
+    gfx_auto_is: 'Auto·{p}', gfx_stepped: 'Graphics lowered to {p} to suit this phone', gfx_reload: 'Some changes apply after Reload',
+    set_perfinfo: 'Perf info',
     waterQuality: 'Water', qualityHigh: 'High', qualityLow: 'Simple',
     voiceVol: 'Voices', voice_0: 'Off', voice_1: 'Low', voice_2: 'Mid', voice_3: 'High',
     chatBtn: 'Chat', chatSaved: 'Chat remembered', chatOff: 'Chat is not available right now. Try again soon',

@@ -1,6 +1,12 @@
 // Snowbloom Village APK pipeline (tools/apk) — boot the game exactly as packed in an APK, in headless Chromium.
 //
-//   node tools/apk/test/boot_test.mjs <app.apk> [--out dir] [--play 60] [--work dir]
+//   node tools/apk/test/boot_test.mjs <app.apk> [--out dir] [--play 60] [--work dir] [--legacy] [--gfx high|mid|low]
+//
+// (v4.3 perf) --legacy: an old phone's WebView (Chrome 58-77, Android 8-10 without updates): the built-ins newer than
+// Chrome 58 are deleted before the page runs (Object.fromEntries, flat / flatMap, matchAll, trimStart / trimEnd,
+// Promise.prototype.finally, AbortController, CompressionStream, and at / structuredClone / hasOwn / replaceAll that the
+// game must not need) — the packed game.js must bring its own (src/core/polyfills.js) and play on with 0 errors.
+// --gfx: the 그래픽 사양 preset written into the settings before every load.
 //
 // What it mimics: the app's WebView loads https://appassets.androidplatform.net/index.html and every request of that
 // origin is answered from the APK's assets/www/ by the app's own AssetRouter (served here by AssetServer.java, run on
@@ -69,6 +75,27 @@ const { chromium } = loadPlaywright();
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-webgl', '--no-sandbox'] });
 const UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/UQ1A.240205.004; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 SnowbloomVillageApp/test';
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: 'ko-KR', userAgent: UA });
+const LEGACY = args.includes('--legacy');
+if (LEGACY) {
+  await ctx.addInitScript(() => {
+    const gone = [];
+    const del = (o, k, n) => { try { if (o && k in o) { delete o[k]; if (!(k in o)) gone.push(n); } } catch (e) { /* */ } };
+    del(Object, 'fromEntries', 'Object.fromEntries'); del(Array.prototype, 'flat', 'flat'); del(Array.prototype, 'flatMap', 'flatMap');
+    del(String.prototype, 'matchAll', 'matchAll'); del(String.prototype, 'trimStart', 'trimStart'); del(String.prototype, 'trimEnd', 'trimEnd');
+    del(Promise.prototype, 'finally', 'Promise.prototype.finally'); del(window, 'AbortController', 'AbortController');
+    del(window, 'CompressionStream', 'CompressionStream'); del(window, 'DecompressionStream', 'DecompressionStream');
+    del(Array.prototype, 'at', 'Array.prototype.at'); del(String.prototype, 'at', 'String.prototype.at'); del(window, 'structuredClone', 'structuredClone');
+    del(Object, 'hasOwn', 'Object.hasOwn'); del(String.prototype, 'replaceAll', 'replaceAll'); del(Array.prototype, 'findLast', 'findLast');
+    del(Promise, 'allSettled', 'Promise.allSettled'); del(window, 'queueMicrotask', 'queueMicrotask');
+    window.__FV_LEGACY_GONE = gone;
+  });
+}
+const GFX = opt('--gfx', '');
+if (/^(auto|high|mid|low)$/.test(GFX)) {
+  await ctx.addInitScript((g) => {
+    try { const k = 'frostVillage.settings.v1'; let s = {}; try { s = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { s = {}; } if (s.gfx !== g) { s.gfx = g; localStorage.setItem(k, JSON.stringify(s)); } } catch (e) { /* */ }
+  }, GFX);
+}
 const blocked = [];
 let served = 0;
 await ctx.route('**/*', async (route) => {
@@ -308,6 +335,10 @@ try {
   await shot('9_error');
 }
 
+if (LEGACY) {
+  const lg = await ev(() => ({ gone: window.__FV_LEGACY_GONE || [], back: { fromEntries: typeof Object.fromEntries, flatMap: typeof [].flatMap, matchAll: typeof ''.matchAll, finally: typeof Promise.prototype.finally } })).catch(() => null);
+  step('--legacy: built-ins newer than Chrome 58 were gone, the game brought back the ones it uses', lg && lg.gone.length >= 12 && lg.back.fromEntries === 'function' && lg.back.flatMap === 'function' && lg.back.matchAll === 'function' && lg.back.finally === 'function', lg);
+}
 const errs = log.pageErrors.concat(log.consoleErrors);
 step('0 page errors, 0 console errors', errs.length === 0, errs.slice(0, 6).join(' | '));
 step('no 404 and no failed request', !notFound.length && !log.http.length && !log.failed.length, notFound.concat(log.http, log.failed).slice(0, 6).join(' | '));
@@ -316,7 +347,7 @@ step('AssetRouter self-test (every packed file routes with a known type)', selft
 const summary = {
   apk: path.basename(APK), ok: !fatal && results.every((r) => r.ok), seconds: Math.round((Date.now() - t0) / 1000),
   device: { viewport: '390x844', dpr: 3, touch: true, ua: UA }, served, notFound, blocked, warnings: [...new Set(log.warnings)].slice(0, 12),
-  facts, steps: results,
+  facts, steps: results, legacy: LEGACY, gfx: GFX || null,
 };
 fs.writeFileSync(path.join(OUT, 'boot_test.json'), JSON.stringify(summary, null, 1));
 console.log(`\n${summary.ok ? 'PASS' : 'FAIL'}  ${results.filter((r) => r.ok).length}/${results.length} steps, ${served} files served, ${summary.seconds} s  -> ${path.relative(process.cwd(), OUT)}`);

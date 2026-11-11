@@ -9,6 +9,7 @@
 import { TF, MIRROR } from '../core/Townfolk.js';
 import { BALANCE } from '../data/balance.js';
 import { DIR_BASE } from '../core/Iso.js';
+import { Perf } from '../core/Perf.js';
 
 const INV_MIRROR = { SE: 'SW', E: 'W', NE: 'NW' };
 const LITE_FAMILY = new Set(['top', 'bottom', 'hair', 'hat']);
@@ -302,8 +303,9 @@ export class DollPool {
     const zoom = gs.zoomCur || 1;
     const margin = P.margin !== undefined ? P.margin : 120;
     const cx = (v.x + v.right) / 2, cy = (v.y + v.bottom) / 2;
-    const maxFull = zoom < 0.7 ? 0 : (this.low ? (P.maxRigsLow || 16) : (P.maxRigs || 32));
-    const maxLite = (P.maxLite !== undefined ? P.maxLite : 40) + (zoom < 0.7 ? (P.maxRigs || 32) : 0);
+    // ((v4.3 perf) the graphics preset caps both (Perf.p.rigs / lite: 고 32 / 40, 중 20 / 30, 저 10 / 20)
+    const maxFull = zoom < 0.7 ? 0 : Math.min(this.low ? (P.maxRigsLow || 16) : (P.maxRigs || 32), Perf.p.rigs || 99);
+    const maxLite = Math.min(P.maxLite !== undefined ? P.maxLite : 40, Perf.p.lite || 99) + (zoom < 0.7 ? Math.min(P.maxRigs || 32, Perf.p.rigs || 99) : 0);
     const dots = zoom < 0.4;
     const list = this._list;
     list.length = 0;

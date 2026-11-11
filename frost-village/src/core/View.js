@@ -10,6 +10,7 @@ export const View = {
   H: 1280,         // logical height
   k: 1,            // canvas pixels per logical pixel
   forceK: 0,       // set to 1 when a weak GPU cannot keep up at the sharper scale
+  maxK: MAX_RENDER_SCALE,   // ((v4.3 perf) the graphics preset's cap (Perf.js: 고사양 2, 중사양 1.5, 저사양 1)
   safeTop: 0,      // notch / status-bar inset in logical px (Capacitor / standalone apps)
   safeBottom: 0,   // home-indicator inset in logical px
 

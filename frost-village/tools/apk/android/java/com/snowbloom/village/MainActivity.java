@@ -24,16 +24,26 @@
 // onPause and once the game can be heard again: resumed, not under the lock screen, the exit dialog closed, audio focus
 // held (a call or another app's music silences it). WebView.pauseTimers() waits until the page says its sound has
 // actually stopped (JS_QUIET). The volume keys always set the media volume (the game's), even while it is silent.
+//
+// (4.3 perf) Low-end phones: the page learns the phone's facts (WebBridge.device(): SDK, total RAM, the low-RAM flag,
+// cores, the WebView version, why the last page died) to pick its graphics preset; Android's memory warnings reach the
+// page (onTrimMemory -> window.__fvApp.trim(level): far pictures go); a renderer the system took back for memory is
+// remembered (the next page starts one graphics level lower); on a low-RAM phone the renderer may be dropped first in
+// the background (setRendererPriorityPolicy, the existing recovery reloads it); a WebView older than Chrome 58 asks
+// for an update.
 package com.snowbloom.village;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.KeyguardManager;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -43,6 +53,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
@@ -66,6 +77,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -124,6 +136,18 @@ public class MainActivity extends Activity {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private int crashes;
     private long firstCrashAt;
+
+    // (4.3 perf) low-end phones
+    /** the page's memory hook (src/core/Perf.js trim: far pictures go; 15 = critical: one graphics level down) */
+    static final String JS_TRIM = "try{window.__fvApp&&window.__fvApp.trim&&window.__fvApp.trim(%d)}catch(e){}";
+    /** app-private preferences: why the last page's renderer went ("oom" / "crash"), told to the next page once */
+    static final String PREFS = "snowbloom.perf";
+    /** the oldest WebView (Chrome major version) the game runs on: Android 8.0's own */
+    static final int MIN_WEBVIEW = 58;
+    /** WebView.RENDERER_PRIORITY_IMPORTANT (API 26; the stub android.jar is API 16) */
+    static final int RENDERER_IMPORTANT = 2;
+    private int trims;                                 // memory warnings this run (WebBridge.device reports it)
+    private boolean webViewChecked;
 
     private final Set<String> silent = new TreeSet<String>();   // (4.2.0.1) reasons for silence (SILENT_*)
     private boolean pageAllowed;                       // what the page was told last (JS_RESUME: true); it boots silent
@@ -196,6 +220,7 @@ public class MainActivity extends Activity {
         silent.add(SILENT_PAUSED);                     // (not resumed yet)
         createWebView();
         hideSystemUi();
+        checkWebViewVersion();
     }
 
     /**
@@ -265,6 +290,11 @@ public class MainActivity extends Activity {
         call(WebSettings.class, s, "setMediaPlaybackRequiresUserGesture", new Class<?>[] { boolean.class }, false);
         s.setUserAgentString(s.getUserAgentString() + " SnowbloomVillageApp/" + versionName());
 
+        // (4.3 perf) a low-RAM phone: in the background the page's renderer may go before the whole app does (the
+        // recovery in onRenderProcessGone reloads it; the save is in localStorage)
+        if (Build.VERSION.SDK_INT >= 26 && lowRamPhone()) {
+            call(WebView.class, web, "setRendererPriorityPolicy", new Class<?>[] { int.class, boolean.class }, RENDERER_IMPORTANT, true);
+        }
         web.setWebViewClient(new GameClient());
         web.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onConsoleMessage(ConsoleMessage m) {
@@ -614,7 +644,10 @@ public class MainActivity extends Activity {
          * would close. The game saved itself into localStorage, so a fresh WebView continues the village.
          */
         public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-            Log.w(TAG, "WebView renderer gone; starting a new one");
+            // (4.3 perf) didCrash() false: the system took it back for memory — the next page starts a level lower
+            boolean oom = detail != null && !detail.didCrash();
+            Log.w(TAG, "WebView renderer gone (" + (oom ? "memory" : "crash") + "); starting a new one");
+            if (view == web) rememberExit(oom ? "oom" : "crash");
             ViewGroup parent = (ViewGroup) view.getParent();
             if (parent != null) parent.removeView(view);
             view.destroy();
@@ -642,6 +675,152 @@ public class MainActivity extends Activity {
             });
             return true;
         }
+    }
+
+    // ------------------------------------------------------------------ (4.3 perf) low-end phones
+    /** Android asks the app to use less memory: the page lets its far pictures go (and steps down at "critical") */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        trims++;
+        evaluate(String.format(Locale.ROOT, JS_TRIM, level), null);
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        trims++;
+        evaluate(String.format(Locale.ROOT, JS_TRIM, 80), null);
+    }
+
+    private SharedPreferences prefs() {
+        return getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    /** why the page's renderer went: the next page reads it once (WebBridge.device) */
+    void rememberExit(String why) {
+        SharedPreferences p = prefs();
+        p.edit().putString("lastExit", why).putInt("exits", p.getInt("exits", 0) + 1).apply();
+    }
+
+    private ActivityManager activityManager() {
+        Object o = getSystemService(Context.ACTIVITY_SERVICE);
+        return o instanceof ActivityManager ? (ActivityManager) o : null;
+    }
+
+    /** ActivityManager.isLowRamDevice() (API 19) or less than 3 GB of memory */
+    boolean lowRamPhone() {
+        ActivityManager am = activityManager();
+        if (am == null) return false;
+        if (Boolean.TRUE.equals(call(ActivityManager.class, am, "isLowRamDevice", new Class<?>[0]))) return true;
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        am.getMemoryInfo(mi);
+        return mi.totalMem > 0 && mi.totalMem < 3L * 1024 * 1024 * 1024;
+    }
+
+    /**
+     * the phone's facts for the page's graphics preset (src/core/Perf.js): SDK, total / free RAM (MB), the low-RAM flag,
+     * cores, the memory class, the WebView package and version, power save, thermal status (API 29), why the last
+     * page's renderer went (told once: `consume` clears it) and the memory warnings so far
+     */
+    String deviceJson(boolean consume) {
+        StringBuilder o = new StringBuilder(256).append('{');
+        put(o, "sdk", Build.VERSION.SDK_INT);
+        put(o, "release", String.valueOf(Build.VERSION.RELEASE));
+        put(o, "cores", Runtime.getRuntime().availableProcessors());
+        ActivityManager am = activityManager();
+        if (am != null) {
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            put(o, "ram", mi.totalMem / (1024 * 1024));
+            put(o, "avail", mi.availMem / (1024 * 1024));
+            put(o, "lowMemory", mi.lowMemory);
+            put(o, "memClass", am.getMemoryClass());
+            put(o, "lowRam", Boolean.TRUE.equals(call(ActivityManager.class, am, "isLowRamDevice", new Class<?>[0])));
+        }
+        String[] wv = webViewPackage();
+        put(o, "webview", wv[0]);
+        put(o, "webviewVersion", wv[1]);
+        Object pm = getSystemService(Context.POWER_SERVICE);
+        if (pm != null) {
+            put(o, "powerSave", Boolean.TRUE.equals(call(PowerManager.class, pm, "isPowerSaveMode", new Class<?>[0])));
+            if (Build.VERSION.SDK_INT >= 29) {
+                Object th = call(PowerManager.class, pm, "getCurrentThermalStatus", new Class<?>[0]);
+                if (th instanceof Integer) put(o, "thermal", th);
+            }
+        }
+        SharedPreferences p = prefs();
+        put(o, "lastExit", p.getString("lastExit", ""));
+        put(o, "exits", p.getInt("exits", 0));
+        put(o, "trims", trims);
+        if (consume && p.contains("lastExit")) p.edit().remove("lastExit").apply();
+        return o.append('}').toString();
+    }
+
+    /** one "key": value of deviceJson (numbers and booleans as they are, anything else a JSON string) */
+    static void put(StringBuilder o, String key, Object v) {
+        if (o.length() > 1) o.append(',');
+        o.append('"').append(key).append("\":");
+        if (v instanceof Number || v instanceof Boolean) { o.append(v); return; }
+        String s = String.valueOf(v);
+        o.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' || c == '\\') o.append('\\').append(c);
+            else if (c < 0x20) o.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
+            else o.append(c);
+        }
+        o.append('"');
+    }
+
+    /** { package, versionName } of the WebView in use (API 26: WebView.getCurrentWebViewPackage), else the default user
+     *  agent's Chrome version */
+    String[] webViewPackage() {
+        if (Build.VERSION.SDK_INT >= 26) {
+            Object pi = callStatic(WebView.class, "getCurrentWebViewPackage", new Class<?>[0]);
+            if (pi instanceof PackageInfo) return new String[] { String.valueOf(((PackageInfo) pi).packageName), String.valueOf(((PackageInfo) pi).versionName) };
+        }
+        Object ua = callStatic(WebSettings.class, "getDefaultUserAgent", new Class<?>[] { Context.class }, this);     // API 17
+        String s = ua instanceof String ? (String) ua : "";
+        int i = s.indexOf("Chrome/");
+        return new String[] { "", i >= 0 ? s.substring(i + 7).split(" ")[0] : "" };
+    }
+
+    /** the major version of a "83.0.4103.106" string (0 when unknown) */
+    static int majorVersion(String v) {
+        if (v == null) return 0;
+        int n = 0, i = 0;
+        while (i < v.length() && Character.isDigit(v.charAt(i))) n = n * 10 + (v.charAt(i++) - '0');
+        return i > 0 && n < 100000 ? n : 0;
+    }
+
+    /** a WebView older than MIN_WEBVIEW (an Android 7-10 phone that never updated it): ask for the update from Play */
+    void checkWebViewVersion() {
+        if (webViewChecked) return;
+        webViewChecked = true;
+        final String[] wv = webViewPackage();
+        int major = majorVersion(wv[1]);
+        if (major <= 0 || major >= MIN_WEBVIEW || isFinishing()) return;
+        final String pkg = wv[0].length() > 0 ? wv[0] : Build.VERSION.SDK_INT >= 29 ? "com.google.android.webview" : "com.android.chrome";
+        new AlertDialog.Builder(this)
+                .setTitle("업데이트가 필요해요")
+                .setMessage("이 휴대폰의 웹 화면 프로그램(" + (Build.VERSION.SDK_INT >= 29 ? "Android System WebView" : "Chrome") + " " + major
+                        + ")이 너무 오래돼서 게임이 잘 열리지 않을 수 있어요.\nPlay 스토어에서 업데이트한 뒤 다시 열어 주세요.")
+                .setNegativeButton("그냥 하기", null)
+                .setPositiveButton("업데이트", new DialogInterface.OnClickListener() {
+                    @Override public void onClick(DialogInterface d, int which) {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)));
+                        } catch (ActivityNotFoundException e) {
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg)));
+                            } catch (RuntimeException e2) {
+                                Log.w(TAG, "no store", e2);
+                            }
+                        }
+                    }
+                })
+                .show();
     }
 
     private static WebResourceResponse notFound() {

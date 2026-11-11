@@ -14,6 +14,9 @@
 // background, under the exit dialog, on the lock screen, audio focus lost; read by the page as it boots, the app then
 // tells it each change through window.__fvApp) · gameMusic(on) -> the game's music setting (the app takes audio focus
 // only while it is on).
+//
+// (4.3 perf) device() -> the phone's facts as JSON (SDK, RAM, the low-RAM flag, cores, the WebView version, why the last
+// page died) for the game's graphics preset (src/core/Perf.js); "{}" on any other page.
 package com.snowbloom.village;
 
 import android.app.Activity;
@@ -114,6 +117,13 @@ final class WebBridge {
         ui.post(new Runnable() {
             @Override public void run() { ((MainActivity) activity).setGameMusic(on); }
         });
+    }
+
+    /** (4.3 perf) the phone's facts for the graphics preset (MainActivity.deviceJson; the last exit is told once) */
+    @JavascriptInterface
+    public String device() {
+        if (!trusted() || !(activity instanceof MainActivity)) return "{}";
+        return ((MainActivity) activity).deviceJson(true);
     }
 
     @JavascriptInterface

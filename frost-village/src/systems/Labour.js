@@ -22,6 +22,7 @@ import { Pad } from '../entities/Pad.js';
 import { ItemStack } from '../entities/ItemStack.js';
 import { Character } from '../entities/Character.js';
 import { panel } from '../core/Panel.js';
+import { bakeGraphics } from '../core/Perf.js';
 
 const DIR8 = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
 
@@ -367,7 +368,8 @@ export class Pile {
     beam.fillStyle(0xe2c59a, 1).fillEllipse(51, 0, 7, 14);
     beam.lineStyle(1, 0x8a5a3a, 1).strokeEllipse(51, 0, 7, 14);
     beam.fillStyle(0xf4f7fb, 1).fillRoundedRect(-30, -10, 56, 5, 2.5);
-    this.props.push(a, b, beam);
+    // ((v4.3 perf) the beam never changes: drawn once into a small texture (Phaser redrew its 482 path commands a frame)
+    this.props.push(a, b, bakeGraphics(beam, 'rack_beam', { x: -56, y: -14, w: 112, h: 40 }));
     this.obstacle = gs.collision.add(x, y, 40, 'pile');
   }
 

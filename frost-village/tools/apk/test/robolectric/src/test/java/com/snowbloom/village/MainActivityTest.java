@@ -909,4 +909,70 @@ public class MainActivityTest {
         assertNull("music off from the start: the player's own music app is never paused", sam.getLastAudioFocusRequest());
         assertTrue("the game's sounds still play", a.audioAllowed());
     }
+
+    // ------------------------------------------------------------------ (4.3 perf) low-end phones
+    @Test
+    @Config(sdk = {29, 36}, shadows = RecordingWebView.class)
+    public void perf_deviceFactsOnlyForTheGame_andAMemoryKillIsToldToTheNextPageOnce() {
+        ActivityController<MainActivity> c = launch();
+        MainActivity a = c.get();
+        WebBridge b = bridge(a);
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), "https://example.com/", null);
+        assertEquals("another page learns nothing", "{}", b.device());
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), START, null);
+        String d = b.device();
+        assertTrue("SDK " + d, d.contains("\"sdk\":" + android.os.Build.VERSION.SDK_INT));
+        assertTrue("cores " + d, d.matches(".*\"cores\":[1-9].*"));
+        assertTrue("RAM, the low-RAM flag " + d, d.contains("\"ram\":") && d.contains("\"lowRam\":"));
+        assertTrue("no exit yet " + d, d.contains("\"lastExit\":\"\""));
+        // the system takes the renderer back for memory (didCrash false): the next page hears "oom" once
+        WebView old = web(a);
+        android.webkit.RenderProcessGoneDetail oom = new android.webkit.RenderProcessGoneDetail() {
+            @Override public boolean didCrash() { return false; }
+            @Override public int rendererPriorityAtExit() { return 0; }
+        };
+        assertTrue(shadowOf(old).getWebViewClient().onRenderProcessGone(old, oom));
+        idle();
+        assertTrue("a new WebView", web(a) != old);
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), START, null);
+        String d2 = bridge(a).device();
+        assertTrue("the new page hears oom " + d2, d2.contains("\"lastExit\":\"oom\"") && d2.contains("\"exits\":1"));
+        assertTrue("told once " + bridge(a).device(), bridge(a).device().contains("\"lastExit\":\"\""));
+        // a crash (didCrash true) is told as such
+        old = web(a);
+        android.webkit.RenderProcessGoneDetail crash = new android.webkit.RenderProcessGoneDetail() {
+            @Override public boolean didCrash() { return true; }
+            @Override public int rendererPriorityAtExit() { return 0; }
+        };
+        assertTrue(shadowOf(old).getWebViewClient().onRenderProcessGone(old, crash));
+        idle();
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), START, null);
+        assertTrue(bridge(a).device().contains("\"lastExit\":\"crash\""));
+    }
+
+    @Test
+    @Config(sdk = {29, 36}, shadows = RecordingWebView.class)
+    public void perf_memoryWarningsReachThePage() {
+        ActivityController<MainActivity> c = launch();
+        MainActivity a = c.get();
+        a.onTrimMemory(15);
+        a.onLowMemory();
+        idle();
+        assertTrue("onTrimMemory(15) -> __fvApp.trim(15) " + log(), log().contains("js:" + String.format(java.util.Locale.ROOT, MainActivity.JS_TRIM, 15)));
+        assertTrue("onLowMemory -> __fvApp.trim(80) " + log(), log().contains("js:" + String.format(java.util.Locale.ROOT, MainActivity.JS_TRIM, 80)));
+        shadowOf(web(a)).getWebViewClient().onPageStarted(web(a), START, null);
+        assertTrue(bridge(a).device().contains("\"trims\":2"));
+    }
+
+    @Test
+    @Config(sdk = 36)
+    public void perf_webViewVersion() {
+        assertEquals(83, MainActivity.majorVersion("83.0.4103.106"));
+        assertEquals(0, MainActivity.majorVersion(""));
+        assertEquals(0, MainActivity.majorVersion(null));
+        assertEquals(57, MainActivity.majorVersion("57.0.2987.132"));
+        MainActivity a = start();
+        assertNull("a current WebView: no update dialog at start", ShadowAlertDialog.getLatestAlertDialog());
+        a.checkWebViewVersion();
+    }
 }

@@ -1,11 +1,14 @@
 // 행복한 눈꽃마을 이야기 · Snowbloom Village (the village itself is 서리마을) — entry point.
+// ((v4.3 perf) first: the few newer built-ins the game uses, for Android 8-10's WebViews (Chrome 58-72))
+import './core/polyfills.js';
 import { Boot } from './scenes/Boot.js';
 import { Preload } from './scenes/Preload.js';
 // (v4-C2) the living title screen of "행복한 눈꽃마을 이야기" (src/title; the old scenes/Title.js is kept as a fallback)
 import { TitleScene as Title } from './title/TitleScene.js';
 import { Game } from './scenes/Game.js';
 import { UI } from './scenes/UI.js';
-import { View, MAX_RENDER_SCALE } from './core/View.js';
+import { View } from './core/View.js';
+import { Perf } from './core/Perf.js';
 import { checkBalance } from './data/balanceCheck.js';
 
 const W = 720;
@@ -30,13 +33,16 @@ function updateView() {
   const cssW = Math.max(1, Math.min(iw, (ih * W) / h));          // CSS width of the fitted canvas
   const dpr = window.devicePixelRatio || 1;
   View.W = W; View.H = h;
-  View.k = View.forceK || Math.round(Math.max(1, Math.min(MAX_RENDER_SCALE, (cssW * dpr) / W)) * 20) / 20;
+  // ((v4.3 perf) the graphics preset caps the render scale: 고사양 2, 중사양 1.5, 저사양 1 — Perf.js)
+  View.k = View.forceK || Math.round(Math.max(1, Math.min(View.maxK, (cssW * dpr) / W)) * 20) / 20;
   const perCss = W / cssW;                                        // logical px per CSS px
   View.safeTop = cssInset('--sat') * perCss;
   View.safeBottom = cssInset('--sab') * perCss;
 }
 
 checkBalance();
+// ((v4.3 perf) 그래픽 사양 (자동 / 고 / 중 / 저): settled before the game is made (render scale, antialias, frame cap)
+Perf.start();
 updateView();
 
 const params = new URLSearchParams(window.location.search);
@@ -49,13 +55,15 @@ const config = {
   height: Math.round(View.H * View.k),
   backgroundColor: '#dbe6f2',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  render: { antialias: true, pixelArt: false, roundPixels: false, powerPreference: 'high-performance' },
+  // ((v4.3 perf) antialiasGL = MSAA of the WebGL context (저사양: off, ~15 % of the GPU's fill); `antialias` keeps the
+  //  pictures' smooth filtering on every preset)
+  render: { antialias: true, antialiasGL: Perf.p.aa, pixelArt: false, roundPixels: false, powerPreference: 'high-performance' },
   // (v4-B, texture memory) nothing uses sprite.preFX, and Phaser's FX pipeline would otherwise allocate ~75 MiB of
   // render targets at boot (72 squares from 32² to 768² plus 4 screen-sized ones) — measured by texbudget.mjs's GL probe
   disablePreFX: true,
   input: { activePointers: 3, keyboard: true, windowEvents: true },
   audio: { disableWebAudio: false },
-  fps: { target: 60, smoothStep: true },
+  fps: { target: 60, smoothStep: true, limit: Perf.p.fps === 30 ? 30 : 0 },      // ((v4.3 perf) 저사양: 30 fps
   disableContextMenu: true,
   banner: false,
   scene: [Boot, Preload, Title, Game, UI],
@@ -63,6 +71,7 @@ const config = {
 
 const game = new Phaser.Game(config);
 window.__FV_BOOTED = true;
+Perf.game = game;
 
 let resizeTimer = 0;
 function onResize() {
@@ -77,6 +86,11 @@ function onResize() {
 }
 window.addEventListener('resize', onResize);
 window.addEventListener('orientationchange', onResize);
+Perf.onResize = onResize;
+// ((v4.3 perf) on 자동 the preset's own frame-rate check (one step down: 고 → 중 → 저) replaces the render-scale drop below
+Perf.watch(game);
+/** the weak-GPU drop: on 자동 one preset down (Perf), else the render scale to 1x for this session (as before) */
+function slowDrop() { if (!Perf.stepDown('fps')) { View.forceK = 1; onResize(); } }
 
 // Weak GPU: if the village runs below ~30 fps at the sharper render scale, drop to 1x for this session
 // (checked a few times once the village is running; the first seconds are skipped: warm-up, decoding).
@@ -86,6 +100,7 @@ const perfTimer = setInterval(() => {
   try {
     const loop = game.loop;
     // (v4-C2) the living title fills more pixels than the old one: it is watched too (title_code.md §2)
+    if (Perf.watching()) { clearInterval(perfTimer); return; }     // ((v4.3 perf) the preset's check is in charge
     if (!loop || !loop.running || document.visibilityState !== 'visible' || !(game.scene.isActive('Game') || game.scene.isActive('Title'))) return;
     // (v4-C2) while the living water's own watchdog is still deciding (water.md §6.5: the water drops to 물결 '간단'
     // first, the resolution only after that), this check waits
@@ -97,9 +112,9 @@ const perfTimer = setInterval(() => {
       if (++titleChecks >= 2 && View.k > 1.05 && loop.actualFps < 30) titleSlow = true;
       return;
     }
-    if (titleSlow) { View.forceK = 1; onResize(); clearInterval(perfTimer); return; }
+    if (titleSlow) { slowDrop(); clearInterval(perfTimer); return; }
     if (++perfChecks < 2) return;
-    if (View.k > 1.05 && loop.actualFps < 30) { View.forceK = 1; onResize(); clearInterval(perfTimer); }
+    if (View.k > 1.05 && loop.actualFps < 30) { slowDrop(); clearInterval(perfTimer); }
     if (perfChecks >= 5) clearInterval(perfTimer);
   } catch (e) { clearInterval(perfTimer); }
 }, 3000);
@@ -111,7 +126,8 @@ setTimeout(() => {
     const loop = game.loop;
     if (!loop || !loop.running || loop.hasFpsLimit || !(loop.actualFps > 100)) return;
     loop.sleep();
-    loop.fpsLimit = 80; loop.hasFpsLimit = true; loop._limitRate = 1000 / 80;
+    const cap = Perf.hiRefreshCap();       // ((v4.3 perf) 80, or the preset's own cap (중사양 60)
+    loop.fpsLimit = cap; loop.hasFpsLimit = true; loop._limitRate = 1000 / cap;
     loop.wake();
   } catch (e) { /* keep running unlimited */ }
 }, 4000);

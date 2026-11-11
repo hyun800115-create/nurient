@@ -14,7 +14,8 @@
 //     written exactly, the old ones that the new village does not have are gone; a storage that fills up half-way puts
 //     the old village back byte for byte and lifts the no-save guard again
 //   - (v4.2.0.2) an admin'd village's code imports without 코인 무제한 / the admin use count; 되돌리기 keeps them
-//   - without CompressionStream: a plain ('j') code, still read anywhere; a compressed code there -> 'cantOpen'
+//   - without CompressionStream: a plain ('j') code, still read anywhere; ((v4.3 perf) a compressed code there opens with the
+//     built-in decoder (src/core/inflate.js), no longer 'cantOpen')
 // Browser (the real game, real taps and the real DOM sheet):
 //   A  late v4.2 village, 390x844: settings -> 「마을 옮기기」 (a real tap on the Phaser button) -> the code; the game
 //      saved first; the code holds exactly the stored game keys; 「복사하기」 puts it on the clipboard; a tap on the sheet
@@ -25,7 +26,7 @@
 //      reload -> the same village (coins, buildings, residents, office staff, dog, chat memory, settings)
 //   C  round trip twice: B's village exported again -> a fresh profile -> the same village; then a v4.1 save inside a
 //      code -> loads exactly like the stored v4.1 save; then 「예비 사본으로 되돌리기」 brings the round-trip village back
-//   D  no CompressionStream (deleted before the page runs): a plain code; a compressed code -> 'cantOpen'; the plain one
+//   D  no CompressionStream (deleted before the page runs): a plain code; a compressed code opens too ((v4.3 perf) inflate.js); the plain one
 //      imports and boots
 //   E  360x640 with an Android bridge stand-in (window.SnowbloomAndroid): 「공유하기」 / 「복사하기」 / 「붙여넣기」 go
 //      through the bridge; no overlaps, nothing wider than the screen (Korean and English); the Phaser footer buttons
@@ -231,7 +232,7 @@ for (const [nm, e] of [['compressed', encZ], ['plain', encJ]]) {
     const e = await T.encodeVillage(LATE);
     const d = await T.decodeVillage(e.code);
     const z = await T.decodeVillage(encZ.code);
-    check('without CompressionStream: a plain code that reads back; a compressed code -> cantOpen', e.comp === 'j' && d.ok && same(d.keys, Object.fromEntries(Object.entries(LATE).sort())) && z.error === 'cantOpen', [e.comp, d.ok, z.error]);
+    check('without CompressionStream: a plain code that reads back; a compressed code opens with the built-in decoder', e.comp === 'j' && d.ok && same(d.keys, Object.fromEntries(Object.entries(LATE).sort())) && z.ok && same(z.keys, d.keys), [e.comp, d.ok, z.ok, z.error]);
   } finally { globalThis.CompressionStream = CS; globalThis.DecompressionStream = DS; }
 }
 delete globalThis.window;
@@ -505,7 +506,7 @@ async function browserPart() {
     check('D: a plain code (SNOWBLOOM1.j.), same keys, ' + textD.length + ' characters', /SNOWBLOOM1\.j\./.test(textD) && dD.ok && same(Object.keys(dD.keys), Object.keys(dA.keys)), textD.length);
     await D.page.click('#fm-tab-in');
     const rz = await tryCode(D.page, textA);
-    check('D: a compressed code -> cannot be opened here (update the WebView / browser)', rz.check.error === 'cantOpen' && /열 수 없어요/.test(rz.msg), rz.check);
+    check('D: a compressed code opens here too ((v4.3 perf) the built-in decoder: a code from a new phone on an old WebView)', rz.check.ok, rz.check);
     const rj = await tryCode(D.page, textD);
     await replace(D.page, false);
     const vD = await village(D.page);
