@@ -8,7 +8,7 @@
 //                 and the save; the 마을 옮기기 code carries the flag (D)
 //   B 412x915 ko  the late v4.2 village (an old save): the classic flag on every pole, the 마을회관's right pole flies it (the
 //                 baked banner painted out), the one-time card after the hand-over (만들기 / 나중에, written once, never again
-//                 after a reload), the waving cost with every pole in view (overview) on 기본 and on 가볍게 (gs.gfxLow): ms per
+//                 after a reload), the waving cost with every pole in view (all 5 framed) on 기본 and on 가볍게 (gs.gfxLow): ms per
 //                 tick, ms per frame with / without the flags; night shots
 //   C 360x640 en  the maker in English (fits, targets >= 88 logical px = 44 CSS px), the card in English (old save), 만들기
 //   D             a village code made in A, brought into an empty browser (Transfer.applyVillage): the flag arrives, no maker
@@ -255,8 +255,18 @@ if (ONLY.includes('B')) {
     await page.evaluate(() => window.__FV.save());
     ok(same(await savedFlag(page), { s: 0, b: 0, p: 0, pc: 11, e: 1, ec: 2 }), 'the classic flag is now written (the card was offered once)');
   }
-  // the waving cost with every pole in view (overview), 기본 then 가볍게
-  await page.evaluate(() => { window.__FV.camera(); window.__FV.zoom('overview'); window.__step.run(1.5); });
+  // the waving cost with every pole in view, 기본 then 가볍게. (Not the overview: it frames the chief's side of the old map
+  //  edge only — Game.overviewRect, 'the west strip (x < 0) has its own overview' — and the 마을회관 and the west pole are
+  //  over there, so it showed 3 of the 5. The camera frames the box around every pole instead, zoomed out to fit it.)
+  await page.evaluate(() => {
+    const gs = window.__FV.scene, cam = gs.cameras.main, P = gs.flags.poles;
+    window.__FV.camera();
+    const xs = P.map((q) => q.ax), ys = P.map((q) => q.ay);
+    const x0 = Math.min(...xs) - 60, x1 = Math.max(...xs) + 120, y0 = Math.min(...ys) - 60, y1 = Math.max(...ys) + 120;
+    const k = cam.zoom / gs.zoomCur;          // View.k (logical px per screen px)
+    window.__FV.camera((x0 + x1) / 2, (y0 + y1) / 2, Math.min(cam.width / k / (x1 - x0), cam.height / k / (y1 - y0)));
+    window.__step.run(1.5);
+  });
   await render(page, 2);
   const cost = await page.evaluate(() => {
     const gs = window.__FV.scene, vf = gs.flags, out = {};
@@ -280,7 +290,7 @@ if (ONLY.includes('B')) {
   ok(cost.default.poles >= 5 && cost.default.perFrameMs < 0.2, `waving with every pole in view: ${cost.default.poles} poles, ${cost.default.tickMs} ms a tick (30 Hz) = ${cost.default.perFrameMs} ms a frame`, cost.default);
   ok(cost.low.ticksPer240 <= cost.default.ticksPer240 * 0.6 && cost.low.perFrameMs <= cost.default.perFrameMs, `가볍게 (gfxLow): 15 Hz, ${cost.low.perFrameMs} ms a frame`, cost.low);
   globalThis.__cost = cost;
-  await page.evaluate(() => { window.__FV.zoom('overview'); window.__step.run(1); });
+  await page.evaluate(() => { window.__FV.camera(); window.__step.run(1); });
   // night
   const night = await page.evaluate(() => { const ck = window.__FV.scene.v4 && window.__FV.scene.v4.clock; if (!ck) return null; ck.set(22); window.__step.run(2); return +ck.hour().toFixed(2); });
   ok(night !== null, 'night (22:00) for the night shots', night);
