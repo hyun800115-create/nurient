@@ -318,6 +318,8 @@ export const WORLD = {
     //  4단 자리 밖). 한 자리에 발판은 하나씩: 앞 발판을 사면 다음 것이 나와요)
     mkt_s3:            { x: 1525, y: 900, labelAt: [-40, 64] },   // 이름표는 발판 아래: 위쪽은 진열대 탑, 오른쪽은 동쪽 땅 안개
     hire_clerk_s3:     { x: 1525, y: 900, clerk: 'meat', labelAt: [-40, 64] },   // ((review PT-8) 이름표는 발판 아래 (위는 고기 계산대 이름표))
+    // ((v4.3 둘째 걸음, B0) 가게 4단 「눈꽃마을 시장」 발판: 3단 발판과 같은 자리 (아직 쓰이지 않아요: 4단 걸음은 P 가 넣어요. M 이 옮길 수 있어요)
+    mkt_s4:            { x: 1525, y: 900, labelAt: [-40, 64] },
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
     porter_grill:      { ...LINE('grill'), station: 'grill' },
     porter_sawmill:    { ...LINE('sawmill'), station: 'sawmill' },
@@ -997,3 +999,14 @@ Object.assign(WORLD.plots, {
 WORLD.plots.v42_depot = { x: L4(WORLD.v42.depot.i, WORLD.v42.depot.j)[0], y: L4(WORLD.v42.depot.i, WORLD.v42.depot.j)[1], size: 'L', region: 'rail', after: 'f:rankEup', also: ['b:warehouse', 'r:se'], only: 'depot42', v42: true };
 // ── (v4.2) 물류창고 가는 흙길은 WORLD.v42.streets 에 그대로 두고 RoadPaint 가 흙길로 칠해요 (물류창고가 생기면).
 //    v4.streets 에 붙이면 RoadNet 의 차 길이 끊긴 조각이 돼요 (y 길끼리 끝과 끝이 닿으면 이어지지 않아요): v5 / v8 이 같은 id 로 이어받아요
+
+// =====================================================================
+// ---- (v4.3 둘째 걸음 「마을 새 단장」, B0 — docs/redesign_v43/stepB/build_plan.md §2) 예전 마을이 새 지도로 옮겨 올 때
+//   oldStart  = 촌장님이 다시 서는 자리: 오두막 현관 앞 (WORLD.v42.hut.door)
+//   shopFront = 사무실 터(v42_office)에 짓다 만 공사장이 있을 때는 여기, 가게 앞 눈밭 (4단 자리 reserve4 밖, 손님 길 밖)
+//   (B0 의 값: L1 이 자리를 재 보고 정해요. 저장 파일의 촌장 자리는 S 의 R43 이 이 값으로 바꿔요)
+// =====================================================================
+WORLD.v43 = {
+  oldStart: [HUT[0] + WORLD.v42.hut.door[0], HUT[1] + WORLD.v42.hut.door[1]],
+  shopFront: [1250, 1000],
+};

@@ -116,12 +116,18 @@ export function checkBalance() {
   const st3 = M3.stage3 = M3.stage3 && typeof M3.stage3 === 'object' ? M3.stage3 : {};
   fixNum(st3, 'coins', 'market43.stage3.coins', 1, 1e9, 400, true);
   fixNum(st3, 'item_plank', 'market43.stage3.item_plank', 0, 999, 8, true);
+  // ((v4.3 step B) stage 4 「눈꽃마을 시장」: its price and the half-price factor for villages that were 읍 already)
+  const st4 = M3.stage4 = M3.stage4 && typeof M3.stage4 === 'object' ? M3.stage4 : {};
+  fixNum(st4, 'coins', 'market43.stage4.coins', 1, 1e9, 2000, true);
+  fixNum(st4, 'item_plank', 'market43.stage4.item_plank', 0, 999, 20, true);
+  fixNum(st4, 'item_ingot', 'market43.stage4.item_ingot', 0, 999, 8, true);
+  fixNum(M3, 'stage4Old', 'market43.stage4Old', 0.05, 1, 0.5);
   const listOf = (k, def, min, max, int) => {
     if (!Array.isArray(M3[k])) { if (M3[k] !== undefined) warn('market43.' + k, M3[k], def); M3[k] = def.slice(); }
     for (let i = 0; i < def.length; i++) fixNum(M3[k], i, 'market43.' + k + '[' + i + ']', min, max, M3[k][i - 1] !== undefined ? M3[k][i - 1] : def[i], int);
   };
-  listOf('shelfMax', [40, 40, 60], 1, 500, true);
-  listOf('spawnMul', [1, 1, 1.1], 0.2, 5);
+  listOf('shelfMax', [40, 40, 60, 80], 1, 500, true);
+  listOf('spawnMul', [1, 1, 1.1, 1.2], 0.2, 5);
   fixNum(M3, 'lineShow', 'market43.lineShow', 2, 20, 6, true);
   fixNum(M3, 'switchS', 'market43.switchS', 0.5, 120, 4);
   fixNum(M3, 'clerk3', 'market43.clerk3', 1, 1e9, 150, true);

@@ -31,6 +31,9 @@ const MOVE_LABEL = { ko: '마을 옮기기', en: 'Move village' };
 import { CATALOG, TABS } from '../systems/Civic.js';
 // ---- (v4.3 마을 깃발) 설정 › 놀이 › 「마을 깃발」
 import { FlagMaker } from '../flag/FlagMaker.js';
+// ---- (v4.3 step B, B0 / BP-26) the step-B cards live in their own files: the save hold cards (S), the 「마을 새 단장」 letter (N)
+import { SaveHoldCard } from './SaveHoldCard.js';
+import { Renewal43Card } from '../systems/v43/Renewal43.js';
 import { Perf } from '../core/Perf.js';
 const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
 
@@ -135,6 +138,8 @@ export class UI extends Phaser.Scene {
     this.bannerUntil = 0;
     this.onboardOv = new OnboardOverlay(this);    // (v4.2.0.1) 첫 실행 튜토리얼
     this.admin = new AdminPanel(this);            // (v4.2.0.2) 관리자 모드
+    this.saveHold = new SaveHoldCard(this);       // (v4.3 step B) 저장 보류 카드 (S)
+    this.renewal43 = new Renewal43Card(this);     // (v4.3 step B) 「마을 새 단장」 편지 (N)
 
     this.layout();
     this.scale.on('resize', this.onResize, this);

@@ -253,6 +253,9 @@ export function sanitizeSave(raw) {
   if (bank) s.bank = bank;
   const lgx = keepLogistics(raw.logistics);
   if (lgx) s.logistics = lgx;
+  // ---- (v4.3 step B, B0) the v43 block (the R43 marker `lay`, `seen`, `refunds43`): minimal keep-rule until S's sanitizeV43
+  const v43 = keepV43(raw.v43);
+  if (v43) s.v43 = v43;
   // the boathouse catch never comes back above its cap (v4.1 saves restored it to 103 %)
   if (s.v3 && s.v3.dock && s.v3.dock.catch) {
     let left = 30;
@@ -430,13 +433,46 @@ export function keepLogistics(raw) {
   } catch (e) { return null; }
 }
 
+/**
+ * (v4.3 step B, B0) a MINIMAL keep-rule for the v43 block, so a reload keeps what B0's Game writes: `lay` an int 0..9
+ * (kept exactly: it is the R43 marker), `seen` keys /^[a-z0-9_]{1,24}$/ set to 1 / true -> 1 (≤ 32 keys), `refunds43` a
+ * plain object of ≤ 512 B JSON (copied). Anything else is dropped. S replaces it with sanitizeV43 (map_save §4.10).
+ * Idempotent; never throws.
+ */
+export function keepV43(raw) {
+  try {
+    if (!isObj(raw)) return null;
+    const o = { lay: Math.max(0, Math.min(9, Math.floor(num(raw.lay, 0)))) };
+    if (isObj(raw.seen)) {
+      const seen = {};
+      let n = 0;
+      for (const k of Object.keys(raw.seen)) {
+        if (n >= 32) break;
+        if (/^[a-z0-9_]{1,24}$/.test(k) && (raw.seen[k] === 1 || raw.seen[k] === true)) { seen[k] = 1; n++; }
+      }
+      if (n) o.seen = seen;
+    }
+    if (isObj(raw.refunds43)) {
+      const txt = JSON.stringify(raw.refunds43);
+      if (typeof txt === 'string' && txt.length <= 512) o.refunds43 = JSON.parse(txt);
+    }
+    return o;
+  } catch (e) { return null; }
+}
+
 /** (v4-C) the civic block: counts clamped, unknown foods dropped (the restaurant's pantry holds cooked food only) */
 export function sanitizeC1(raw) {
   if (!isObj(raw)) return null;
   const C = (BALANCE.civic || {});
   const R = C.restaurant || {}, Hh = C.hall || {};
   const o = { settlers: count(raw.settlers, 500), settleT: Math.max(0, Math.min(3600, num(raw.settleT, 0))) };
-  if (isObj(raw.hall)) o.hall = { tax: count(raw.hall.tax, Math.max(1, Math.floor(num(Hh.taxCap, 1500)))), acc: Math.max(0, Math.min(1000, num(raw.hall.acc, 0))) };
+  if (isObj(raw.hall)) {
+    o.hall = { tax: count(raw.hall.tax, Math.max(1, Math.floor(num(Hh.taxCap, 1500)))), acc: Math.max(0, Math.min(1000, num(raw.hall.acc, 0))) };
+    // ((v4.3 step B, X-5) the station cash the train brought to the hall: its own pile, capped at v4.rent.cap (not the
+    //  tax box's taxCap); written only when there is some (H fills it))
+    const stn = count(raw.hall.stn, Math.max(1, Math.floor(num(BALANCE.v4 && BALANCE.v4.rent && BALANCE.v4.rent.cap, 2000))));
+    if (stn > 0) o.hall.stn = stn;
+  }
   if (isObj(raw.rest)) {
     const max = Math.max(1, Math.floor(num(R.pantryMax, 30)));
     const pantry = {};

@@ -74,6 +74,9 @@ import { newChatId } from '../core/Save.js';
 import { buildV42 } from '../systems/v42/index.js';
 // ---- (v4.3 마을 깃발) the village's own flag on every pole (+ the new-game maker, the one-time card)
 import { VillageFlags } from '../flag/VillageFlags.js';
+// ---- (v4.3 step B, B0) the step-B seams: hidden plots get no Site; gs.v43 (the save's v43 block); the after-load hooks
+import { isHidden } from '../systems/plotRules.js';
+import { runAfterLoad, v43Holder } from '../systems/v43/index.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -194,6 +197,9 @@ export class Game extends Phaser.Scene {
     this.ground = new Ground(this);
     // (v4-C2) the chat record's id (a new game gets a new one: an old chat village is never read into it)
     this.cid = sv.cid || newChatId();
+    // ---- (v4.3 step B, B0) the v43 block: the saved one, else a new village's (lay 2, letter + tour seen), else { lay: 0 }
+    //  (a loaded save without one: R43 still remaps it once S lands). Serialized as `v43`
+    this.v43 = v43Holder(sv.v43, this.saved === null);
     // ---- (v4-C) the civic buildings + settlers (before the plots and the village life: people() counts settlers)
     this.civic = new Civic(this, sv.c1);
     this.queueLate = this.queueLate || (() => this.queueLateFiles());
@@ -267,6 +273,9 @@ export class Game extends Phaser.Scene {
     // ((v4.3 review CD-1) every wall stands now (the hut / the office on the moved plot): a chief saved where they stand
     //  (an old village's beach campfire, the 관망 rest spot) goes out to the yard instead of staying stuck in the walls
     if (okPos) this.unstickChief();
+    // ---- (v4.3 step B, B0) the after-load hooks (src/systems/v43/index.js: N's letter, P1), once per build; a hook that
+    //  throws is logged and skipped. S fills `remapped` / `refunds43`
+    runAfterLoad(this, { fresh: this.saved === null, remapped: false, refunds43: null });
     // ((v4.2 final) everything that stands is solid now: the store's line once more (plot e_m1 / the farm fence))
     if (this.store) this.refreshStoreLine();
     this.events.on('built', (k) => { if (k !== 'store' && this.store) this.refreshStoreLine(); });
@@ -1016,6 +1025,8 @@ export class Game extends Phaser.Scene {
     // building plots (empty until something is chosen); watchtower sites are made when their pad is paid
     for (const id in WORLD.plots || {}) {
       const cfg = WORLD.plots[id];
+      // ((v4.3 step B, BP-19) a hidden plot (world.js `hidden: true`) gets no Site: no sprite, pad, sign or menu, never shown)
+      if (isHidden(cfg)) continue;
       const site = new Site(this, id, cfg, 'plot');
       site.region = cfg.region || this.territory.regionAt(cfg.x, cfg.y);
       this.sites[id] = site;
@@ -2532,6 +2543,8 @@ export class Game extends Phaser.Scene {
       // ---- (v4.2.0.2) 관리자 모드 (optional: only once the designer opened it / while 「코인 무제한」 is on)
       adminUses: this.adminUses > 0 ? this.adminUses : undefined,
       adminInf: this.economy.unlimited ? 1 : undefined,
+      // ---- (v4.3 step B, B0) { lay, seen, refunds43 } (Save.js keeps it; S owns the full rules)
+      v43: this.v43 || undefined,
       // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
       ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };

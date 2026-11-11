@@ -520,6 +520,29 @@ export const STRINGS = {
     adm_bagDone: '가방이 {n}칸이 됐어요', adm_bagMax: '가방이 이미 최대예요',
     adm_speedSet: '시간이 {n}배로 흘러요', adm_speedOne: '시간이 원래대로 흘러요',
     adm_night: '밤이 됐어요', adm_day: '낮이 됐어요', adm_noTutorial: '지금은 튜토리얼을 다시 볼 수 없어요',
+
+    // ==== (v4.3 step B 「마을 새 단장 둘째 걸음」, B0) ko: each package adds its keys ONLY between its own start / end
+    //      lines (the same pair in ko and en), so parallel packages never edit the same lines (build_plan.md §3.1)
+    // >>> v43B:L start (layout: place names for the carry pill, 눈꽃 큰길, moved home lines)
+    // <<< v43B:L end
+
+    // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
+    // <<< v43B:S end
+
+    // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
+    // <<< v43B:P end
+
+    // >>> v43B:H start (hall: train-cash pile label, stage-4 offer banner)
+    // <<< v43B:H end
+
+    // >>> v43B:M start (market: 「눈꽃마을 시장」, counter names)
+    // <<< v43B:M end
+
+    // >>> v43B:N start (renewal: 「마을 새 단장」 letter, 「새 지도 보기」 tour)
+    // <<< v43B:N end
+
+    // >>> v43B:P1 start (play log: settings row, export screen)
+    // <<< v43B:P1 end
   },
 
   en: {
@@ -994,6 +1017,29 @@ export const STRINGS = {
     adm_bagDone: 'The bag holds {n} now', adm_bagMax: 'The bag is already max',
     adm_speedSet: 'Time runs ×{n}', adm_speedOne: 'Time runs normally',
     adm_night: "It's night now", adm_day: "It's day now", adm_noTutorial: "The tutorial can't replay right now",
+
+    // ==== (v4.3 step B 「마을 새 단장 둘째 걸음」, B0) en: each package adds its keys ONLY between its own start / end
+    //      lines (the same pair in ko and en), so parallel packages never edit the same lines (build_plan.md §3.1)
+    // >>> v43B:L start (layout: place names for the carry pill, 눈꽃 큰길, moved home lines)
+    // <<< v43B:L end
+
+    // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
+    // <<< v43B:S end
+
+    // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
+    // <<< v43B:P end
+
+    // >>> v43B:H start (hall: train-cash pile label, stage-4 offer banner)
+    // <<< v43B:H end
+
+    // >>> v43B:M start (market: 「눈꽃마을 시장」, counter names)
+    // <<< v43B:M end
+
+    // >>> v43B:N start (renewal: 「마을 새 단장」 letter, 「새 지도 보기」 tour)
+    // <<< v43B:N end
+
+    // >>> v43B:P1 start (play log: settings row, export screen)
+    // <<< v43B:P1 end
   },
 };
 
