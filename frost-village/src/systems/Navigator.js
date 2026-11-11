@@ -533,7 +533,11 @@ export class Navigator {
     g.clear();
     g.setVisible(true);
     // the view (+ a margin): segments wholly outside it are not stroked, arrows outside it not made
-    const vw = gs.cameras.main.worldView, m = 60 / z;
+    // ((v4.3 navfix) the view the camera shows or is going to (Game.viewRect, as Ground / DollSprite / TownSim cull):
+    //  worldView alone is the last DRAWN frame's — this frame is drawn after the camera follows him, so right after a
+    //  jump (the rank ceremony's cut back, a teleport) and on updates with no draw between, the line by his boots was
+    //  culled away: runs 0, nothing stroked)
+    const vw = gs.viewRect ? gs.viewRect() : gs.cameras.main.worldView, m = 60 / z;
     const x0 = vw.x - m, x1 = vw.right + m, y0 = vw.y - m, y1 = vw.bottom + m;
     const runs = this.runsIn(P, x0, y0, x1, y1);
     // outline, then core (Phaser fills the joints of a path wider than 2 px)
