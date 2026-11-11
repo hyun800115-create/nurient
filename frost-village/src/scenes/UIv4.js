@@ -38,7 +38,9 @@ export class HudV4 {
     this.rankBars = ui.add.graphics();
     rc.add([this.rankBg, this.rankBadge, this.rankText, this.rankBars]);
     rc.setSize(156, 54);
-    rc.setInteractive(new Phaser.Geom.Rectangle(78, 27, 156, 54), Phaser.Geom.Rectangle.Contains);
+    // ((review) a container's hit test adds displayOrigin (w / 2, h / 2): (w / 2, 0, w, h) = the plate (origin (0, 0.5));
+    //  UI.stackRight keeps it the plate's size as the text grows)
+    rc.setInteractive(new Phaser.Geom.Rectangle(78, 0, 156, 54), Phaser.Geom.Rectangle.Contains);
     rc.on('pointerup', () => this.openRank());
     // ---- order chip
     const oc = this.orderChip = ui.add.container(0, 0).setVisible(false).setDepth(20);
@@ -49,7 +51,7 @@ export class HudV4 {
     this.orderLine = ui.add.graphics();
     oc.add([this.orderBg, this.orderIcon, this.orderItem, this.orderText, this.orderLine]);
     oc.setSize(260, 56);
-    oc.setInteractive(new Phaser.Geom.Rectangle(130, 28, 260, 56), Phaser.Geom.Rectangle.Contains);
+    oc.setInteractive(new Phaser.Geom.Rectangle(130, 0, 260, 56), Phaser.Geom.Rectangle.Contains);     // (as the rank chip's)
     oc.on('pointerup', () => this.openOrders());
     // ---- clock
     const ck = this.clock = ui.add.container(0, 0).setVisible(false).setDepth(20);
@@ -189,7 +191,12 @@ export class HudV4 {
       const p = ui.worldToScreen(x, y - 60);
       if (p.x < -20 || p.x > ui.W + 20 || p.y < 140 || p.y > ui.H + 20) {
         const M = 56, cx = ui.W / 2, cy = ui.H / 2;
-        const ex = Phaser.Math.Clamp(p.x, M, ui.W - M), ey = Phaser.Math.Clamp(p.y, 330, ui.H - 430 - View.safeBottom);
+        // ((review) under the notch too, and below the right-hand column's chips it would slip under (depth 19 < 20):
+        //  radius 31 + the 4 px bob + the 38 px pointer)
+        const minY = 330 + View.safeTop;
+        const ex = Phaser.Math.Clamp(p.x, M, ui.W - M);
+        let ey = Phaser.Math.Clamp(p.y, minY, Math.max(minY, ui.H - 430 - View.safeBottom));
+        if (ui.belowRight) ey = ui.belowRight(ex, ey, 42);
         const a = Math.atan2(p.y - cy, p.x - cx);
         const bob = Math.sin(this.t * 5) * 4;
         this.trainEdge.setPosition(ex - Math.cos(a) * bob, ey - Math.sin(a) * bob);

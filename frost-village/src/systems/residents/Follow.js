@@ -233,9 +233,12 @@ export class Follow {
 
   /** the chip's place: the 관망 caption's slot, lower while the caption or a banner is up (they would cover it) */
   chipY() {
-    const ui = this.ui;
-    const cap = ui.hud42 && ui.hud42.obsCap && ui.hud42.obsCap.visible;
-    let y = 62 + View.safeTop + 300 + (cap ? 72 : 0);
+    const ui = this.ui, h = ui.hud42;
+    const cap = h && h.obsCap && h.obsCap.visible;
+    // ((v4.3 HUD review) the band sits under the right-hand column (UI.centreBandY: a long name or a sub-line covered
+    //  마을 진도); with the caption up, 72 under wherever the caption is (under a banner too)
+    const band = ui.centreBandY ? ui.centreBandY() : 62 + View.safeTop + 300;
+    let y = cap ? (h.capAt != null ? h.capAt : band) + 72 : band;
     const bb = ui.bannerBox;
     if (bb && bb.visible && Math.abs(bb.y - y) < 130) y = bb.y + 150;
     return y;

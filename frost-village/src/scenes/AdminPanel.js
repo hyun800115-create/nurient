@@ -364,11 +364,11 @@ export class AdminPanel {
   }
 
   updateChip() {
-    const ui = this.ui, gs = this.gs;
+    const gs = this.gs;
     if (!gs || !gs.economy) return;
     const sp = gs.simSpeed > 1 ? gs.simSpeed : 1, inf = !!gs.economy.unlimited;
     const show = sp > 1 || inf;
-    const key = show ? [t('adm_chip'), sp, inf, Math.round(ui.coinBar.width), View.safeTop].join('|') : '';
+    const key = show ? [t('adm_chip'), sp, inf, View.safeTop].join('|') : '';
     if (key === this.chipKey) return;
     this.chipKey = key;
     this.chip.setVisible(show);
@@ -383,7 +383,10 @@ export class AdminPanel {
     g.fillStyle(0x2b2f3a, 0.82); g.fillRoundedRect(0, -h / 2, w, h, h / 2);
     g.lineStyle(2, 0xffd84a, 0.9); g.strokeRoundedRect(0, -h / 2, w, h, h / 2);
     this.chipText.setPosition(14, 0);
-    this.chip.setPosition(26 + ui.coinBar.width + 12, 62 + View.safeTop);
+    // ((v4.3 HUD review) the population chip took the spot right of the coins: the note stands on the left under the
+    //  objective panel (top + 119), where the population chip used to be (top + 120..160); the 길 안내 edge badge keeps
+    //  below it (HudV42.updateEdge)
+    this.chip.setPosition(28, 62 + View.safeTop + 140);
     this.chipW = w;
   }
 

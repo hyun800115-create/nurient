@@ -140,7 +140,8 @@ export class HudV42 {
     this.workBadge = ui.add.text(122, -18, '', TXT(16, '#ffffff', '#d4426f', 5, '900')).setOrigin(0.5);
     wc.add([this.workBg, this.workIcon, this.workText, this.workBadge]);
     wc.setSize(132, 50);
-    wc.setInteractive(new Phaser.Geom.Rectangle(66, 25, 132, 50), Phaser.Geom.Rectangle.Contains);
+    // ((review) the plate (origin (0, 0.5)): a container's hit test adds displayOrigin (w / 2, h / 2); UI.stackRight keeps it so)
+    wc.setInteractive(new Phaser.Geom.Rectangle(66, 0, 132, 50), Phaser.Geom.Rectangle.Contains);
     wc.on('pointerup', () => { const O = this.v42 && this.v42.office; if (O && O.openPanel) O.openPanel('chip'); });
     this.card = null;
     this.layout();
@@ -297,7 +298,8 @@ export class HudV42 {
       // ((v4.3 review F13) a banner (H * 0.27, its title and subtitle) used to cover the caption's second line — now the
       //  line that says how 관망 ends: the caption moves below it while one shows. It does not glide through the banner
       //  as it pops in: it reappears at its new place with a short fade (also when it first shows))
-      const cy = ui.bannerBox && ui.bannerBox.visible ? ui.H * 0.27 + CAP_UNDER_BANNER : this.capY0;
+      // ((review) under the right-hand column (정기 납품 · 업무 · 마을 진도 reach top + 330): UI.centreBandY)
+      const cy = ui.bannerBox && ui.bannerBox.visible ? ui.H * 0.27 + CAP_UNDER_BANNER : ui.centreBandY ? ui.centreBandY() : this.capY0;
       if (this.capAt !== cy) { this.capAt = cy; this.obsCap.setY(cy).setAlpha(0); }
       if (this.obsCap.alpha < 1) this.obsCap.setAlpha(Math.min(1, this.obsCap.alpha + dt * 5));
     } else if (this.capAt !== null) { this.capAt = null; this.obsCap.setY(this.capY0); }
@@ -367,9 +369,16 @@ export class HudV42 {
       if (p.x < -10 || p.x > ui.W + 10 || p.y < 120 || p.y > ui.H + 10) {
         const M = 60, cx = ui.W / 2, cy = ui.H / 2;
         const a = Math.atan2(p.y - cy, p.x - cx);
-        // ((robust review L1) the left column holds the HUD chips (rank, 32/32, order card, 업무) down to ≈ 450 logical
-        //  px: on that side the badge stays below them; on the right only the settings / day buttons are up there)
-        const ex = Phaser.Math.Clamp(p.x, M, ui.W - M), ey = Phaser.Math.Clamp(p.y, ex < ui.W * 0.45 ? 480 : 220, ui.H - 240 - View.safeBottom);
+        // ((v4.3 HUD review) the chips (정기 납품 · 업무 · 마을 진도) stand in the right-hand column under the day clock now,
+        //  drawn over the badge (depth 20 > 19): it keeps below the ones it would touch (UI.belowRight; ring ≈ 36 px + 4).
+        //  Elsewhere just below the objective panel and the clock (top + 119 / + 120), under the notch too)
+        let minY = 62 + View.safeTop + 160;
+        const ex = Phaser.Math.Clamp(p.x, M, ui.W - M);
+        // (admin mode: below the 관리자 note on the left too (AdminPanel.updateChip: x 28.., 40 tall, depth 32 over the badge))
+        const A = ui.admin, an = A && A.chip;
+        if (an && an.visible && ex - 40 < an.x + (A.chipW || 0)) minY = Math.max(minY, an.y + 20 + 6 + 40);
+        let ey = Phaser.Math.Clamp(p.y, minY, Math.max(minY, ui.H - 240 - View.safeBottom));
+        if (ui.belowRight) ey = ui.belowRight(ex, ey, 40);
         this.edge.setPosition(ex, ey);
         this.edgeRing.setRotation(a);
         // (art: the metres sit on the side away from the arrow)
