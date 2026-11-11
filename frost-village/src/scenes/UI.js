@@ -724,23 +724,52 @@ export class UI extends Phaser.Scene {
 
   /** ((v4.3 HUD, designer: 「납품 · 업무 · 마을 진도는 오른쪽 해 밑으로」) the right-hand column under the day clock: 정기 납품,
    *  업무, 마을 진도 — the ones showing, top to bottom, right-aligned, no gaps. Each is placed again only when it appears,
-   *  goes or changes width (no work most frames). `rightBottom`: the column's lower edge (the dog bar keeps below it) */
+   *  goes or changes width (no work most frames). `rightBottom`: the column's lower edge (the dog bar keeps below it);
+   *  `rightBoxes` / `rightN`: each chip's plate on screen (the edge badges keep clear of them: belowRight) */
   stackRight() {
     const h4 = this.hud4, h42 = this.hud42;
     if (!h4 || !h42) return;
     // (read every time: a chip's plate is made again when its art arrives (reskin), so no cached objects)
     const R = this.W - 24;
-    let y = 62 + View.safeTop + 150;
+    const bx = this.rightBoxes || (this.rightBoxes = [{ l: 0, t: 0, b: 0 }, { l: 0, t: 0, b: 0 }, { l: 0, t: 0, b: 0 }]);
+    let y = 62 + View.safeTop + 150, n = 0;
     for (let i = 0; i < 3; i++) {
       const c = i === 0 ? h4.orderChip : i === 1 ? h42.workChip : h4.rankChip;
       const bg = i === 0 ? h4.orderBg : i === 1 ? h42.workBg : h4.rankBg;
       if (!c || !c.visible) continue;
-      const w = (bg && bg.active !== false && bg.width) || c.width || 150, h = (bg && bg.active !== false && bg.height) || c.height || 54;
+      // ((review) the plate as drawn: the reskinned 업무 plate is a ui_chip nine-slice built 64 tall and scaled to 50
+      //  (HudV42.reskin; a Canvas FlatPanel the same), so its own width / height are not what the player sees)
+      const live = bg && bg.active !== false;
+      const w = (live && bg.width * Math.abs(bg.scaleX || 1)) || c.width || 150, h = (live && bg.height * Math.abs(bg.scaleY || 1)) || c.height || 54;
       const x = Math.round(R - w), cy = Math.round(y + h / 2);
       if (c.x !== x || c.y !== cy) c.setPosition(x, cy);
+      // ((review) the tap area = the plate (origin (0, 0.5)), also after it grows (a longer 정기 납품 / 마을 진도 text). A
+      //  container's hit test adds its displayOrigin (width / 2, height / 2): Rectangle(w / 2, 0, w, h) is local x 0..w,
+      //  y -h/2..h/2 — the chips stand 10 px apart, so a rectangle half a chip low opened the neighbour's panel)
+      if (c.__hw !== w || c.__hh !== h) { c.__hw = w; c.__hh = h; c.setSize(w, h); if (c.input && c.input.hitArea) c.input.hitArea.setTo(w / 2, 0, w, h); }
+      const o = bx[n++];
+      o.l = x; o.t = cy - h / 2; o.b = cy + h / 2;
       y += h + 10;
     }
+    this.rightN = n;
     this.rightBottom = y;
+  }
+
+  /** ((review) a round badge (radius r) wanted at (x, y) — the 길 안내 / 눈꽃 열차 edge badges, drawn under the chips: the
+   *  first height at or below y where it keeps clear of every chip of the right-hand column it would touch (one pass: the
+   *  chips stand top to bottom and the badge only moves down). Last frame's column (stackRight runs after the huds) */
+  belowRight(x, y, r) {
+    const bx = this.rightBoxes, n = this.rightN || 0;
+    for (let i = 0; i < n; i++) { const o = bx[i]; if (x + r > o.l && y - r < o.b + 6 && y + r > o.t - 6) y = o.b + 6 + r; }
+    return y;
+  }
+
+  /** ((review) the centre of the band the 관망 caption (76 tall) and the residents' follow chip use: top + 300, or lower
+   *  so the caption starts 8 px under the right-hand column (all three chips reach top + 330: the caption covered
+   *  마을 진도). Worked out when used: the chips come and go after layout() */
+  centreBandY() {
+    const base = 62 + View.safeTop + 300, rb = this.rightBottom;
+    return rb ? Math.max(base, rb - 10 + 8 + 38) : base;
   }
 
   /** ((v4.3 verify LOOK-7) the objective panel keeps clear of the day clock (top right, once the neighbours open): it slides

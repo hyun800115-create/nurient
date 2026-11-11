@@ -11,6 +11,10 @@
 // place (목표 창 / notice board) is named in row 2 only when it takes something in the bag; hidden in the office / card
 // panels (v42PanelOpen), under an emote over his head, and on the place where the navigator's name plate stands; standing
 // still nothing is rendered again, and no text is rendered twice for the same words and colour.)
+// ((HUD review) measured as drawn (the reskinned 업무 plate is
+// scaled); each chip's tap area is its plate (a tap near an edge opens that chip, not its neighbour; the gaps do not);
+// the 길 안내 edge badge and the train badge keep below the chips they would slip under; the 관망 caption starts below
+// the column.)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,7 +55,8 @@ async function boot(fixture, vp, lang) {
 const pill = (page) => page.evaluate(() => window.__FV.v42.carry.state());
 const hud = (page) => page.evaluate(() => {
   const ui = window.__FV.game.scene.getScene('UI'), h4 = ui.hud4, h42 = ui.hud42;
-  const box = (c, bg, oy) => c && c.visible ? { x: Math.round(c.x), y: Math.round(c.y), w: Math.round((bg && bg.width) || c.width), h: Math.round((bg && bg.height) || c.height) } : null;
+  // ((review) the plate as drawn: the reskinned 업무 plate is a ui_chip nine-slice 64 tall scaled to 50)
+  const box = (c, bg) => c && c.visible ? { x: Math.round(c.x), y: Math.round(c.y), w: Math.round(bg ? bg.width * Math.abs(bg.scaleX || 1) : c.width), h: Math.round(bg ? bg.height * Math.abs(bg.scaleY || 1) : c.height) } : null;
   return { W: ui.W, coin: { x: Math.round(ui.coinBar.x), y: Math.round(ui.coinBar.y), w: Math.round(ui.coinBar.width) }, pop: box(ui.popBox, ui.popBg), obj: ui.objPanel.visible ? { x: Math.round(ui.objPanel.x), y: Math.round(ui.objPanel.y), w: Math.round(ui.objBg.width) } : null,
     clock: h4.clock.visible ? { x: Math.round(h4.clock.x), y: Math.round(h4.clock.y) } : null, order: box(h4.orderChip, h4.orderBg), work: box(h42.workChip, h42.workBg), rank: box(h4.rankChip, h4.rankBg) };
 });
@@ -69,6 +74,40 @@ for (const run of [{ fx: 'v42_village_late.json', vp: { width: 412, height: 915 
   let sorted = true; for (let i = 1; i < col.length; i++) if (col[i].y - col[i].h / 2 < col[i - 1].y + col[i - 1].h / 2) sorted = false;
   ok(sorted, '[' + run.tag + '] …in order (정기 납품 · 업무 · 마을 진도) without overlaps', col);
   ok(col.every((c) => c.x > H.W / 2 - 40), '[' + run.tag + '] the left side under the coins is clear of chips', col);
+  // ((review) the tap areas: near each plate's corners and in its middle exactly that chip; in the gap under it none
+  const T = await page.evaluate(() => {
+    const ui = window.__FV.game.scene.getScene('UI'), h4 = ui.hud4, h42 = ui.hud42, cam = ui.cameras.main, k = cam.zoom;
+    const chips = [['order', h4.orderChip, h4.orderBg], ['work', h42.workChip, h42.workBg], ['rank', h4.rankChip, h4.rankBg]].filter((q) => q[1].visible);
+    const at = (x, y) => ui.input.manager.hitTest({ x: x * k, y: y * k }, chips.map((q) => q[1]), cam, []).map((o) => chips.find((q) => q[1] === o)[0]);
+    const bad = [];
+    for (const [id, c, bg] of chips) {
+      const w = bg.width * Math.abs(bg.scaleX || 1), h = bg.height * Math.abs(bg.scaleY || 1), L = c.x, U = c.y - h / 2;
+      for (const [px, py] of [[L + 6, U + 4], [L + w - 6, U + 4], [L + 6, U + h - 4], [L + w - 6, U + h - 4], [L + w / 2, U + h / 2]]) { const r = at(px, py); if (r.length !== 1 || r[0] !== id) bad.push({ id, at: [Math.round(px), Math.round(py)], got: r }); }
+      const g = at(L + w / 2, U + h + 5); if (g.length) bad.push({ id, gapUnder: true, got: g });
+    }
+    return { n: chips.length, bad };
+  });
+  ok(T.n >= 2 && T.bad.length === 0, '[' + run.tag + '] …each chip\'s tap area is its plate (corners, middle; the gap under it opens nothing)', T);
+  // ((review) the edge badges (drawn under the chips) keep clear of the column: 길 안내 toward places off screen right /
+  //  above / left, and the train badge's clamp (UI.belowRight)
+  const E = await page.evaluate(() => {
+    const ui = window.__FV.game.scene.getScene('UI'), h42 = ui.hud42, gs = window.__FV.scene, cam = gs.cameras.main, z = cam.zoom || 1, k = ui.cameras.main.zoom;
+    const vx = cam.scrollX + cam.width * 0.5 * (1 - 1 / z), vy = cam.scrollY + cam.height * 0.5 * (1 - 1 / z);
+    const top = ui.coinBar.y, R = ui.W - 24, boxes = [];
+    for (let i = 0; i < ui.rightN; i++) boxes.push(Object.assign({}, ui.rightBoxes[i]));
+    const under = (x, y, r) => boxes.some((o) => x + r > o.l && x - r < R && y + r > o.t && y - r < o.b);
+    const out = [];
+    for (const [sx, sy] of [[ui.W + 120, top + 250], [ui.W + 120, top + 330], [640, -200], [470, -200], [-120, top + 100]]) {
+      h42.updateEdge({ active: true, dest: { pad: { x: sx * k / z + vx, y: sy * k / z + vy + 30 }, type: 'item_bread' }, routeLen: 640 }, false);
+      const e = h42.edge;
+      out.push({ to: [sx, sy], vis: e.visible, x: Math.round(e.x), y: Math.round(e.y), under: under(e.x, e.y, 36), clear: e.y - 36 >= top + 120 });
+    }
+    h42.updateEdge(null, false);
+    const ty = ui.belowRight(664, top - 62 + 330, 42);
+    return { boxes, out, train: { y: ty, under: under(664, ty, 38) } };
+  });
+  ok(E.out.every((e) => e.vis && !e.under && e.clear), '[' + run.tag + '] the 길 안내 edge badge keeps clear of the right-hand column and the objective (' + E.out.map((e) => e.x + ',' + e.y).join(' ') + ')', E);
+  ok(!E.train.under, '[' + run.tag + '] …and the train badge (y ' + E.train.y + ')', E);
   // ---- the pill (자동 줍기 off: else he picks up what lies around him right after the bag is emptied)
   await page.evaluate(() => { const F = window.__FV; F.v42.settings({ pickup: 'off' }); F.clearStack(); });
   // (just after the boot a busy machine can hold the frames back a few seconds: wait for the fade, then read)
@@ -254,6 +293,19 @@ for (const run of [{ fx: 'v42_village_late.json', vp: { width: 412, height: 915 
   P = await pill(page);
   ok(P.shown, '[' + run.tag + '] …and comes back away from it', P);
   await page.evaluate(() => window.__FV.clearStack());
+  // ((review) the 관망 caption (and the follow chip's band) starts below the right-hand column, not over 마을 진도
+  const C0 = await page.evaluate(() => ({ started: window.__FV.v42.v.pilot.start('test') }));
+  await sleep(800);
+  const C = await page.evaluate(() => {
+    const ui = window.__FV.game.scene.getScene('UI'), h42 = ui.hud42, P = window.__FV.v42.v.pilot, o = h42.obsCap, bg = h42.obsBg;
+    let colBottom = 0; for (let i = 0; i < ui.rightN; i++) colBottom = Math.max(colBottom, ui.rightBoxes[i].b);
+    const hh = bg.height * Math.abs(bg.scaleY || 1) / 2;
+    const r = { vis: o.visible, banner: ui.bannerBox.visible, top: Math.round(o.y - hh), colBottom, bandTop: Math.round(ui.centreBandY() - 38) };
+    P.stop('test');
+    return r;
+  });
+  ok(C.bandTop >= C.colBottom + 4 && (!C0.started || !C.vis || C.banner || C.top >= C.colBottom + 4), '[' + run.tag + '] the 관망 caption starts below the right-hand column (' + (C0.started ? 'shown, top ' + C.top : 'band top ' + C.bandTop) + ', column ' + C.colBottom + ')', Object.assign(C, C0));
+  await sleep(600);
   errors.push(...log.errors);
   await page.close();
 }
