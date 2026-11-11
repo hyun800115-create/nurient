@@ -223,7 +223,7 @@ export class HudV42 {
     this.backChip.setPosition(W / 2, H - 128 - View.safeBottom);
     this.hintChip.setPosition(W / 2, H - 140 - View.safeBottom);
     this.countChip.setPosition(W / 2, H * 0.62);
-    this.workChip.setPosition(28, 62 + View.safeTop + 348);
+    this.workChip.setPosition(W - 24 - 132, 62 + View.safeTop + 150 + 66 + 25);     // ((v4.3 HUD) UI.stackRight places it
     if (this.card) this.closeCard(true);
   }
 

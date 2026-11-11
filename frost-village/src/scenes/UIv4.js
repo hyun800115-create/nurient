@@ -77,14 +77,16 @@ export class HudV4 {
 
   layout() {
     const ui = this.ui, top = 62 + View.safeTop;
-    this.rankChip.setPosition(188, top + 152);
-    this.orderChip.setPosition(28, top + 212);
+    // ((v4.3 HUD) 마을 진도 / 정기 납품 stand in the right-hand column under the clock: UI.stackRight places them
+    this.rankChip.setPosition(ui.W - 24 - 156, top + 150 + 66 + 60 + 27);
+    this.orderChip.setPosition(ui.W - 24 - 260, top + 150 + 28);
     this.clock.setPosition(ui.W - 62, top + 92);
     if (this.panel) this.closePanel(true);
   }
 
   /** bottom of the chips on screen (the dog bar keeps clear of them) */
-  bottom() { return 62 + View.safeTop + (this.orderChip.visible ? 268 : this.rankChip.visible ? 178 : 178); }
+  // ((v4.3 HUD) the right-hand column's lower edge (UI.stackRight), never above the old row of chips)
+  bottom() { const rb = this.ui.rightBottom; return Math.max(62 + View.safeTop + 178, rb || 0); }
 
   // ------------------------------------------------------------------ chips
   update(dt) {

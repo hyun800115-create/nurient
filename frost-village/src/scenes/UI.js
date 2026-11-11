@@ -224,7 +224,7 @@ export class UI extends Phaser.Scene {
     this.coinBar.setPosition(26, top);
     this.coinIcon.setPosition(64, top);
     this.coinText.setPosition(104, top + 2);
-    this.popBox.setPosition(28, top + 152);
+    this.placePop();          // ((v4.3 HUD) right of the coin counter, on its row
     this.setBtn.setPosition(W - 62, top);
     const zb = H - 168 - View.safeBottom;
     this.mapBtn.setPosition(W - 56, zb);
@@ -704,6 +704,35 @@ export class UI extends Phaser.Scene {
     if (sf.frame !== undefined) cfg.frame = sf.frame;
     const e = this.add.particles(0, 0, sf.tex, cfg).setDepth(55);
     this.time.delayedCall(6500, () => e.destroy());
+  }
+
+  /** ((v4.3 HUD, designer: 「돈 옆에 인구수」) the population chip sits right of the coin counter, on the same row; it
+   *  follows the counter as it grows (more digits) */
+  placePop() {
+    if (!this.popBox || !this.coinBar) return;
+    const x = Math.round(26 + (this.coinBar.width || 230) + 12), y = 62 + View.safeTop;
+    if (this.popBox.x !== x || this.popBox.y !== y) this.popBox.setPosition(x, y);
+  }
+
+  /** ((v4.3 HUD, designer: 「납품 · 업무 · 마을 진도는 오른쪽 해 밑으로」) the right-hand column under the day clock: 정기 납품,
+   *  업무, 마을 진도 — the ones showing, top to bottom, right-aligned, no gaps. Each is placed again only when it appears,
+   *  goes or changes width (no work most frames). `rightBottom`: the column's lower edge (the dog bar keeps below it) */
+  stackRight() {
+    const h4 = this.hud4, h42 = this.hud42;
+    if (!h4 || !h42) return;
+    // (read every time: a chip's plate is made again when its art arrives (reskin), so no cached objects)
+    const R = this.W - 24;
+    let y = 62 + View.safeTop + 150;
+    for (let i = 0; i < 3; i++) {
+      const c = i === 0 ? h4.orderChip : i === 1 ? h42.workChip : h4.rankChip;
+      const bg = i === 0 ? h4.orderBg : i === 1 ? h42.workBg : h4.rankBg;
+      if (!c || !c.visible) continue;
+      const w = (bg && bg.active !== false && bg.width) || c.width || 150, h = (bg && bg.active !== false && bg.height) || c.height || 54;
+      const x = Math.round(R - w), cy = Math.round(y + h / 2);
+      if (c.x !== x || c.y !== cy) c.setPosition(x, cy);
+      y += h + 10;
+    }
+    this.rightBottom = y;
   }
 
   /** ((v4.3 verify LOOK-7) the objective panel keeps clear of the day clock (top right, once the neighbours open): it slides
@@ -1287,6 +1316,7 @@ export class UI extends Phaser.Scene {
     if (this.coinText.text !== s) {
       this.coinText.setText(s);
       this.coinBar.setSize(Math.max(170, this.coinText.width + 128), 74);
+      this.placePop();
     }
     // joystick
     const j = Input.joy;
@@ -1315,6 +1345,7 @@ export class UI extends Phaser.Scene {
     this.updateChatButton(dt);
     if (this.hud4) this.hud4.update(dt);
     if (this.hud42) this.hud42.update(dt);
+    this.stackRight();                  // ((v4.3 HUD) 정기 납품 · 업무 · 마을 진도 under the day clock
     if (this.officePanel) this.officePanel.update(dt);
     if (this.goals) this.goals.update(dt);
     if (this.residents) this.residents.update(dt);

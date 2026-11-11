@@ -203,7 +203,9 @@ export class ChiefAura {
     this.coverT -= dt;
     if (this.coverT <= 0) { this.coverT = 0.1; this.cover = this.coveredBy(p); }
     this.drawGhost(p);
-    const wantPin = (gs.zoomCur || 1) < (a.pinZoom || 0.8) || this.crowd || this.observing || !!this.cover;
+    // ((v4.3) not while the 짐 이름표 shows: its ★ marks him already — one badge, never two stacked)
+    const pillOn = !!(this.v42 && this.v42.carry && this.v42.carry.shown);
+    const wantPin = !pillOn && ((gs.zoomCur || 1) < (a.pinZoom || 0.8) || this.crowd || this.observing || !!this.cover);
     this.pinA += ((wantPin ? 1 : 0) - this.pinA) * Math.min(1, dt / 0.2);
     if (this.pinA > 0.01) {
       let top = p.y - ly + p.headTop - 14;
