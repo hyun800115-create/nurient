@@ -6,6 +6,11 @@
 // shows; the same size on screen at zoom 0.7 and 1.5. The HUD: the population chip on the coin row right of the
 // counter, the objective centred below, the right-hand column (정기 납품 · 업무 · 마을 진도) under the clock, right-
 // aligned, without overlaps, at 412×915 ko and 360×640 en.
+// ((v4.3 review) + the plate is a nine-slice on WebGL (no Graphics re-tessellated each frame); the kinds count the items
+// still flying to him (no empty plate at the first pickup); a mixed load's row 2 says '+N곳' like the HUD chip; a pinned
+// place (목표 창 / notice board) is named in row 2 only when it takes something in the bag; hidden in the office / card
+// panels (v42PanelOpen), under an emote over his head, and on the place where the navigator's name plate stands; standing
+// still nothing is rendered again, and no text is rendered twice for the same words and colour.)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,21 +71,73 @@ for (const run of [{ fx: 'v42_village_late.json', vp: { width: 412, height: 915 
   ok(col.every((c) => c.x > H.W / 2 - 40), '[' + run.tag + '] the left side under the coins is clear of chips', col);
   // ---- the pill (자동 줍기 off: else he picks up what lies around him right after the bag is emptied)
   await page.evaluate(() => { const F = window.__FV; F.v42.settings({ pickup: 'off' }); F.clearStack(); });
+  // (just after the boot a busy machine can hold the frames back a few seconds: wait for the fade, then read)
   await sleep(800);
   let P = await pill(page);
+  for (let i = 0; i < 20 && P.visible; i++) { await sleep(250); P = await pill(page); }
   ok(!P.visible, '[' + run.tag + '] empty hands: no pill', P);
   await page.evaluate(() => { const F = window.__FV; F.carry('item_bread', 5); F.carry('item_fish_cooked', 3); });
   await sleep(1500);
   P = await pill(page);
   const bread = run.lang === 'en' ? 'Bread 5' : '빵 5';
+  for (let i = 0; i < 20 && !(P.visible && P.alpha > 0.9 && P.row1[0] === bread); i++) { await sleep(250); P = await pill(page); }
   ok(P.visible && P.alpha > 0.9 && P.row1[0] === bread, '[' + run.tag + '] carrying: the pill shows the biggest kind first (' + P.row1.join(' | ') + ')', P);
   ok(P.row1.some((s) => /3$/.test(s)), '[' + run.tag + '] …and the second kind', P);
   ok(P.row1.some((s) => /^8\/\d+$/.test(s)), '[' + run.tag + '] …and the bag (8/cap)', P);
-  ok(P.row2 && P.row2.startsWith('→ '), '[' + run.tag + '] row 2 says where it goes: ' + P.row2, P);
+  ok(P.row2 && /(^|\s)→ /.test(P.row2), '[' + run.tag + '] row 2 says where it goes: ' + P.row2, P);
+  ok(P.plate === (P.webgl ? 'nine' : 'gfx'), '[' + run.tag + '] the plate is a nine-slice on WebGL (no Graphics redrawn each frame): ' + P.plate + ' / webgl ' + P.webgl, P);
+  // ((review #6) a mixed load: another place takes some of it → '+N곳' as on the HUD chip; a place taking one kind → its name)
+  const MX = await page.evaluate(() => { const N = window.__FV.v42.v.nav, d = N.dest; return { others: d ? d.others || 0 : 0, types: d && d.types ? d.types.slice() : [], n: d ? d.n : 0, more: N.chip() ? N.chip().more : 0, pill: window.__FV.v42.carry.state() }; });
+  const moreTxt = (k) => (run.lang === 'en' ? '+' + k + ' more' : '+' + k + '곳');
+  ok(!MX.others || (MX.pill.row2 && MX.pill.row2.endsWith(moreTxt(MX.others))), '[' + run.tag + '] …a mixed load: \'' + (MX.others ? moreTxt(MX.others) : '(one place)') + '\' when other kinds go elsewhere: ' + MX.pill.row2, MX);
+  ok(!(MX.others && MX.types.length === 1) || (MX.pill.row2 && /^\S+.* \d+ → /.test(MX.pill.row2)), '[' + run.tag + '] …and which kind goes there when the place takes one kind', MX);
   // (the pin eases down over 0.2 s of game time: on a busy machine that takes a few frames more)
   let pin = 1; for (let i = 0; i < 20 && pin >= 0.2; i++) { pin = await page.evaluate(() => window.__FV.v42.v.aura.pinA); if (pin >= 0.2) await sleep(200); }
   ok(pin < 0.2, '[' + run.tag + '] ChiefAura\'s star pin stays down while the pill shows (' + pin.toFixed(2) + ')');
   await page.screenshot({ path: path.join(SHOTS, 'carry_' + run.tag + '_mixed.png') });
+  // ((review #6, verify) a long row 2: the kind's name gives way when the row would pass about 3/4 of the screen (en:
+  //  'Grilled fish 12 → Loading dock at Frost Station · 33 m +2 more'), and stays when it fits (ko)
+  const LG = await page.evaluate(async () => {
+    const F = window.__FV, N = F.v42.v.nav, c = F.v42.v.carry, G = F.scene.v4 && F.scene.v4.growth, d0 = N.active ? N.dest : null;
+    if (!d0 || !d0.pad) return null;
+    c.lastPad = null;
+    N.dest = { type: 'item_fish_cooked', n: 12, pad: G && G.dockPad ? G.dockPad : d0.pad, sink: null, types: ['item_fish_cooked'], label: 'place_dock_stn', lp: null, others: 2 };
+    N.pickT = 999;
+    await new Promise((r) => setTimeout(r, 500));
+    const s = F.v42.carry.state();
+    N.pickT = 0;
+    return { row2: s.row2, w: s.w, W: F.scene.scale.width };
+  });
+  if (LG) {
+    const kindTxt = run.lang === 'en' ? 'Grilled fish 12 → ' : '구운 생선 12 → ';
+    ok(LG.row2 && LG.row2.endsWith(moreTxt(2)) && (run.lang === 'en' ? !LG.row2.startsWith(kindTxt) : LG.row2.startsWith(kindTxt)) && LG.w * 0.92 <= LG.W * 0.8,
+      '[' + run.tag + '] a long row 2: the kind\'s name ' + (run.lang === 'en' ? 'gives way' : 'stays when it fits') + ' (' + LG.row2 + ', ' + Math.round(LG.w * 0.92 / LG.W * 100) + '% of the screen)', LG);
+  } else ok(false, '[' + run.tag + '] a long row 2 (no destination to test with)');
+  await sleep(700);
+  // ((review #5 / #14 / #15) standing still nothing renders again; no text is rendered twice for the same words + colour
+  //  (Phaser's setColor re-renders even when nothing changed); walking, row 2's metres render once per change
+  await page.evaluate(() => {
+    const c = window.__FV.v42.v.carry, n = c._rn = { r2: 0, bag: 0, dup: 0 };
+    const wrap = (o, k) => { const f = o.updateText; let last = null; o.updateText = function () { const key = this.text + '|' + this.style.color; if (key === last) n.dup++; last = key; n[k]++; if (k === 'r2') (n.seen || (n.seen = [])).push(this.text); return f.apply(this, arguments); }; };
+    wrap(c.row2, 'r2'); wrap(c.txBag, 'bag');
+  });
+  await sleep(1200);
+  const still = await page.evaluate(() => Object.assign({}, window.__FV.v42.v.carry._rn));
+  //  (a re-planned route may change the metres once: never more, never the same words twice)
+  ok(still.r2 <= 1 && still.bag === 0 && still.dup === 0, '[' + run.tag + '] standing still: nothing rendered again but a real change (' + JSON.stringify(still) + ')', still);
+  await page.evaluate(() => window.__FV.carry('item_bread', 1));
+  await sleep(500);
+  const one = await page.evaluate(() => Object.assign({}, window.__FV.v42.v.carry._rn));
+  ok(one.bag === 1, '[' + run.tag + '] one more item: the bag number rendered once (' + one.bag + ')', one);
+  const before = await page.evaluate(() => { const p = window.__FV.scene.player; return [p.x, p.y]; });
+  await page.evaluate(() => window.__FV.setInput(0.7, 0.35));
+  await sleep(1800);
+  await page.evaluate(() => window.__FV.setInput(0, 0));
+  await sleep(300);
+  const walk = await page.evaluate(() => Object.assign({}, window.__FV.v42.v.carry._rn, { row2: window.__FV.v42.carry.state().row2 }));
+  ok(walk.dup === 0, '[' + run.tag + '] walking: row 2 rendered ' + walk.r2 + ' times, never twice for the same words (' + walk.dup + ' repeats)', walk);
+  await page.evaluate((b) => { window.__FV.teleport(b[0], b[1]); }, before);
+  await sleep(600);
   // the same size on screen at two zooms
   const scr = async (z) => { await page.evaluate((z) => { const p = window.__FV.scene.player; window.__FV.camera(p.x, p.y, z); }, z); await sleep(1500); const zz = await page.evaluate(() => window.__FV.scene.zoomCur || window.__FV.scene.cameras.main.zoom); const q = await pill(page); return q.scale * zz; };
   const a = await scr(0.7), b2 = await scr(1.5);
@@ -93,6 +150,25 @@ for (const run of [{ fx: 'v42_village_late.json', vp: { width: 412, height: 915 
   const full = run.lang === 'en' ? 'full' : '가득';
   ok(P.row1.some((s) => s.endsWith(full)), '[' + run.tag + '] a full bag says ' + full + ' (' + P.row1.join(' | ') + ')', P);
   await page.screenshot({ path: path.join(SHOTS, 'carry_' + run.tag + '_full.png') });
+  // ((review #4) a v4.2 panel (the office / depot panel, the '새로워진 것' card: ui.v42PanelOpen) hides it
+  await page.evaluate(() => { window.__FV.game.scene.getScene('UI').v42PanelOpen = true; });
+  await sleep(700);
+  P = await pill(page);
+  ok(!P.shown, '[' + run.tag + '] a v4.2 panel (v42PanelOpen) hides it', P);
+  await page.evaluate(() => { window.__FV.game.scene.getScene('UI').v42PanelOpen = false; });
+  await sleep(700);
+  P = await pill(page);
+  ok(P.shown, '[' + run.tag + '] …and it comes back after', P);
+  // ((review #1) an emote over his head (the first-run tutorial's thumbs-up): the plate gives way, then comes back
+  //  (the emote lasts 1 s of game time: on a busy machine the game runs slower than the clock, so wait for it to end)
+  await page.evaluate(() => { const gs = window.__FV.scene; gs.life.bubbles.emote(gs.player, 'emote_thumbs', 1.0); });
+  await sleep(450);
+  P = await pill(page);
+  ok(!P.shown, '[' + run.tag + '] an emote over his head: the plate gives way', P);
+  let emo = true; for (let i = 0; i < 40 && emo; i++) { emo = await page.evaluate(() => { const gs = window.__FV.scene; return gs.life.bubbles.active.some((b) => b.who === gs.player); }); if (emo) await sleep(250); }
+  await sleep(700);
+  P = await pill(page);
+  ok(!emo && P.shown, '[' + run.tag + '] …and comes back after it', P);
   // the overview (전체 지도) hides it (a menu that pauses the village covers it anyway)
   await page.evaluate(() => window.__FV.scene.toggleOverview());
   await sleep(1200);
@@ -106,6 +182,78 @@ for (const run of [{ fx: 'v42_village_late.json', vp: { width: 412, height: 915 
   await sleep(900);
   P = await pill(page);
   ok(!P.visible, '[' + run.tag + '] hands empty again: gone', P);
+  // ((review #3 / #16) the first item still flying to him: the plate shows it at once (no empty plate), and the kinds
+  //  always add up to the bag's number
+  //  (read on the first frame the plate shows: the 0.3-s flight is game time, a busy machine runs it slower)
+  const FL = await page.evaluate(() => new Promise((res) => {
+    const F = window.__FV, gs = F.scene, p = gs.player;
+    gs.spawnItemTo('item_bread', p.x + 80, p.y, p, true);
+    let n = 0;
+    const tick = () => {
+      const s = F.v42.carry.state();
+      if ((s.visible && s.alpha > 0) || ++n > 600) return res({ pill: s, count: p.stack.count, incoming: p.stack.incoming, frames: n });
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }));
+  const bread1 = run.lang === 'en' ? 'Bread 1' : '빵 1';
+  ok(FL.pill.visible && FL.pill.row1[0] === bread1, '[' + run.tag + '] the first item, the plate\'s first frame: ' + JSON.stringify(FL.pill.row1) + ' (still in the air: ' + FL.incoming + ')', FL);
+  await sleep(600);
+  // ((review #0) a pinned place (목표 창's walk / the notice board) that takes nothing in the bag: no '→' row
+  const PN = await page.evaluate(() => {
+    const F = window.__FV, gs = F.scene, p = gs.player, N = F.v42.v.nav, T = gs.tutorial, G = gs.v4 && gs.v4.growth;
+    F.clearStack(); N.loadSig = null; F.carry('item_bread', 5);
+    const away = (x, y) => {
+      const far = (q) => !q || Math.hypot(q.x - x, (q.y - y) * 2) > 300;
+      const d = T.destination('item_bread');
+      return far(d && d.pad) && far(gs.foodBox && gs.foodBox.pad) && far(G && G.dockPad);
+    };
+    let spot = null;
+    for (const [dx, dy] of [[700, 0], [-700, 0], [0, 450], [0, -450], [900, 400], [-900, -400]]) if (away(p.x + dx, p.y + dy)) { spot = { x: p.x + dx, y: p.y + dy }; break; }
+    if (!spot) return null;
+    N.pin({ x: spot.x, y: spot.y, name: 'TEST-PIN', icon: 'ui_icon_house', quiet: true, valid: () => true });
+    return spot;
+  });
+  ok(!!PN, '[' + run.tag + '] (a spot away from where bread goes)', PN);
+  await sleep(1200);
+  let Q = await page.evaluate(() => ({ pill: window.__FV.v42.carry.state(), nav: window.__FV.v42.v.nav.state() }));
+  ok(Q.nav.dest && Q.nav.dest.pinned && Q.pill.shown && !(Q.pill.row2 && Q.pill.row2.indexOf('→') >= 0), '[' + run.tag + '] a pin that takes nothing in the bag: no \'→\' row (' + Q.pill.row2 + ')', Q);
+  // …a pinned place that does take it (an order's dock with its goods, else the place the bread goes): '→ place'
+  const PT = await page.evaluate(() => {
+    const F = window.__FV, gs = F.scene, N = F.v42.v.nav, T = gs.tutorial, G = gs.v4 && gs.v4.growth;
+    N.unpin(true);
+    if (G && G.active && G.dockPad && G.needOf('item_bread') > 0) { N.pin({ x: G.dockPad.x, y: G.dockPad.y, label: 'place_dock_stn', icon: 'item_bread', order: 'item_bread', valid: () => G.needOf('item_bread') > 0 }); return { order: true, name: N.placeName(N.pinned) }; }
+    const d = T.destination('item_bread');
+    if (!d || !d.pad) return null;
+    N.pin({ x: d.pad.x, y: d.pad.y, name: 'TEST-PLACE', icon: 'item_bread', quiet: true, valid: () => true });
+    return { order: false, name: 'TEST-PLACE' };
+  });
+  await sleep(1000);
+  Q = await page.evaluate(() => ({ pill: window.__FV.v42.carry.state(), nav: window.__FV.v42.v.nav.state() }));
+  ok(!PT || (Q.nav.dest && Q.nav.dest.pinned && Q.pill.row2 && Q.pill.row2.indexOf('→ ' + PT.name) >= 0), '[' + run.tag + '] a pinned place that takes the bread (' + (PT && PT.order ? 'the order\'s dock' : 'its own place') + '): ' + Q.pill.row2, { PT, Q });
+  await page.evaluate(() => window.__FV.v42.v.nav.unpin(true));
+  // ((review #2) on the place the load goes to, where the navigator's name plate stands: the pill gives way
+  await page.evaluate(() => { const F = window.__FV; F.clearStack(); F.v42.v.nav.loadSig = null; F.carry('item_fish_cooked', 3); });
+  await sleep(700);
+  const AT = await page.evaluate(() => {
+    const F = window.__FV, N = F.v42.v.nav, d = N.active ? N.dest : null;
+    if (!d || !d.pad) return null;
+    // (beside the place's pad, not on it: on it he would unload at once)
+    const pad = d.pad, gd = (x, y) => Math.hypot(x - pad.x, (y - pad.y) * 2);
+    for (const [dx, dy] of [[70, 0], [-70, 0], [85, 0], [-85, 0], [100, 0], [-100, 0], [0, 40], [0, -40], [0, 50], [0, -50]]) {
+      const x = pad.x + dx, y = pad.y + dy;
+      if (gd(x, y) < 105 && !(pad.contains && pad.contains(x, y, 12))) { F.teleport(x, y); return { x: Math.round(pad.x), y: Math.round(pad.y), at: [dx, dy], label: d.label }; }
+    }
+    return null;
+  });
+  await sleep(900);
+  Q = await page.evaluate(() => { const N = window.__FV.v42.v.nav; return { pill: window.__FV.v42.carry.state(), badge: !!N.badge.visible, dest: N.state().dest, bag: window.__FV.scene.player.stack.count }; });
+  ok(!!AT && Q.badge && !Q.pill.shown && Q.bag > 0, '[' + run.tag + '] beside the place where the navigator\'s name plate stands (' + (AT && AT.label) + '): the pill gives way', { AT, Q });
+  await page.evaluate(() => { const F = window.__FV, p = F.scene.player; F.teleport(p.x + 500, p.y + 260); });
+  await sleep(900);
+  P = await pill(page);
+  ok(P.shown, '[' + run.tag + '] …and comes back away from it', P);
+  await page.evaluate(() => window.__FV.clearStack());
   errors.push(...log.errors);
   await page.close();
 }
