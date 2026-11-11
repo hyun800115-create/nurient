@@ -58,6 +58,9 @@ const ROOT = path.resolve(opt('--root', path.resolve(HERE, '..', '..')));
 const OUT = path.resolve(opt('--out', path.join(os.tmpdir(), 'v43_layout')));
 const ONLY = opt('--only', 'layout,walks').split(',');
 const SEEDS = Number(opt('--seeds', '5'));
+// ((v4.3 마을 깃발) the onboarding bot's new game opens the flag maker first (the Game paused under it): the bot presses
+//  「이대로 시작」 with one real tap and its clock starts after it. --no-flag: without the maker (window.__FV_FLAGMAKER = false)
+const NOFLAG = args.includes('--no-flag');
 const FRESH_MIN = Number(opt('--fresh-min', '47'));
 const VERB = args.includes('-v');
 // --probe 'hut:600,640,M;hall:180,760,XL': footprints that do not exist in the game yet, checked like the real ones
@@ -96,6 +99,16 @@ async function boot({ keys = null, init = '', stepper = true, viewport = { width
     await installStepper(page);
     await ev(() => { try { window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ } window.__FV.setInput(0, 0); });
   }
+}
+/** (v4.3 마을 깃발) the new-game flag maker: one real tap on 「이대로 시작」 (true when it was up) */
+async function passFlagMaker() {
+  const at = await ev(() => { const f = window.__FV.flag && window.__FV.flag(); return f && f.maker && f.maker.open ? f.maker.hit.start : null; });
+  if (!at) return false;
+  await ev(() => window.__step.frame());
+  const c = await page.$('canvas'), b = await c.boundingBox(), k = b.width / 720;
+  await page.touchscreen.tap(b.x + at.x * k, b.y + at.y * k);
+  await ev(() => window.__step.run(2 / 60));
+  return !(await ev(() => window.__FV.game.scene.isPaused('Game')));
 }
 /** the census / pacing bot (review_gameplay_bot.js, smart policy, the census's options) */
 async function addBot() {
@@ -519,7 +532,8 @@ if (ONLY.includes('firstsale')) {
   const frows = [];
   for (let s = 1; s <= SEEDS; s++) {
     // ---- onboarding bot
-    await boot({ init: 'window.__FV_ONBOARD = true;' + seedJs(s), viewport: { width: 412, height: 915 } });
+    await boot({ init: 'window.__FV_ONBOARD = true;' + (NOFLAG ? 'window.__FV_FLAGMAKER = false;' : '') + seedJs(s), viewport: { width: 412, height: 915 } });
+    const flagTap = await passFlagMaker();
     const pre = await ev(() => ({ obT: +window.__FV.scene.onboard.t.toFixed(2), mode: window.__FV.scene.onboard.mode, sceneS: +(window.__FV.scene.time.now / 1000).toFixed(2) }));
     await ev(() => { const gs = window.__FV.scene; window.__sold = null; gs.events.once('sold', () => { window.__sold = window.__rec ? +window.__rec.t.toFixed(1) : 0; }); });
     let R = { t: 0, seq: [], firstCoins: null, clerk: null, fisher: null, act2: null, act3: null, nudges: 0, walked: 0 };
@@ -527,7 +541,7 @@ if (ONLY.includes('firstsale')) {
     const sold = await ev(() => window.__sold);
     const stepAt = (k) => { const q = R.seq.find((e) => e[1] === k); return q ? q[0] : null; };
     frows.push({ bot: 'onboarding', seed: s, first_sale_s: sold, first_coins_s: R.firstCoins, clerk_hired_s: R.clerk, fisher_hired_s: R.fisher, act2_s: R.act2, handover_s: R.act3, still_at_net_s: stepAt('act1:still'), at_register_s: stepAt('act1:reg'), cash_step_s: stepAt('act1:cash'), preroll_s: pre.obT, walked_m: +(R.walked / 64).toFixed(1), nudges: R.nudges, steps: R.seq.map((e) => e[1].replace('act1:', '') + '@' + e[0]).join(' ') });
-    console.log(`  onboarding seed ${s}: first sale ${sold} s, coins ${R.firstCoins} s, clerk ${R.clerk} s, hand-over ${R.act3} s (pre-roll ${pre.obT} s) (${wall()})`);
+    console.log(`  onboarding seed ${s}: first sale ${sold} s, coins ${R.firstCoins} s, clerk ${R.clerk} s, hand-over ${R.act3} s (pre-roll ${pre.obT} s${flagTap ? ', flag maker: 1 tap' : NOFLAG ? ', no flag maker' : ''}) (${wall()})`);
     // ---- smart bot (no tutorial: an automated browser never gets it)
     await boot({ init: seedJs(s), stepper: false, viewport: { width: 360, height: 720 } });
     await ev(() => {

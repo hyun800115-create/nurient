@@ -217,6 +217,7 @@ export function summarize(s, keys, made, raw) {
     savedAt: raw && Number.isFinite(raw.t) ? Math.round(raw.t) : 0,
     made: Number.isFinite(made) ? made : 0,
     fromV: raw && typeof raw.v === 'number' ? raw.v : 0,
+    flag: s.flag ? { s: s.flag.s, b: s.flag.b, p: s.flag.p, pc: s.flag.pc, e: s.flag.e, ec: s.flag.ec } : null,     // (v4.3) the village flag (the card shows it)
   };
 }
 

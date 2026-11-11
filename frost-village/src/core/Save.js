@@ -5,6 +5,8 @@ import { ITEMS, FOODS, GOODS, TOOLS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } 
 // ---- (v4-B) the v4 block is checked against the lots and the shops it may name
 import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
+// ---- (v4.3 마을 깃발) the flag's keep-rule
+import { sanitizeFlag } from '../flag/design.js';
 
 export const SAVE_KEY = 'frostVillage.save.v1';
 export const SETTINGS_KEY = 'frostVillage.settings.v1';
@@ -150,6 +152,9 @@ export function sanitizeSave(raw) {
   if (typeof raw.cid === 'string' && /^[a-z0-9]{4,16}$/.test(raw.cid)) s.cid = raw.cid;
   // ((v4.2.0.1) the first-run tutorial's bit flags (Onboarding.js ONB): only villages that began with it carry one)
   if (raw.onb !== undefined) { const n = Math.floor(num(raw.onb, 0)); if (n > 0 && n < 1024) s.onb = n; }
+  // ((v4.3 마을 깃발) the village flag { s, b, p, pc, e, ec } (+ mk: 1 while the new-game maker is still open), optional: a save
+  //  without it (every save before v4.3) keeps the classic red flag; a bad part takes the classic part (src/flag/design.js)
+  if (raw.flag !== undefined) { const f = sanitizeFlag(raw.flag); if (f) s.flag = f; }
   // ((v4.2.0.2) 관리자 모드 (src/systems/Admin.js), both optional — a save without them loads exactly as before:
   //  adminUses = how many times the admin panel opened (bug reports can tell), adminInf = 「코인 무제한」 is on)
   if (raw.adminUses !== undefined) { const n = count(raw.adminUses, 1e6); if (n > 0) s.adminUses = n; }

@@ -15,6 +15,8 @@
 import { SAVE_KEY, SETTINGS_KEY, SAVE_VERSION, Save, Settings } from '../core/Save.js';
 import { encodeVillage, decodeVillage, dryRun, applyVillage, snapshotKeys, getStore, backupCode, ADMIN_BACKUP_KEY } from '../core/Transfer.js';
 import { getLang } from '../data/strings.js';
+// ---- (v4.3 마을 깃발) the incoming village's flag on the confirm card
+import { drawFlag } from '../flag/design.js';
 
 const S = {
   ko: {
@@ -135,6 +137,17 @@ textarea.fm-in{font-size:16px;height:clamp(96px,20vh,180px)}
 /** a code longer than this may be cut by a chat app (KakaoTalk caps a message at about 10,000 characters) */
 const LONG_CODE = 9000;
 const CLOSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>';
+/** (v4.3 마을 깃발) a little picture of a village flag after `el` (a canvas: 2x for sharp phones) */
+function flagChip(el, flag) {
+  try {
+    const c = document.createElement('canvas'), S = 2;
+    c.width = 46 * S; c.height = 32 * S;
+    c.style.cssText = 'width:46px;height:32px;vertical-align:middle;margin-left:10px';
+    c.className = 'fm-flag';
+    drawFlag(c.getContext('2d'), flag, 2 * S, 2 * S, 42 * S, 27 * S);
+    el.appendChild(c);
+  } catch (e) { /* no picture */ }
+}
 const h = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; };
 const fill = (s, p) => String(s).replace(/\{(\w+)\}/g, (m, k) => (p && p[k] != null ? p[k] : m));
 const num = (n) => String(Math.floor(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -471,6 +484,7 @@ export class MovePanel {
     if (sm.chat) li.push(L.chat);
     if (sm.made || sm.savedAt) li.push(sm.made ? fill(L.made, { d: when(sm.made, this.lang) }) : fill(L.saved, { d: when(sm.savedAt, this.lang) }));
     this.cardTitle.textContent = L.found;
+    if (sm.flag) flagChip(this.cardTitle, sm.flag);       // (v4.3) the village flag it brings
     this.cardList.textContent = '';
     for (const s of li) this.cardList.appendChild(h('li', null, s));
     this.cardQ.textContent = adminCopy ? L.adminUndoAsk : isUndo ? L.undoAsk : L.ask;

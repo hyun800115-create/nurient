@@ -70,6 +70,8 @@ import { ResidentChat } from '../systems/ResidentChat.js';
 import { newChatId } from '../core/Save.js';
 // ---- (v4.2) 촌장의 하루 (docs/v42_plan.md): the orchestrator and its systems
 import { buildV42 } from '../systems/v42/index.js';
+// ---- (v4.3 마을 깃발) the village's own flag on every pole (+ the new-game maker, the one-time card)
+import { VillageFlags } from '../flag/VillageFlags.js';
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -241,6 +243,8 @@ export class Game extends Phaser.Scene {
     //  save never sees it)
     this.onboard = new Onboarding(this, sv.onb, this.saved === null && !this.brokenRestart && !(!this.fresh && Save.lastUnreadable));
     this.events.once('shutdown', () => { if (this.onboard) this.onboard.destroy(); });
+    // ---- (v4.3 마을 깃발) a new village (the same rule) opens the flag maker as the UI comes up; an old one keeps the classic flag
+    this.flags = new VillageFlags(this, sv, this.saved === null && !this.brokenRestart && !(!this.fresh && Save.lastUnreadable));
     // ---- (v4.2) made before the sites are restored (its own sites take their saved state)
     buildV42(this, sv);
 
@@ -599,6 +603,7 @@ export class Game extends Phaser.Scene {
         this.campfires = (this.campfires || []).concat([{ x, y }]);
       }
       if (key === 'lamp_post') this.lamps = (this.lamps || []).concat([img]);
+      if (key === 'flag_pole') (this.flagPoleImgs || (this.flagPoleImgs = [])).push({ img, x, y });     // (v4.3) VillageFlags
       // things floating in the sea bob gently (v4-C2: on the living water's swell once it is there: wireWaterDecor)
       const inSea = (key === 'boat_small' || key === 'ice_chunk') && y < shoreY(x) + 10;
       if (inSea || key === 'dock_pier') (this.seaDecor = this.seaDecor || []).push({ key, img, x, y, o, rot: img.rotation || 0, floats: inSea });
@@ -2075,6 +2080,7 @@ export class Game extends Phaser.Scene {
     }
     this.tutorial.update(dt);
     if (this.onboard) { try { this.onboard.update(dt); } catch (e) { if (!this._onbErr) { this._onbErr = true; console.error('[FrostVillage] onboarding:', e); } } }
+    if (this.flags) { try { this.flags.update(dt); } catch (e) { if (!this._flagErr) { this._flagErr = true; console.error('[FrostVillage] flags:', e); } } }
     if (this.occlusion) this.occlusion.update(dt);
     this.updateZoom(dt, delta);
 
@@ -2427,6 +2433,8 @@ export class Game extends Phaser.Scene {
       cid: this.cid,
       // ---- (v4.2.0.1) the first-run tutorial's bits (only villages that began with it)
       onb: this.onboard ? this.onboard.serialize() : (this.saved && this.saved.onb) || undefined,
+      // ---- (v4.3 마을 깃발) { s, b, p, pc, e, ec } (+ mk: 1 while the new-game maker is open); an old village without one: none
+      flag: this.flags ? this.flags.serialize() : (this.saved && this.saved.flag) || undefined,
       // ---- (v4.2.0.2) 관리자 모드 (optional: only once the designer opened it / while 「코인 무제한」 is on)
       adminUses: this.adminUses > 0 ? this.adminUses : undefined,
       adminInf: this.economy.unlimited ? 1 : undefined,

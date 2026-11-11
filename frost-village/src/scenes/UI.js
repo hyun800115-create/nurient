@@ -29,6 +29,8 @@ import { AdminPanel } from './AdminPanel.js';
 const MOVE_LABEL = { ko: '마을 옮기기', en: 'Move village' };
 // ---- (v4-C) the build menu's tabs
 import { CATALOG, TABS } from '../systems/Civic.js';
+// ---- (v4.3 마을 깃발) 설정 › 놀이 › 「마을 깃발」
+import { FlagMaker } from '../flag/FlagMaker.js';
 const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
@@ -1028,13 +1030,13 @@ export class UI extends Phaser.Scene {
       // (v4-C2) seven rows (76 px buttons never overlap): + 물결 품질, 주민 목소리
       // ((v4.2) two tabs: 소리·화면 = the seven v4.1 rows, 놀이 = 자동 줍기 · 길 안내 · 촌장 후광 · 관망)
       add(this.add.text(cx, cy - 452, t('settings'), TXT(44, '#2b2f3a', '#ffffff', 0, '900')).setOrigin(0.5));
-      const row = (y, label, value, style, cb, icon) => {
+      const row = (y, label, value, style, cb, icon, h) => {
         if (icon) { const ic = add(Assets.image(this, cx - 200, y, icon).setOrigin(0.5)); ic.setScale(54 / Math.max(ic.frame.realWidth, 1)); }
         const lt = add(this.add.text(cx - 160, y, label, TXT(30, '#2b2f3a', '#ffffff', 0, '800')).setOrigin(0, 0.5));
         // ((v4.2) a long label — 관망 중 돈 쓰기, English — wraps to two smaller lines instead of running under the button)
         const maxW = 180;
         if (lt.width > maxW) { lt.setFontSize(24); lt.setWordWrapWidth(maxW, true); if (lt.height > 72) lt.setFontSize(20); }
-        const b = add(this.makeButton(cx + 130, y, 200, 76, style, value, cb, 28));
+        const b = add(this.makeButton(cx + 130, y, 200, h || 76, style, value, cb, 28));
         if (this.settingsRows) this.settingsRows.push({ label, value, b });
         return b;
       };
@@ -1182,27 +1184,32 @@ export class UI extends Phaser.Scene {
   /** (v4.2, docs/v42_plan.md §8.2) the 놀이 tab: 자동 줍기 · 길 안내 · 촌장 후광 · 관망 자동 · 관망 볼거리 · 관망 중 돈 쓰기 */
   buildPlayTab(row, Y, add) {
     const S = Settings.data, cx = this.W / 2, cy = this.H / 2;
+    // ((v4.3 마을 깃발) eight rows (+ 마을 깃발): 73 px apart, 66 px buttons (the 소리·화면 tab's v4.3 spacing)
+    const YA = (i) => cy - 268 + i * 73, RH = 66;
+    void Y;
     const redo = () => { Settings.save(); this.buildPanelContent(false); if (this.gs.v42 && this.gs.v42.settingsChanged) this.gs.v42.settingsChanged(); };
     const pk = S.pickup === 'still' || S.pickup === 'off' ? S.pickup : 'auto';
-    row(Y(0), t('set_pickup'), t('pickup_' + pk), pk === 'auto' ? 'green' : pk === 'still' ? 'blue' : 'gray', () => { S.pickup = pk === 'auto' ? 'still' : pk === 'still' ? 'off' : 'auto'; redo(); }, Assets.pick('ui_icon_hand', 'ui_icon_backpack', 'ui_icon_settings'));
-    row(Y(1), t('set_nav'), S.nav !== false ? t('on') : t('off'), S.nav !== false ? 'green' : 'gray', () => { S.nav = S.nav === false; redo(); }, Assets.pick('ui_icon_route', 'ui_icon_map', 'ui_icon_settings'));
-    row(Y(2), t('set_halo'), S.halo !== false ? t('on') : t('off'), S.halo !== false ? 'green' : 'gray', () => { S.halo = S.halo === false; redo(); }, Assets.pick('ui_icon_halo', 'ui_icon_fame', 'ui_icon_settings'));
+    row(YA(0), t('set_pickup'), t('pickup_' + pk), pk === 'auto' ? 'green' : pk === 'still' ? 'blue' : 'gray', () => { S.pickup = pk === 'auto' ? 'still' : pk === 'still' ? 'off' : 'auto'; redo(); }, Assets.pick('ui_icon_hand', 'ui_icon_backpack', 'ui_icon_settings'), RH);
+    row(YA(1), t('set_nav'), S.nav !== false ? t('on') : t('off'), S.nav !== false ? 'green' : 'gray', () => { S.nav = S.nav === false; redo(); }, Assets.pick('ui_icon_route', 'ui_icon_map', 'ui_icon_settings'), RH);
+    row(YA(2), t('set_halo'), S.halo !== false ? t('on') : t('off'), S.halo !== false ? 'green' : 'gray', () => { S.halo = S.halo === false; redo(); }, Assets.pick('ui_icon_halo', 'ui_icon_fame', 'ui_icon_settings'), RH);
     const OB = [0, 30, 60, 120];
     const ob = OB.indexOf(S.observeAfter) >= 0 ? S.observeAfter : 60;
-    row(Y(3), t('set_observe'), t('observe_' + ob), ob ? 'green' : 'gray', () => { S.observeAfter = OB[(OB.indexOf(ob) + 1) % OB.length]; redo(); }, Assets.pick('ui_icon_binoculars', 'ui_icon_explore', 'ui_icon_map', 'ui_icon_settings'));
-    row(Y(4), t('set_observeEvents'), S.observeEvents !== false ? t('on') : t('off'), S.observeEvents !== false ? 'green' : 'gray', () => { S.observeEvents = S.observeEvents === false; redo(); }, Assets.pick('ui_icon_camera', 'ui_icon_star', 'ui_icon_fame', 'ui_icon_settings'));
+    row(YA(3), t('set_observe'), t('observe_' + ob), ob ? 'green' : 'gray', () => { S.observeAfter = OB[(OB.indexOf(ob) + 1) % OB.length]; redo(); }, Assets.pick('ui_icon_binoculars', 'ui_icon_explore', 'ui_icon_map', 'ui_icon_settings'), RH);
+    row(YA(4), t('set_observeEvents'), S.observeEvents !== false ? t('on') : t('off'), S.observeEvents !== false ? 'green' : 'gray', () => { S.observeEvents = S.observeEvents === false; redo(); }, Assets.pick('ui_icon_camera', 'ui_icon_star', 'ui_icon_fame', 'ui_icon_settings'), RH);
     const sp = S.observeSpend === 'hire' ? 'hire' : 'none';
-    row(Y(5), t('set_observeSpend'), t('spend_' + sp), sp === 'none' ? 'gray' : 'blue', () => { S.observeSpend = sp === 'none' ? 'hire' : 'none'; redo(); }, 'ui_icon_coin');
+    row(YA(5), t('set_observeSpend'), t('spend_' + sp), sp === 'none' ? 'gray' : 'blue', () => { S.observeSpend = sp === 'none' ? 'hire' : 'none'; redo(); }, 'ui_icon_coin', RH);
     // ((v4.2.0.1) 튜토리얼 다시 보기 — whenever the tutorial is not running: after the first loop, and for a village that began
     //  with the tutorial also right after 「건너뛰기」 (its toast says it is here; the replay is then the live Act 1). While
     //  the tutorial runs, and in an old village still learning the first loop, the 자동 줍기 hint stays instead)
     const tu = this.gs.tutorial, onb = this.gs.onboard;
     const running = !!(onb && (onb.mode === 'act1' || onb.mode === 'act2' || onb.mode === 'tour'));
     if (onb && tu && !running && (!tu.inTutorial || (onb.bits & 1))) {
-      const b = row(Y(6), t('set_tutorial'), t('set_replay'), 'blue', () => { this.closeSettings(); if (onb.replay()) Input.release(); }, Assets.pick('ui_icon_hand', 'ui_icon_goal', 'ui_icon_explore', 'ui_icon_settings'));
+      const b = row(YA(6), t('set_tutorial'), t('set_replay'), 'blue', () => { this.closeSettings(); if (onb.replay()) Input.release(); }, Assets.pick('ui_icon_hand', 'ui_icon_goal', 'ui_icon_explore', 'ui_icon_settings'), RH);
       b.replayBtn = true;
       if (b.text.width > 176) b.text.setScale(176 / b.text.width);
-    } else add(this.add.text(cx, Y(6) + 6, t('set_playHint'), Object.assign(TXT(21, '#5b6676', '#ffffff', 0, '700'), { align: 'center', wordWrap: { width: 480 } })).setOrigin(0.5));
+    } else add(this.add.text(cx, YA(6) + 4, t('set_playHint'), Object.assign(TXT(21, '#5b6676', '#ffffff', 0, '700'), { align: 'center', wordWrap: { width: 480 } })).setOrigin(0.5));
+    // ((v4.3 마을 깃발) the village flag: the maker (src/flag/FlagMaker.js)
+    FlagMaker.flagRow(this, row, YA(7), add, RH);
     void cy;
   }
 
