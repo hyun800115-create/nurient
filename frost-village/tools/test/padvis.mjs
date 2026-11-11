@@ -468,14 +468,30 @@ try {
       await done('hire_clerk_trade');
       await advance(page, 1.5);
       out.stages.bench2 = await measure(page, 'fresh/7 교역소 점원 뒤 가방', false);
-      // ((v4.3) the shop's stages: stage 2 stands since the forest; the first bread sold brings the 눈꽃 시장 pad
+      // ((v4.3 밀밭 · 빵집) the field, then the bakery and its line's pads one at a time on its LINE spot
+      await page.evaluate(() => window.__FV.give(5000));
+      await done('zone_farm');
+      await advance(page, 2);
+      out.stages.bakeryPad = await measure(page, 'fresh/8 밀밭 → 빵집 짓기 발판', false);
+      await done('bld_bakery');
+      await advance(page, 2);
+      out.stages.bakeryClerk = await measure(page, 'fresh/9 빵집 판매원 발판', false);
+      await done('hire_clerk_bakery');
+      out.stages.baker = await measure(page, 'fresh/10 제빵사 발판', false);
+      await done('op_bakery');
+      out.stages.farmer = await measure(page, 'fresh/11 농부 발판', false);
+      await done('hire_farmer');
+      out.stages.wheatPorter = await measure(page, 'fresh/12 밀 짐꾼 · 광산 발판', false);
+      await done('raw_bakery');
+      out.stages.breadPorter = await measure(page, 'fresh/13 빵 짐꾼 발판', false);
+      // ((v4.3 밀밭 · 빵집) the shop's stage 3 comes after village complete, once smoked meat sold
       if (await page.evaluate(() => !!(window.__FV.scene.market && window.__FV.scene.market.setStage))) {
-        await page.evaluate(() => { const F = window.__FV; F.give(5000); for (const id of ['zone_farm', 'op_bakery']) F.doneStep(id); });
-        await step(page, () => window.__FV.scene.progress.setFlag('firstBreadSale'), null, 2.5);
-        out.stages.shop3pad = await measure(page, 'fresh/8 눈꽃 시장 (가게 3단) 발판', false);
+        await page.evaluate(() => { const F = window.__FV; F.give(8000); for (const id of ['porter_bakery', 'zone_mine', 'op_smelter', 'hire_miner', 'zone_hunt', 'op_smokehouse', 'hire_hunter']) F.doneStep(id); });
+        await step(page, () => window.__FV.scene.progress.setFlag('firstMeatSale'), null, 2.5);
+        out.stages.shop3pad = await measure(page, 'fresh/14 눈꽃 시장 (가게 3단) 발판', false);
         await done('mkt_s3');
         await advance(page, 3);
-        out.stages.shop3 = await measure(page, 'fresh/9 가게 3단 · 빵·고기 점원 발판', false);
+        out.stages.shop3 = await measure(page, 'fresh/15 가게 3단 · 고기 점원 발판', false);
       }
     } else {
       out.stages.all = await measure(page, sc, true);

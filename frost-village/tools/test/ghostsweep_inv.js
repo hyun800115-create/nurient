@@ -149,6 +149,8 @@
     for (const w of gs.workshops || []) { add(w.inStack, 'workshop:' + w.kind + '.in'); add(w.outStack, 'workshop:' + w.kind + '.out'); }
     for (const id in gs.piles || {}) add(gs.piles[id].stack, 'pile:' + id);
     for (const k of ['market', 'trade', 'store']) if (gs[k]) { add(gs[k].stock, k + '.shelf'); if (gs[k].cash) add(gs[k].cash.pile, k + '.till'); }
+    // ((v4.3 밀밭 · 빵집) the bakery stall's bread case (data: drawn by its overlays) and its till
+    if (gs.bakery) { add(gs.bakery.stall.stock, 'bakery.case'); add(gs.bakery.stall.cash.pile, 'bakery.till'); }
     if (gs.warehouse) add(gs.warehouse.pile, 'warehouse.pile');
     if (gs.boathouse) { add(gs.boathouse.outStack, 'boathouse.catch'); if (gs.boathouse.boat) add(gs.boathouse.boat.cargo, 'boat.cargo'); }
     if (gs.foodBox) add(gs.foodBox.stock, 'foodbox');
@@ -460,6 +462,7 @@
     if (gs.market) add('market', gs.market.cash);
     if (gs.trade) add('trade', gs.trade.cash);
     if (gs.store) add('store', gs.store.cash);
+    if (gs.bakery && gs.bakery.built) add('bakery', gs.bakery.stall.cash);
     const Cv = gs.civic;
     if (Cv && Cv.restaurant) add('rest', Cv.restaurant.cash);
     if (Cv && Cv.hall) add('tax', Cv.hall.tax);
@@ -500,6 +503,15 @@
       const n = (G.cargoTypes || []).length;
       const comp = n === st.items.length && Object.keys(want).concat(Object.keys(have)).some((k) => (have[k] || 0) !== (want[k] || 0));
       const r = persist('crates', ((G.cargo > 0) !== (st.items.length + st.incoming > 0)) || comp, 1500, () => viol('model', st, { owner: 'station crates', cargo: G.cargo, cargoTypes: want, shown: have }));
+      if (r) out.push(r);
+    }
+    // ((v4.3 밀밭 · 빵집) the bakery stall's case: the overlay shown = the bracket of its bread (none / bread_1 / bread_2)
+    const BKs = gs.bakery && gs.bakery.built ? gs.bakery.stall : null;
+    if (!(BKs && inView(BKs.x, BKs.y, 150))) away('bakery_case');
+    else {
+      const n = BKs.stock.count, want = n <= 0 ? 0 : n < BKs.fullAt ? 1 : 2;
+      const shown = BKs.breadImgs.findIndex((im) => im && im.visible) + 1;
+      const r = persist('bakery_case', BKs.breadImgs.some(Boolean) && shown !== want, 500, () => viol('model', BKs.stock, { owner: 'bakery case', bread: n, shown, want }));
       if (r) out.push(r);
     }
     // the town's shops (v4): the shelf shows min(5, stock) of each sold item

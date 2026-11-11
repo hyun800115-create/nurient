@@ -1266,6 +1266,7 @@ export class UI extends Phaser.Scene {
     if (this.residents) this.residents.relabel();       // (v4.3) 마을 주민 창
     if (gs.market && gs.market.refreshSign) gs.market.refreshSign();     // (v4.2.0.2) 「눈꽃 노점」 / Snowbloom Stall
     if (gs.workshop43) gs.workshop43.refreshSign();                       // (v4.3) 「옷·신발 공방」 / Clothes & Shoes
+    if (gs.bakery) { gs.bakery.station.refreshSign(); gs.bakery.stall.refreshSign(); }   // (v4.3 밀밭 · 빵집) 「눈꽃 빵집」 / 「갓 구운 빵」
   }
 
   // ---------------------------------------------------------------- frame

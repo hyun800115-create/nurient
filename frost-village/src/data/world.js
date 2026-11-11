@@ -9,7 +9,10 @@
 const ZONES = {
   plaza:  { center: [990, 800],   size: [14, 14],   floor: 'ground_plaza', unlock: null,          name: 'z_plaza' },
   forest: { center: [470, 1250],  size: [9, 9],     floor: 'ground_dirt',  unlock: 'zone_forest', name: 'z_forest', floorAlpha: 0.5 },
-  farm:   { center: [1410, 1270], size: [8, 8],     floor: 'ground_farm',  unlock: 'zone_farm',   name: 'z_farm' },
+  // ((v4.3 밀밭 · 빵집) the field alone: 5 x 8 m (was 8 x 8 centred at 1410, 1270 with the oven inside). The wheat plots stay
+  //  where they were; the bakery is its own cottage at the gateway between the plaza and the field (WORLD.bakery43).
+  //  Plaza metres: X 14.03 – 19.03, Y −9.74 … −1.74 (an old Z('farm', mx, my) is the new Z('farm', mx − 1.5, my))
+  farm:   { center: [1478, 1304], size: [5, 8],     floor: 'ground_farm',  unlock: 'zone_farm',   name: 'z_farm' },
   mine:   { center: [430, 1900],  size: [9, 9],     floor: 'ground_rock',  unlock: 'zone_mine',   name: 'z_mine' },
   hunt:   { center: [1400, 1960], size: [8.5, 8.5], floor: 'ground_dirt',  unlock: 'zone_hunt',   name: 'z_hunt', floorAlpha: 0.45 },
   // (v3) 새 땅의 밭·채석장: 그 땅(region)이 열리면 함께 보임 (잠금 발판 없음)
@@ -33,7 +36,11 @@ const market = Z('plaza', 2.0, 2.8);
 const trade = Z('plaza', -4.6, -1.0);
 const bench = Z('plaza', 3.6, -4.6);
 const sawmill = Z('forest', 1.3, 2.6);
-const bakery = Z('farm', -1.6, 1.2);
+// ((v4.3 밀밭 · 빵집, spec §3.3) the bakery cottage's anchor A = plaza (11.2, −4.0): gable end facing −Y, 2.6 x 2.6 m,
+//  its own yard between the plaza and the field (was Z('farm', -1.6, 1.2) = 1392, 1207 inside the old farm diamond).
+//  BKL(bx, by) = bakery-local metres (+X = screen right-down, +Y = right-up) → px offset from A
+const bakery = Z('plaza', 11.2, -4.0);
+const BKL = (bx, by) => [Math.round(45.25 * (bx + by)), Math.round(22.63 * (bx - by))];
 const smelter = Z('mine', 1.6, 2.4);
 const smokehouse = Z('hunt', -1.8, 1.6);
 
@@ -51,7 +58,9 @@ const MK = (mx, my) => rel(market, Z('plaza', mx, my));
 const STATION_PADS = {
   grill:      { line: [-79, 155, 'lb'],  p2: null },     // ((v4.3) 'lb': 화덕 2단 · 생선 짐꾼 2 이름표는 발판 아래 — 위쪽은 가게 3단 자재 창구)
   sawmill:    { line: [-6, 119],   p2: [168, 112, [100, -62]] },
-  bakery:     { line: [-272, 93],  p2: [-202, 188, 'lb'] },
+  // ((v4.3 밀밭 · 빵집) line = right of the cottage's back-east corner on open snow (the old farmer-hut corner, 1497, 1117);
+  //  p2 = where the farmer's hut stood (1596, 1112). Was line [-272, 93], p2 [-202, 188] at the old oven's left corner)
+  bakery:     { line: [181, -27],  p2: [280, -32, 'lb'] },
   smelter:    { line: [39, 148],   p2: [199, 128, 'lb'] },
   smokehouse: { line: [-251, -25], p2: [-284, 170] },
 };
@@ -120,7 +129,10 @@ export const WORLD = {
   stations: [
     { id: 'grill',      sprite: 'station_grill',      x: grill[0], y: grill[1], in: XOFF(-2.15), out: XOFF(2.15), input: 'item_fish_raw', output: 'item_fish_cooked', zone: 'plaza', sfx: 'sfx_sizzle', fire: [0, -30], porterHome: [-52, 44] },
     { id: 'sawmill',    sprite: 'station_sawmill',    x: sawmill[0], y: sawmill[1], in: XOFF(-2.3), out: XOFF(2.3), input: 'item_log', output: 'item_plank', zone: 'forest', sfx: 'sfx_saw' },
-    { id: 'bakery',     sprite: 'station_bakery',     x: bakery[0], y: bakery[1], in: [118, 28], out: [-118, 30], input: 'item_wheat', output: 'item_bread', zone: 'farm', sfx: 'sfx_oven', smoke: [40, -150] },
+    // ((v4.3 밀밭 · 빵집) the bakery cottage (entities/Bakery43.js): in = the wheat in-pad I beside the field's wheat gate (bakery-local
+    //  2.0, 0.3), out = the bread rack O at the cottage's front-right (2.0, −1.2: the bread porter's pickup); gate = the step that builds
+    //  it (it is not part of the field zone's reveal); smoke = the chimney (the art's fxPoints.chimney wins when it is there)
+    { id: 'bakery',     sprite: 'bakery43_back',      x: bakery[0], y: bakery[1], in: BKL(2.0, 0.3), out: BKL(2.0, -1.2), input: 'item_wheat', output: 'item_bread', zone: 'farm', gate: 'bld_bakery', sfx: 'sfx_oven', smoke: [-60, -199], fire: [-37, -23], porterHome: [30, 24] },
     { id: 'smelter',    sprite: 'station_smelter',    x: smelter[0], y: smelter[1], in: [-122, 4], out: [112, 52], input: 'item_ore', output: 'item_ingot', zone: 'mine', sfx: 'sfx_smelt', smoke: [-14, -150] },
     { id: 'smokehouse', sprite: 'station_smokehouse', x: smokehouse[0], y: smokehouse[1], in: [122, 26], out: [-124, 40], input: 'item_meat_raw', output: 'item_meat_cooked', zone: 'hunt', sfx: 'sfx_sizzle', smoke: [-10, -140] },
   ],
@@ -129,14 +141,16 @@ export const WORLD = {
   market: {
     // ((v4.2.0.2) 1단 「눈꽃 노점」: 천막 대신 간판 (글씨는 게임이 써요: strings.js sign_market_1), 낮은 계산대 0.6 m,
     //  점원은 계산대 뒤 낮은 단 위에 서요. 그림이 없으면 예전 천막 판매대(spriteOld)를 써요)
-    sprite: 'market_s1_back', spriteOld: 'market_counter', x: market[0], y: market[1],
+    // ((v4.3 밀밭 · 빵집) the old awning stall's picture (market_counter) left props_buildings: no spriteOld any more
+    sprite: 'market_s1_back', x: market[0], y: market[1],
     shelf: rel(market, Z('plaza', 4.35, 2.8)),     // 음식 놓는 발판 (판매대 오른쪽 끝)
     // ((v4.2.0.2) 진열대의 음식 탑은 18층까지만 높아져요 (더 많으면 맨 위에 쌓여요): 생선 탑이 간판 「점」 글자를 가리지 않게.
     //  20층까지 간판이 다 보이고, 25층부터 가려졌어요. 0 = 끝없이)
     stockDrawMax: 18,
     // ((v4.2.0.2) 빵은 한 층이 생선보다 1.5배쯤 두꺼워요: 18층이면 빵 탑이 간판 오른쪽 끝과 기둥을 가렸어요.
     //  빵 탑은 12층까지 (생선 18층과 거의 같은 높이). 고기 탑은 간판 오른쪽 바깥이라 그대로)
-    stockDrawMaxBy: { item_bread: 12 },
+    //  ((v4.3 밀밭 · 빵집) bread is sold at the bakery's stall now: the shop's rack never holds it)
+    stockDrawMaxBy: null,
     cash: rel(market, Z('plaza', 4.7, 0.3)),       // 손님 코인 쌓이는 발판
     // ((v4.2.0.2) 맨 앞 손님은 계산대 정면이 아니라 비스듬히 왼쪽 앞에 서요: 점원을 가리지 않게 (예전 Z(2.0, 1.25)))
     queueStart: rel(market, Z('plaza', 1.25, 1.34)),// 맨 앞 손님 위치 (판매대 왼쪽 앞, 그림의 customerPoints 와 같은 곳)
@@ -161,7 +175,7 @@ export const WORLD = {
     //   sled = 옛 교역소 썰매 (장식: 교역소가 있던 자리에서 조금 광장 쪽 — 상인들이 타고 온 썰매. 촌장 오두막 벽과는 떨어져 있어요.
     //          자재 창구 바로 옆은 화덕 줄 발판 자리라 4.3 B 에서 화덕이 옮겨 가면 창구 옆으로 와요)
     mat: { clerk: ['npc_clerk_b', 'npc_merchant'] },   // 자재 점원 모습 (예전 교역소 점원)
-    clerk3: ['npc_clerk_a', 'villager_c'],             // 3단 빵·고기 창구 점원 모습
+    clerk3: ['npc_clerk_a', 'villager_c'],             // 3단 고기 창구 점원 모습 ((v4.3 밀밭 · 빵집) 빵은 빵집 가판대에서)
     stages: {
       2: {
         sprite: 'market_s2_back', at: MK(3.5, 2.8),
@@ -173,7 +187,8 @@ export const WORLD = {
       3: {
         sprite: 'market_s3_back', at: MK(2.5, 2.8),
         shelf: MK(6.6, 2.8), matShelf: MK(-1.6, 2.8), cash: MK(6.4, 0.5),
-        registers: { mat: MK(0.68, 1.55), fish: MK(2.68, 1.55), breadmeat: MK(4.68, 1.55) },
+        // ((v4.3 밀밭 · 빵집) the third counter is the meat counter (bread sells at the bakery's stall)
+        registers: { mat: MK(0.68, 1.55), fish: MK(2.68, 1.55), meat: MK(4.68, 1.55) },
         wall: [MK(-0.55, 2.95), MK(5.55, 2.95)], wallR: 46,
         // ((review CD-2) the same sled from the stage-3 page (market_sled_s3): the stage-2 page is not loaded at stage 3)
         sled: { at: MK(-3.9, -1.6), scale: 1, sprite: 'market_sled_s3' },
@@ -202,7 +217,29 @@ export const WORLD = {
   //   (교역소 점원 발판과는 떨어져 있어서 둘 다 함께 보여요. 혹시 다른 발판이 그 자리에 서면 가방·신발이 잠깐 비켜 줘요)
   //   ((v4.3) 「옷·신발 공방」: 작업대가 작은 공방으로 바뀌었어요 (이름과 그림만, 발판·값은 그대로). sprite 그림이 아직 없으면 spriteOld,
   //    sign = 간판 글씨 자리 (공방 기준 px, 글씨는 게임이 써요: strings.js sign_workshop43))
-  bench: { sprite: 'workshop43', spriteOld: 'upgrade_bench', x: bench[0], y: bench[1], pads: { capacity: rel(bench, Z('plaza', 1.22, -5.14)), speed: rel(bench, Z('plaza', 4.28, -6.33)) }, labels: { speed: [0, 64] } },
+  // ((v4.3 밀밭 · 빵집) the old work bench picture (upgrade_bench) left props_buildings: no spriteOld)
+  bench: { sprite: 'workshop43', x: bench[0], y: bench[1], pads: { capacity: rel(bench, Z('plaza', 1.22, -5.14)), speed: rel(bench, Z('plaza', 4.28, -6.33)) }, labels: { speed: [0, 64] } },
+
+  // ── (v4.3 밀밭 · 빵집, spec §3.3) 빵집: 광장과 밀밭 사이 길목의 오두막 + 가판대 (entities/Bakery43.js)
+  //  「만드는 곳은 재료 옆, 파는 곳은 사람 옆」: 오븐 입구(I)는 밀밭 문 바로 옆, 가판대는 큰길 쪽을 보고, 손님은 큰길 옆에 한 줄로 서요.
+  //  자리 = 빵집 기준(A = 1316, 1144) px. 숫자를 고친 뒤: node tools/test/bakery.mjs --only layout
+  //   (checked numbers: cottage west corner 208 px from x 990, the line 113 px, the stall 133 px; every pad ≥ 1.4 m from the next;
+  //    the cottage ≥ 1.3 m from the field's tl fence; no pad under a roof; the shop's cash pad / food rack clear of the roof)
+  //   walls = 벽 (원 [x, y, 반지름], 그림의 walls 가 있으면 그것): 앞쪽 문 (bx 0.2 ~ 1.1) 은 열려 있어요
+  //   stall = 가판대 (가판대 기준 px): shelf = 빵 내려놓는 발판, cash = 빵집 금고, register = 촌장이 서는 계산대 R (= 빵집 짓기 발판),
+  //           staff = 판매원 자리 (그림의 staffPoints 가 이겨요), queueStart / queueStep = 줄 (맨 앞 손님은 가판대 왼쪽: 판매원을 가리지 않게)
+  //   decorClear = 장식 나무가 서지 않는 곳 [x, y, 반지름] (오두막, 가판대, 줄, 2단 발판 자리)
+  bakery43: {
+    x: bakery[0], y: bakery[1], sprite: 'bakery43_back', front: 'bakery43_front', signText: 'sign_bakery43',
+    walls: [[9, -45, 30], [50, -25, 30], [91, -5, 30], [-32, -34, 30], [-72, -14, 30], [68, 16, 30], [27, 36, 30], [-91, 5, 30], [-63, 18, 30]],
+    ovenMouth: [-37, -23],
+    stall: {
+      // ((R and the till sit 0.25 / 0.13 m further east than spec §3.3's first numbers: R was 1.19 m from the shelf pad)
+      at: BKL(-1.0, -2.1), sprite: 'bakery43_stall_back', shelf: [-10, 30], cash: [9, 90], register: [68, 54], staff: [24, -13],
+      queueStart: [-73, -5], queueStep: [0, 40], queueTurn: 99, faceTo: [24, -24], clerk: ['npc_clerk_b', 'npc_clerk_a'],
+    },
+    decorClear: [[1316, 1144, 200], [1176, 1169, 150], [1103, 1244, 120], [1596, 1112, 150], [1497, 1117, 110]],
+  },
 
   // ── 자원 ───────────────────────────────────────────────
   // ((v4.3) 그물 대신 낚시 좌대: 아래 WORLD.deck. 예전 그물 = { x: 880, y: 398, gather: [0, 86], fisherSpot: [-128, 30] })
@@ -246,7 +283,9 @@ export const WORLD = {
     [...Z('mine', -1.2, -3.9), 'rock_ore'],
   ],
   // skip: 비워 두는 밭 칸 [줄, 칸] — 오븐 바로 앞 칸은 빵집 아주머니(와 촌장)가 서서 일하는 자리라 비워 둠 (v3.5 리뷰)
-  wheat: { zone: 'farm', origin: Z('farm', 1.6, -1.8), rows: 3, cols: 3, step: 1.5, skip: [[0, 2]] },
+  //  ((v4.3 밀밭 · 빵집) the plots did not move (1401, 1347 is the middle one); the skipped cell (1401, 1279) holds the scarecrow now
+  //   (the field's new centre: was Z('farm', 1.6, -1.8))
+  wheat: { zone: 'farm', origin: Z('farm', 0.1, -1.8), rows: 3, cols: 3, step: 1.5, skip: [[0, 2]] },
   hunt: { zone: 'hunt' },
 
   // ── 해금 / 고용 발판 ────────────────────────────────────
@@ -257,7 +296,12 @@ export const WORLD = {
     zone_forest:     { x: 760,  y: 1130, zone: 'forest' },
     hire_lumberjack: { ...LINE('sawmill'), worker: 'lumberjack', hut: [300, 1010] },
     zone_farm:       { x: 1190, y: 1135, zone: 'farm' },
-    hire_farmer:     { ...LINE('bakery'), worker: 'farmer',     hut: [1606, 1112] },
+    // ((v4.3 밀밭 · 빵집) the farmers live in the field's 농막 now (decor farm43_hut): no worker_hut (was hut [1606, 1112])
+    hire_farmer:     { ...LINE('bakery'), worker: 'farmer' },
+    // ((v4.3 밀밭 · 빵집) 빵집 짓기: on the stall's register spot R before the bakery stands; then the bakery line's paid pads, one
+    //  at a time on its LINE spot (판매원 → 제빵사 → 농부 → 밀 짐꾼 → 빵 짐꾼)
+    bld_bakery:      { x: bakery[0] + BKL(0.95, -2.55)[0], y: bakery[1] + BKL(0.95, -2.55)[1] },
+    hire_clerk_bakery: { ...LINE('bakery'), clerk: 'bakery' },
     zone_mine:       { x: 760,  y: 1760, zone: 'mine' },
     hire_miner:      { ...LINE('smelter'), worker: 'miner',      hut: [236, 1730] },
     zone_hunt:       { x: 1160, y: 1800, zone: 'hunt' },
@@ -271,7 +315,7 @@ export const WORLD = {
     // ((v4.3) 가게 3단 「눈꽃 시장」 넓히기 → 그다음 빵·고기 창구 점원: 판매대 점원 발판과 같은 자리 (가게 동쪽 끝 옆 빈 눈밭,
     //  4단 자리 밖). 한 자리에 발판은 하나씩: 앞 발판을 사면 다음 것이 나와요)
     mkt_s3:            { x: 1525, y: 900, labelAt: [-40, 64] },   // 이름표는 발판 아래: 위쪽은 진열대 탑, 오른쪽은 동쪽 땅 안개
-    hire_clerk_s3:     { x: 1525, y: 900, clerk: 'breadmeat', labelAt: [-40, 64] },   // ((review PT-8) 이름표는 발판 아래 (위는 빵·고기 계산대 이름표))
+    hire_clerk_s3:     { x: 1525, y: 900, clerk: 'meat', labelAt: [-40, 64] },   // ((review PT-8) 이름표는 발판 아래 (위는 고기 계산대 이름표))
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
     porter_grill:      { ...LINE('grill'), station: 'grill' },
     porter_sawmill:    { ...LINE('sawmill'), station: 'sawmill' },
@@ -305,7 +349,8 @@ export const WORLD = {
 
   // 고용된 일꾼의 대기 위치
   workerHome: {
-    fisherman: [845, 430], lumberjack: Z('forest', -2.0, 1.6), farmer: Z('farm', -0.2, 2.2), miner: Z('mine', -0.2, 2.2), hunter: Z('hunt', 0.6, 2.2),
+    // ((v4.3 밀밭 · 빵집) farmers wait in front of the sled cart, left of the 농막 (1560, 1239); was Z('farm', -0.2, 2.2) = 1500, 1216 (now the gate)
+    fisherman: [845, 430], lumberjack: Z('forest', -2.0, 1.6), farmer: [1560, 1239], miner: Z('mine', -0.2, 2.2), hunter: Z('hunt', 0.6, 2.2),
   },
 
   // ── 길 (v2: 길 그래프) ───────────────────────────────────
@@ -316,7 +361,9 @@ export const WORLD = {
   roads: {
     nodes: {
       plaza_c:  [1000, 770],  plaza_s: [990, 1095], plaza_sw: [705, 965], plaza_se: [1262, 968], plaza_w: [600, 830],
-      forest_link: [772, 1148], farm_link: [1196, 1158],
+      // ((v4.3 밀밭 · 빵집) farm_link (1196, 1158) is gone: its road passed 4 px from the bakery cottage's west corner.
+      //  bakery_q = the end of the bakery stall's line (west of farm_gate), field_gate = just inside the field's wheat gate
+      forest_link: [772, 1148], bakery_q: [1060, 1335], field_gate: [1469, 1222],
       cross_n: [990, 1440], forest_gate: [790, 1300], farm_gate: [1180, 1320],
       green: [990, 1700], cross_s: [990, 2040], mine_gate: [790, 1950], hunt_gate: [1170, 1980],
       village: [990, 2240], tents_w: [620, 2380], tents_e: [1360, 2380], gate: [990, 2560],
@@ -344,7 +391,8 @@ export const WORLD = {
       //  beach_w — plaza_w 길은 오두막을 지나가서 없앴어요)
       ['plaza_s', 'cross_n', { via: [[990, 1150]] }],
       ['plaza_sw', 'forest_link'], ['forest_link', 'forest_gate', { via: [[786, 1230]] }],
-      ['plaza_se', 'farm_link'], ['farm_link', 'farm_gate', { via: [[1186, 1240]] }],
+      // ((v4.3 밀밭 · 빵집) plaza ↔ field: plaza_s → cross_n → farm_gate (the old plaza_se → farm_link road went through the bakery's yard)
+      ['cross_n', 'bakery_q', { draw: false }], ['bakery_q', 'farm_gate', { draw: false }],
       ['cross_n', 'forest_gate', { via: [[880, 1390]] }], ['cross_n', 'farm_gate', { via: [[1090, 1390]] }],
       ['cross_n', 'green'], ['green', 'cross_s'],
       ['cross_s', 'mine_gate', { via: [[880, 2000]] }], ['cross_s', 'hunt_gate', { via: [[1090, 2010]] }],
@@ -353,6 +401,7 @@ export const WORLD = {
       ['village', 'gate'],
       // 구역 안 길 (구역이 열리면 나타남)
       ['forest_gate', 'forest_in', { zone: 'forest' }], ['farm_gate', 'farm_in', { zone: 'farm' }],
+      ['farm_in', 'field_gate', { zone: 'farm', draw: false }],      // ((v4.3) along the field's tl fence to the wheat gate (the bakery's oven door)
       ['mine_gate', 'mine_in', { zone: 'mine' }], ['hunt_gate', 'hunt_in', { zone: 'hunt' }],
       // (v3) 새 땅의 길: region = 이 땅이 열려야 생김
       ['plaza_e', 'east_link', { region: 'east' }], ['east_link', 'east_gate', { region: 'east' }], ['east_gate', 'e_mid', { region: 'east' }],
@@ -378,7 +427,9 @@ export const WORLD = {
   fences: [
     { zone: 'plaza',  edges: { tr: [[0, 3.2]] } },
     { zone: 'forest', edges: { tl: [], bl: [] } },
-    { zone: 'farm',   edges: { tr: [], br: [] } },
+    // ((v4.3 밀밭 · 빵집) the field's west side (tl, X = 14.03) is fenced now: the road entrance at farm_in [1.4, 3.0] and the wheat
+    //  gate beside the bakery's oven door [5.4, 6.8] (1428, 1216 – 1492, 1184). bl stays open as before
+    { zone: 'farm',   edges: { tr: [], br: [], tl: [[1.4, 3.0], [5.4, 6.8]] } },
     { zone: 'mine',   edges: { tl: [[6.2, 9]], bl: [] } },
     { zone: 'hunt',   edges: { tr: [], br: [], bl: [[0, 2.5]], tl: [[0.8, 5.2]] } },
   ],
@@ -399,7 +450,8 @@ export const WORLD = {
     // 광장
     ['lamp_post', ...Z('plaza', -6.6, -6.6)], ['lamp_post', ...Z('plaza', 6.6, -6.6)], ['lamp_post', ...Z('plaza', -0.5, 6.7)],
     ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', 1545, 800], ['crate', 1522, 826, { scale: 0.85 }],
-    ['signpost', 1068, 1214], ['bush_snow', ...Z('plaza', 1.0, 7.3)], ['snow_pile_b', ...Z('plaza', 7.4, 1.5)],
+    // ((v4.3 밀밭 · 빵집) the signpost (1068, 1214) stood on the bakery stall's line: gone (the one at 940, 1520 stays)
+    ['bush_snow', ...Z('plaza', 1.0, 7.3)], ['snow_pile_b', ...Z('plaza', 7.4, 1.5)],
     // 남쪽 마을
     // ((v4.3) 촌장 집(chief_lodge)은 바닷가 오두막이 되었어요 (WORLD.hut). 여기는 마을 사람들의 천막 마당: 천막 네 채.
     //  첫 집 두 채(h43_1 / h43_2)를 지으면 천막 가족이 이사 가고 천막을 걷어요 (id: tent43_1 … 4, VillageLife))
@@ -417,7 +469,11 @@ export const WORLD = {
     // 구역 장식 (해금 후)
     // (v3.5: 숲의 장작 더미와 밭의 작은 짚더미는 '모아두는 곳'(labour.piles)의 소품이 되었어요)
     ['tree_stump', ...Z('forest', 2.6, -1.2), { zone: 'forest' }],
-    ['hay_bale', ...Z('farm', 3.2, 2.6), { zone: 'farm' }], ['barrel', ...Z('farm', -3.3, -2.1), { zone: 'farm' }],
+    // ((v4.3 밀밭 · 빵집) the field's own things (assets/bakery43): the 농막 in its east corner (door to −Y, the pile), the scarecrow with a
+    //  red scarf in the skipped plot cell, a sled with wheat sheaves under the tr fence. The hay bale (1672, 1284) and the barrel
+    //  (1166, 1243: the bakery's yard now) are gone. hut = the farmers' hut (the old worker_hut's job)
+    ['farm43_hut', 1669, 1266, { zone: 'farm', r: 62, id: 'farm43_hut' }], ['farm43_scarecrow', 1401, 1279, { zone: 'farm', r: 14 }],
+    ['farm43_sledcart', 1587, 1207, { zone: 'farm', r: 34 }],
     ['mine_entrance', ...Z('mine', -2.6, 2.6), { zone: 'mine' }],   // (v3.5: the crate and barrel went to the ore pile / out of the blacksmith's way)
     ['lamp_post', ...Z('mine', 0.4, 3.9), { zone: 'mine' }],
     ['hay_bale', ...Z('hunt', 2.6, -2.8), { zone: 'hunt' }], ['bush_snow', ...Z('hunt', 3.2, 0.4), { zone: 'hunt' }], ['bush_snow', ...Z('hunt', -2.8, -2.6), { zone: 'hunt' }],
@@ -490,7 +546,7 @@ export const WORLD = {
     ['decal_snow_drift_a', 360, 660, 1], ['decal_snow_drift_b', 1580, 700, 1], ['decal_snow_drift_a', 760, 1580, 1.1], ['decal_snow_drift_b', 1220, 1590, 1],
     ['decal_snow_drift_a', 1580, 2420, 1], ['decal_snow_drift_b', 330, 2440, 1], ['decal_puddle_ice', 1120, 1520, 1], ['decal_puddle_ice', 640, 2250, 0.9],
     ['decal_dirt_patch', 560, 1720, 0.9], ['decal_dirt_patch', 300, 2120, 1],
-    ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9], ['decal_snow_drift_b', 1250, 1150, 0.8],
+    ['decal_footprints', 1010, 1720, 1], ['decal_footprints', 970, 2100, 1], ['decal_footprints', 760, 520, 0.9],   // ((v4.3 밀밭 · 빵집) the snow drift (1250, 1150) lay under the bakery cottage: gone
     // (v4-C) 서쪽 숲마을
     ['decal_snow_drift_a', -700, 1200, 1.1], ['decal_snow_drift_b', -1150, 1450, 1], ['decal_puddle_ice', -980, 1880, 1.2], ['decal_snow_drift_a', -360, 2200, 1],
     ['decal_footprints', -280, 820, 0.9], ['decal_dirt_patch', -1000, 980, 0.9],
@@ -612,7 +668,10 @@ export const WORLD = {
       //  (v3.5 리뷰: 촌장은 등을 돌리지 않고 옆모습·앞모습으로 일해요 — give = 두 손으로 내려놓기, 반복)
       grill:      { pad: [-70, 35],  op: [57, -28],  dir: 'SW', who: 'npc_chef',       chiefAnim: 'give', chiefDir: 'SE' },
       sawmill:    { pad: [-72, 36],  op: [54, -27],  dir: 'SW', who: 'npc_sawyer',     chiefAnim: 'chop', chiefDir: 'SE' },
-      bakery:     { pad: [2, 64],    op: [10, 50],   dir: 'S',  who: 'npc_aunt',       chiefAnim: 'give', chiefDir: 'SE' },
+      // ((v4.3 밀밭 · 빵집) the chief bakes standing in the cottage's doorway (W, bakery-local 0.5, −0.95), facing the oven (W); the baker's
+      //  post is inside by her kneading table (0.1, −0.1), SE for knead, W for oven in / out (BakerOperator). padDepth: the pad is drawn
+      //  over the cottage's floor (A.y + 0.4), under its front sill layer
+      bakery:     { pad: BKL(0.5, -0.95), op: [0, 5], dir: 'SE', ovenDir: 'W', who: 'npc_aunt', chiefAnim: 'give', chiefDir: 'W', padDepth: 0.4 },
       smelter:    { pad: [-14, 66],  op: [-6, 48],   dir: 'S',  who: 'npc_blacksmith', chiefAnim: 'mine', chiefDir: 'SE' },
       smokehouse: { pad: [-10, 66],  op: [-22, 46],  dir: 'S',  who: 'npc_smoker',     chiefAnim: 'give', chiefDir: 'SE' },
       // (v3 건물: 부지 중심 기준) 대장간은 광부 영감이 모루 앞에서 도구를 두드려요
@@ -628,7 +687,9 @@ export const WORLD = {
       //   화살표가 빈 상자를 가리켰고, 탑이 다리 판자 위로 솟았어요). 가져가는 발판은 그대로)
       fish:  { x: 1000, y: 440, item: 'item_fish_raw', station: 'grill', worker: 'fisherman', prop: 'fish_crate', propOld: 'crate', propAt: [-62, 14], stackAt: [-57, -5], stackScale: 0.7, stackCols: [[-19, -7], [0, -8], [19, -7], [-19, 0], [0, -1], [19, 0], [-19, 7], [0, 6], [19, 7]], propR: 24, labelX: -44, labelY: -78, zone: 'plaza' },
       log:   { ...P('forest', -1.55, -1.55), item: 'item_log', station: 'sawmill', worker: 'lumberjack', prop: 'firewood_pile', propAt: [-58, -22], propR: 30, zone: 'forest' },
-      wheat: { ...P('farm', 2.5, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'hay_bale', propAt: [56, -20], propR: 26, zone: 'farm' },
+      // ((v4.3 밀밭 · 빵집) same place (1573, 1302); the prop is the field's grain sacks + sheaves (hay bale while that art is missing),
+      //  beside the pad (the old spot [56, -20] is under the 농막 now). porterHome: the wheat porter waits on the gate side
+      wheat: { ...P('farm', 1.0, 1.1), item: 'item_wheat', station: 'bakery', worker: 'farmer', prop: 'farm43_sacks', propOld: 'hay_bale', propAt: [40, 8], propR: 26, porterHome: [-44, -26], zone: 'farm' },
       ore:   { ...P('mine', -1.4, 0.8), item: 'item_ore', station: 'smelter', worker: 'miner', prop: 'crate', propAt: [46, -30], propR: 24, zone: 'mine' },   // (v3.5 리뷰: 상자를 뒤로 — 서쪽 바위로 가는 길을 막지 않게)
       meat:  { ...P('hunt', 2.6, -0.6), item: 'item_meat_raw', station: 'smokehouse', worker: 'hunter', prop: 'rack', propAt: [-84, -4], labelY: -100, zone: 'hunt' },
     },
@@ -636,6 +697,8 @@ export const WORLD = {
 
   // 두 번째 일꾼이 쉬는 곳 (첫 일꾼 자리에서 이만큼 떨어짐)
   worker2Offset: [52, 26],
+  // ((v4.3 밀밭 · 빵집) 일이 없는 농부는 잠시 뒤 농막 문 옆에서 쉬어요 (농막 앞 오른쪽: 밀 더미 발판과는 떨어져서). afterS = 쉬러 가기까지(초)
+  workerRest: { farmer: { at: [1642, 1307], afterS: 8 } },
 
   // ── 마을 생활 (v2, docs/주민기획.md) ─────────────────────
   life: {

@@ -24,11 +24,11 @@ function fixNum(obj, key, path, min, max, def, int) {
 
 // settings that older balance.js files may not have yet (filled in silently)
 const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.emptyCueS', 'customers.spawnEveryLate', 'trade.shelfMax', 'workers.porterCapacity',
-  'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
+  'costs.hire_clerk_market', 'costs.hire_clerk_trade', 'costs.hire_clerk_bakery', 'costs.porter_grill', 'costs.porter_sawmill', 'costs.porter_bakery', 'costs.porter_smelter', 'costs.porter_smokehouse',
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan|market43)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan|market43|bakery43)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -51,7 +51,7 @@ export function checkBalance() {
   // costs: whole coins, at least 1 (0 would make a pad that never completes)
   B.costs = B.costs || {};
   for (const k of ['hire_fisherman', 'zone_forest', 'hire_lumberjack', 'zone_farm', 'hire_farmer', 'zone_mine', 'hire_miner', 'zone_hunt', 'hire_hunter',
-    'hire_clerk_market', 'hire_clerk_trade', 'porter_grill', 'porter_sawmill', 'porter_bakery', 'porter_smelter', 'porter_smokehouse']) fixNum(B.costs, k, 'costs.' + k, 1, 1e9, DEFAULT_COST, true);
+    'hire_clerk_market', 'hire_clerk_trade', 'hire_clerk_bakery', 'porter_grill', 'porter_sawmill', 'porter_bakery', 'porter_smelter', 'porter_smokehouse']) fixNum(B.costs, k, 'costs.' + k, 1, 1e9, k === 'hire_clerk_bakery' ? 80 : DEFAULT_COST, true);
   // (v3.5 분업) operator + raw porter pads of each line; their defaults follow the line's gatherer cost
   const LINE_WORKER = { grill: 'hire_fisherman', sawmill: 'hire_lumberjack', bakery: 'hire_farmer', smelter: 'hire_miner', smokehouse: 'hire_hunter' };
   for (const st in LINE_WORKER) {
@@ -125,6 +125,18 @@ export function checkBalance() {
   fixNum(M3, 'lineShow', 'market43.lineShow', 2, 20, 6, true);
   fixNum(M3, 'switchS', 'market43.switchS', 0.5, 120, 4);
   fixNum(M3, 'clerk3', 'market43.clerk3', 1, 1e9, 150, true);
+  // ---- (v4.3 밀밭 · 빵집) the bakery cottage + its stall: a missing block is filled silently
+  const BK = B.bakery43 = B.bakery43 && typeof B.bakery43 === 'object' ? B.bakery43 : {};
+  const bb = BK.build = BK.build && typeof BK.build === 'object' ? BK.build : {};
+  fixNum(bb, 'coins', 'bakery43.build.coins', 1, 1e9, 150, true);
+  fixNum(bb, 'item_plank', 'bakery43.build.item_plank', 0, 999, 4, true);
+  fixNum(BK, 'stallMax', 'bakery43.stallMax', 1, 200, 24, true);
+  fixNum(BK, 'fullAt', 'bakery43.fullAt', 1, BK.stallMax, 12, true);
+  fixNum(BK, 'batch', 'bakery43.batch', 1, 12, 3, true);
+  fixNum(BK, 'spawnEvery', 'bakery43.spawnEvery', 0.3, 120, 3.2);
+  fixNum(BK, 'spawnEveryLate', 'bakery43.spawnEveryLate', 0.3, 120, 2.6);
+  fixNum(BK, 'wantMax', 'bakery43.wantMax', 1, 20, 3, true);
+  fixNum(BK, 'maxQueue', 'bakery43.maxQueue', 1, 12, 5, true);
   B.workers = B.workers || {};
   fixNum(B.workers, 'speed', 'workers.speed', 20, 1000, 150);
   fixNum(B.workers, 'capacity', 'workers.capacity', 1, 100, 5, true);
@@ -433,6 +445,7 @@ function checkV4A(B) {
   fixNum(VI, 'patience', 'v4.visitors.patience', 5, 600, 60);
   fixNum(VI, 'shopChance', 'v4.visitors.shopChance', 0, 1, 0.45);
   fixNum(VI, 'storeChance', 'v4.visitors.storeChance', 0, 1, 0.25);
+  fixNum(VI, 'bakeryChance', 'v4.visitors.bakeryChance', 0, 1, 0.35);     // ((v4.3 밀밭 · 빵집) a neighbour stops at the bread stall
   fixNum(VI, 'maxInVillage', 'v4.visitors.maxInVillage', 1, 120, 24, true);
   fixNum(VI, 'regularAt', 'v4.visitors.regularAt', 1, 100, 3, true);
   fixNum(VI, 'speed', 'v4.visitors.speed', 20, 600, 105);

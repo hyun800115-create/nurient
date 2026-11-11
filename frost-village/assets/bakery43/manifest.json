@@ -1,0 +1,413 @@
+{
+ "version": 1,
+ "generator": "tools/blender/bakery_render.py + bakery_pack.py (v4.3 bakery split: the bakery cottage + bread stall, the wheat field's 농막 and props)",
+ "conventions": {
+  "ppu": 64,
+  "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre (bakery43_back: the cottage anchor A = world.js bakery43 x, y; the stall: its footprint centre).",
+  "layers": "bakery43_back (depth A.y) -> the baker at staffPoints[0] (A.y + 0.5) -> bakery43_front (A.y + 1: the low front sill + flower box, the lower 0.9 m of the front-left corner post and the door jamb, the right ledge + corner pier). bakery43_stall_back (d) -> the clerk at staffPoints[0] lifted stepLiftPx (d + 0.5) -> bakery43_stall_front (d + 1: counter + empty bread case) -> the stock overlay (d + 1.1): none when empty, bakery43_bread_1 for 1 .. fullAt-1 loaves, bakery43_bread_2 from fullAt (stockFullAt).",
+  "points": "every *Point(s) value is a px offset [dx, dy] from the sprite anchor (unscaled sprite).",
+  "walls": "bakery43_back walls = collision circles [dx, dy, r] px from the anchor (the doorway bx 0.2 .. 1.1 stays open; the stall, the pads and the oven have no round collider).",
+  "signQuad": "the 4 corners [top-left, top-right, bottom-right, bottom-left] of a blank board face (it faces world -Y: the top edge slopes down to the right, 1 px down per 2 px across). The game writes signText (a strings.js key) into it, sheared the same way.",
+  "ghost": "no bread, dough or wheat is painted on the cottage or the stall frames: the loaves on the stall are the stock overlays, the oven's loaves are item sprites flown from fxPoints.ovenMouth (ghost_sigs.json holds their goods-free signatures for tools/test/ghostsweep_art.json)."
+ },
+ "atlases": [
+  {
+   "key": "bakery43",
+   "png": "bakery43/bakery43.png",
+   "json": "bakery43/bakery43.json"
+  }
+ ],
+ "sprites": {
+  "bakery43_back": {
+   "atlas": "bakery43",
+   "frame": "bakery43_back",
+   "anchor": [
+    0.38725,
+    0.62228
+   ],
+   "kind": "building",
+   "frameSize": [
+    408,
+    368
+   ],
+   "topPx": 208,
+   "front": "-Y",
+   "notes": "눈꽃 빵집 cottage (v4.3 bakery split, spec §3.3 / §6.1): 2.6 x 2.6 m, gable end facing -Y, snowy terracotta roof (eaves 2.05 m, ridge 2.9 m), brick chimney on the left slope (fxPoints.chimney = smoke). A wide front opening: low sill bx -1.15..0.2, doorway bx 0.2..1.1 (doorPoint = the chief's 서서 빵 굽기 pad W), the right wall's front half a 0.75 m ledge open above. Inside: brick-and-clay oven in the front-left corner, mouth facing +X (fxPoints.ovenMouth = 0.55 m up at the mouth: loaves fly from here, the fire fx sits here), an EMPTY kneading table along the right wall (top 0.50 m), empty shelves, a peel on the wall. Draw bakery43_back (depth A.y), the baker at staffPoints[0] (A.y + 0.5), bakery43_front (A.y + 1: the sill + flower box, the lower 0.9 m of the front-left corner post and of the door jamb, the right ledge + its corner pier). Blank sign board: the game writes sign_bakery43 into signQuad. No bread, dough or wheat painted (ghost-sweep rule).",
+   "footprint": [
+    235,
+    118
+   ],
+   "footprintM": [
+    2.6,
+    2.6
+   ],
+   "fxPoints": {
+    "ovenMouth": [
+     -37,
+     -23
+    ],
+    "chimney": [
+     -60,
+     -199
+    ],
+    "sign": [
+     -63,
+     -85
+    ],
+    "lantern": [
+     -58,
+     -47
+    ]
+   },
+   "staffPoints": [
+    [
+     0,
+     5
+    ]
+   ],
+   "staffDirs": [
+    "SE"
+   ],
+   "staffDepth": "front",
+   "ovenDir": "W",
+   "doorPoint": [
+    -20,
+    33
+   ],
+   "inPoint": [
+    104,
+    38
+   ],
+   "outPoint": [
+    36,
+    72
+   ],
+   "signQuad": [
+    [
+     -92,
+     -106
+    ],
+    [
+     -34,
+     -78
+    ],
+    [
+     -34,
+     -63
+    ],
+    [
+     -92,
+     -92
+    ]
+   ],
+   "signText": "sign_bakery43",
+   "signColor": "#5A3418",
+   "overlay": "bakery43_front",
+   "occluder": true,
+   "walls": [
+    [
+     9,
+     -45,
+     30
+    ],
+    [
+     50,
+     -25,
+     30
+    ],
+    [
+     91,
+     -5,
+     30
+    ],
+    [
+     -32,
+     -34,
+     30
+    ],
+    [
+     -72,
+     -14,
+     30
+    ],
+    [
+     68,
+     16,
+     30
+    ],
+    [
+     27,
+     36,
+     30
+    ],
+    [
+     -91,
+     5,
+     30
+    ],
+    [
+     -63,
+     18,
+     30
+    ]
+   ]
+  },
+  "bakery43_front": {
+   "atlas": "bakery43",
+   "frame": "bakery43_front",
+   "anchor": [
+    0.38725,
+    0.62228
+   ],
+   "kind": "overlay",
+   "of": "bakery43_back",
+   "frameSize": [
+    408,
+    368
+   ],
+   "notes": "Front layer of bakery43_back (same frame + anchor): the low front sill + flower box, the lower 0.9 m of the front-left corner post and of the door jamb, the right ledge (0.75 m) + its corner pier. Draw it ABOVE the baker (A.y + 1)."
+  },
+  "bakery43_stall_back": {
+   "atlas": "bakery43",
+   "frame": "bakery43_stall_back",
+   "anchor": [
+    0.32143,
+    0.68359
+   ],
+   "kind": "building",
+   "frameSize": [
+    280,
+    256
+   ],
+   "topPx": 154,
+   "front": "-Y",
+   "notes": "빵집 가판대 (v4.3 bakery split, spec §3.3 / §6.1): 1.6 x 0.7 m, faces -Y. Back layer = two back posts with a blank board on top (the game writes sign_stall43 into signQuad), a low back shelf with EMPTY baskets, a 10 cm plank step; front layer bakery43_stall_front = the 0.6 m counter with an EMPTY sloped bread case (top 0.74 m) on the customer side. Draw back (d), the clerk at staffPoints[0] lifted stepLiftPx (d + 0.5), front (d + 1), then the stock overlay (bakery43_bread_1 when 1 <= stock < fullAt, bakery43_bread_2 from fullAt; none when empty). fxPoints.case = where the loaves land. No awning (G6).",
+   "footprint": [
+    104,
+    52
+   ],
+   "footprintM": [
+    1.6,
+    0.7
+   ],
+   "fxPoints": {
+    "case": [
+     -14,
+     -39
+    ],
+    "sign": [
+     26,
+     -118
+    ]
+   },
+   "staffPoints": [
+    [
+     24,
+     -13
+    ]
+   ],
+   "staffDirs": [
+    "SW"
+   ],
+   "staffDepth": "front",
+   "stepLiftPx": 5,
+   "stepM": 0.1,
+   "counterM": 0.6,
+   "caseTopM": 0.74,
+   "customerPoints": [
+    [
+     -73,
+     -5
+    ]
+   ],
+   "customerDirs": [
+    "NE"
+   ],
+   "signQuad": [
+    [
+     6,
+     -135
+    ],
+    [
+     47,
+     -114
+    ],
+    [
+     47,
+     -101
+    ],
+    [
+     6,
+     -122
+    ]
+   ],
+   "signText": "sign_stall43",
+   "signColor": "#6E3E1E",
+   "overlay": "bakery43_stall_front",
+   "stockOverlays": [
+    "bakery43_bread_1",
+    "bakery43_bread_2"
+   ],
+   "stockFullAt": 12
+  },
+  "bakery43_stall_front": {
+   "atlas": "bakery43",
+   "frame": "bakery43_stall_front",
+   "anchor": [
+    0.32143,
+    0.68359
+   ],
+   "kind": "overlay",
+   "of": "bakery43_stall_back",
+   "frameSize": [
+    280,
+    256
+   ],
+   "notes": "Front layer of bakery43_stall_back (same frame + anchor): the 0.6 m counter and the EMPTY sloped bread case. Draw it ABOVE the clerk (d + 1)."
+  },
+  "bakery43_bread_1": {
+   "atlas": "bakery43",
+   "frame": "bakery43_bread_1",
+   "anchor": [
+    0.32143,
+    0.68359
+   ],
+   "kind": "overlay",
+   "of": "bakery43_stall_back",
+   "frameSize": [
+    280,
+    256
+   ],
+   "notes": "Stock overlay of the stall (same frame + anchor), drawn over bakery43_stall_front: 3 loaves + a baguette on the case, for 1 .. stockFullAt - 1 loaves.",
+   "role": "stock"
+  },
+  "bakery43_bread_2": {
+   "atlas": "bakery43",
+   "frame": "bakery43_bread_2",
+   "anchor": [
+    0.32143,
+    0.68359
+   ],
+   "kind": "overlay",
+   "of": "bakery43_stall_back",
+   "frameSize": [
+    280,
+    256
+   ],
+   "notes": "Stock overlay of the stall (same frame + anchor), drawn over bakery43_stall_front: a full case + a basket of rolls, from stockFullAt loaves.",
+   "role": "stock"
+  },
+  "farm43_hut": {
+   "atlas": "bakery43",
+   "frame": "farm43_hut",
+   "anchor": [
+    0.36842,
+    0.64145
+   ],
+   "kind": "building",
+   "frameSize": [
+    304,
+    304
+   ],
+   "topPx": 175,
+   "front": "-Y",
+   "notes": "농막 (v4.3 field, spec §3.2 / §6.1): a small log shed, 2.0 x 1.6 m, mossy snowy roof (top <= 2.6 m), door facing -Y (toward the wheat pile), a small lit window, an iron stovepipe on the -X gable (fxPoints.smoke = its top: the game puffs smoke there), a hoe / rake / sickle hanging on a rack on the +X wall, a lantern by the door. Decor (collider r ~62 px).",
+   "footprint": [
+    163,
+    81
+   ],
+   "footprintM": [
+    2.0,
+    1.6
+   ],
+   "fxPoints": {
+    "smoke": [
+     -52,
+     -176
+    ],
+    "lantern": [
+     -28,
+     -48
+    ]
+   },
+   "doorPoint": [
+    -62,
+    17
+   ],
+   "colliderPx": 62
+  },
+  "farm43_scarecrow": {
+   "atlas": "bakery43",
+   "frame": "farm43_scarecrow",
+   "anchor": [
+    0.31771,
+    0.64286
+   ],
+   "kind": "prop",
+   "frameSize": [
+    192,
+    196
+   ],
+   "topPx": 105,
+   "front": "-Y",
+   "notes": "허수아비 (v4.3 field): ~1.9 m on a post, burlap head with a stitched smile, straw hat with snow on the brim, patched blue coat with straw tufts, a long red-white knitted scarf blowing to the side. Faces the camera. Decor (collider r 14 px).",
+   "footprint": [
+    38,
+    19
+   ],
+   "footprintM": {
+    "radius": 0.3
+   },
+   "colliderPx": 14
+  },
+  "farm43_sledcart": {
+   "atlas": "bakery43",
+   "frame": "farm43_sledcart",
+   "anchor": [
+    0.43902,
+    0.56061
+   ],
+   "kind": "prop",
+   "frameSize": [
+    164,
+    132
+   ],
+   "topPx": 54,
+   "front": "-Y",
+   "notes": "썰매 수레 (v4.3 field): a wooden sled (runners curling up at +X) with four tied wheat sheaves under a dusting of snow, roped down, and a rope pull. Decor (collider r 34 px).",
+   "footprint": [
+    104,
+    52
+   ],
+   "footprintM": [
+    1.5,
+    0.8
+   ],
+   "colliderPx": 34
+  },
+  "farm43_sacks": {
+   "atlas": "bakery43",
+   "frame": "farm43_sacks",
+   "anchor": [
+    0.46667,
+    0.54464
+   ],
+   "kind": "prop",
+   "frameSize": [
+    120,
+    112
+   ],
+   "topPx": 41,
+   "front": "-Y",
+   "notes": "밀 더미 소품 (v4.3 field): two burlap grain sacks (one leaning) and a small stack of sheaves; the wheat pile's prop instead of the hay bale. The pile's items are drawn by the game beside it.",
+   "footprint": [
+    72,
+    36
+   ],
+   "footprintM": [
+    1.0,
+    0.6
+   ]
+  }
+ }
+}

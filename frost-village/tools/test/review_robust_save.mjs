@@ -206,7 +206,8 @@ async function balanceRoute(page, edits) {
 if (!only || only === 'costLowered') {
   const save = J({ ...base, coins: 500, progress: { done: { hire_fisherman: true, zone_forest: true, hire_lumberjack: true }, paid: { zone_farm: 150 }, up: { capacity: 0, speed: 0 } } });
   await withSave('costLowered', save, {
-    route: (page) => balanceRoute(page, [[/zone_farm: 200,/, 'zone_farm: 100,']]),
+    // ((v4.3 밀밭 · 빵집) the field costs 150 now (the bakery is its own 150 + 4 planks): lowered to 100 under the 150 paid
+    route: (page) => balanceRoute(page, [[/zone_farm: 150,/, 'zone_farm: 100,']]),
     after: (page) => page.evaluate(async () => {
       const FV = window.__FV, pad = FV.scene.progress.pads.zone_farm;
       const before = { cost: pad.cost, paid: pad.paid, remaining: pad.remaining, label: pad.costText.text };

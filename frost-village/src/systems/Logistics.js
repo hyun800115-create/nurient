@@ -78,7 +78,8 @@ export class Logistics {
     const v42 = this.gs && this.gs.v42;
     const per = v42 && v42.frules ? Number(BALANCE.v42 && BALANCE.v42.porters && BALANCE.v42.porters.travelPxPerPoint) || 0 : 0;
     for (const s of this.sinks) {
-      if (s === opts.exclude || (opts.noStore && s.isWarehouse)) continue;
+      // ((v4.3 밀밭 · 빵집) exclude2: a second sink to skip (the bakery's own porters never stock its stall: the oven does)
+      if (s === opts.exclude || s === opts.exclude2 || (opts.noStore && s.isWarehouse)) continue;
       if (s.remote ? !(opts.remote || opts.onlyRemote) : opts.onlyRemote) continue;
       const n = this.want(s, type);
       if (n <= 0) continue;

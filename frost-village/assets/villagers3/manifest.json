@@ -801,99 +801,225 @@
       "E"
      ]
     },
-    "operate": {
+    "knead": {
      "frames": 8,
      "fps": 10,
      "repeat": -1,
      "dirs": [
-      "S",
-      "SE",
-      "E",
-      "NE",
-      "N"
+      "SE"
+     ],
+     "impactFrame": 4,
+     "impactPoint": {
+      "SE": [
+       19,
+       -22
+      ]
+     },
+     "beats": [
+      {
+       "frame": 4,
+       "kind": "press",
+       "point": {
+        "SE": [
+         19,
+         -22
+        ]
+       }
+      },
+      {
+       "frame": 6,
+       "kind": "fold",
+       "point": {
+        "SE": [
+         16,
+         -25
+        ]
+       }
+      }
+     ],
+     "station": "bakery43_back",
+     "workTool": "a floured board (resting on the cottage table, top 0.50 m, centre 0.36 m in front) and a ball of dough that both palms push down and forward; it squashes flat on frame 4 (impactPoint = flour puff on the dough) and is folded back on frame 6 (beats[1]).",
+     "workSpot": {
+      "forwardM": 0.36,
+      "heightM": 0.5
+     },
+     "toolPoints": {
+      "SE": [
+       [
+        19,
+        -26
+       ],
+       [
+        19,
+        -26
+       ],
+       [
+        19,
+        -25
+       ],
+       [
+        19,
+        -23
+       ],
+       [
+        19,
+        -22
+       ],
+       [
+        19,
+        -22
+       ],
+       [
+        19,
+        -24
+       ],
+       [
+        19,
+        -25
+       ]
+      ]
+     }
+    },
+    "oven_in": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "E"
      ],
      "impactFrame": 3,
      "impactPoint": {
-      "S": [
-       0,
-       -16
-      ],
-      "SE": [
-       19,
-       -20
-      ],
       "E": [
-       27,
+       47,
        -29
-      ],
-      "NE": [
-       19,
-       -39
-      ],
-      "N": [
-       0,
-       -43
       ]
      },
      "beats": [
       {
        "frame": 3,
-       "kind": "rolling_push",
+       "kind": "peel_in",
        "point": {
-        "S": [
-         0,
-         -16
-        ],
-        "SE": [
-         19,
-         -20
-        ],
         "E": [
-         27,
+         47,
          -29
-        ],
-        "NE": [
-         19,
-         -39
-        ],
-        "N": [
-         0,
-         -43
         ]
        }
       },
       {
        "frame": 3,
-       "kind": "pin_on_dough",
+       "kind": "glow_flare",
        "point": {
-        "S": [
-         0,
-         -19
-        ],
-        "SE": [
-         18,
-         -23
-        ],
         "E": [
-         25,
-         -32
-        ],
-        "NE": [
-         18,
-         -40
-        ],
-        "N": [
-         0,
-         -44
+         47,
+         -29
         ]
        }
       }
      ],
-     "station": "station_bakery",
-     "workTool": "rolling pin held by both handles, rolled forward over a dough sheet on a floured board (board top 0.50 m, its centre 0.35 m in front of the anchor = the station counter). The dough stretches on the push; impactPoint = flour-puff spot at the front edge of the dough on the full push.",
+     "station": "bakery43_back",
+     "workTool": "an EMPTY wooden peel (0.64 m) held in both hands; it slides forward and its blade is inside the oven mouth (0.64 m in front, floor 0.50 m) on frame 3 (impactPoint = the blade tip = oven glow flare).",
      "workSpot": {
-      "forwardM": 0.35,
+      "forwardM": 0.64,
       "heightM": 0.5
+     },
+     "toolPoints": {
+      "E": [
+       [
+        32,
+        -55
+       ],
+       [
+        38,
+        -45
+       ],
+       [
+        43,
+        -33
+       ],
+       [
+        47,
+        -29
+       ],
+       [
+        45,
+        -30
+       ],
+       [
+        37,
+        -44
+       ]
+      ]
+     }
+    },
+    "oven_out": {
+     "frames": 6,
+     "fps": 10,
+     "repeat": 0,
+     "dirs": [
+      "E"
+     ],
+     "impactFrame": 3,
+     "impactPoint": {
+      "E": [
+       40,
+       -45
+      ]
+     },
+     "beats": [
+      {
+       "frame": 3,
+       "kind": "peel_out",
+       "point": {
+        "E": [
+         40,
+         -45
+        ]
+       }
+      },
+      {
+       "frame": 3,
+       "kind": "loaves_out",
+       "point": {
+        "E": [
+         40,
+         -45
+        ]
+       }
+      }
+     ],
+     "station": "bakery43_back",
+     "workTool": "the same EMPTY peel reaches into the mouth, scoops and comes back out on frame 3 (impactPoint = the blade tip at the mouth: the game releases the batch of loaves there and flies them to the stall).",
+     "workSpot": {
+      "forwardM": 0.64,
+      "heightM": 0.5
+     },
+     "toolPoints": {
+      "E": [
+       [
+        45,
+        -30
+       ],
+       [
+        47,
+        -29
+       ],
+       [
+        46,
+        -36
+       ],
+       [
+        40,
+        -45
+       ],
+       [
+        32,
+        -57
+       ],
+       [
+        34,
+        -50
+       ]
+      ]
      }
     }
    },
@@ -1110,7 +1236,7 @@
    "seatHeightPx": 25,
    "headTopSit": -79,
    "operates": [
-    "station_bakery"
+    "bakery43_back"
    ],
    "overrides": "villagers"
   },

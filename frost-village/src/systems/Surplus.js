@@ -57,7 +57,7 @@ export class Surplus {
     }
   }
 
-  sellers() { const gs = this.gs; return [gs.market, gs.trade, gs.store].filter((q) => q && q.stock); }
+  sellers() { const gs = this.gs; return [gs.market, gs.trade, gs.store, gs.bakery && gs.bakery.built ? gs.bakery.stall : null].filter((q) => q && q.stock); }   // ((v4.3) + the bakery stall
 
   /** (F1) seconds the shelf of `seller` has had no `ty` (nothing on its way either) */
   emptyFor(seller, ty) { const m = this.emptyT.get(seller); return (m && m[ty]) || 0; }

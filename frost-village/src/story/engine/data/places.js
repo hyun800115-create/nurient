@@ -14,7 +14,7 @@ export const PLACE_KINDS = {
   beach_fire: { ko: '바닷가 모닥불', en: 'the beach campfire', cat: 'outdoor', social: 0.95, open: [7, 22], asset: 'log_seat' },
   harbor: { ko: '항구', en: 'the harbour', cat: 'work', social: 0.5, open: [5, 20], asset: 'harbor_office' },
   forest: { ko: '소나무 숲', en: 'the pine forest', cat: 'work', social: 0.25, open: [6, 18], asset: 'station_sawmill' },
-  farm: { ko: '밀밭', en: 'the wheat field', cat: 'work', social: 0.25, open: [6, 18], asset: 'station_bakery' },
+  farm: { ko: '밀밭', en: 'the wheat field', cat: 'work', social: 0.25, open: [6, 18], asset: 'farm43_hut' },
   mine: { ko: '광산', en: 'the mine', cat: 'work', social: 0.25, open: [6, 18], asset: 'station_smelter' },
   town_hall: { ko: '마을회관', en: 'the town hall', cat: 'civic', social: 0.5, open: [8, 20], asset: 'town_hall' },
   school: { ko: '학교', en: 'school', cat: 'civic', social: 0.85, open: [7, 17], asset: 'school' },

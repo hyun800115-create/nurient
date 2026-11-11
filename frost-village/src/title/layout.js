@@ -157,7 +157,8 @@ export const OBJECTS = [
   { k: 'watchtower', x: 11.2, y: 11.4, s: 2, big: 1, hero: 1 },
   { k: 'chief_lodge', x: 9.8, y: 8.4, s: 2, big: 1 },
   { k: 'station_sawmill', x: -1.2, y: 4.6, s: 2, u: 3 },
-  { k: 'station_bakery', x: 6.2, y: 4.2, s: 2 },
+  // ((v4.3 밀밭 · 빵집) the old oven picture left props_buildings: a little wheat field and a hay bale at its place
+  { k: 'crop_wheat_3', x: 5.9, y: 4.0, s: 2 }, { k: 'crop_wheat_3', x: 6.6, y: 4.4, s: 2 }, { k: 'hay_bale', x: 6.2, y: 4.9, s: 2 },
   { k: 'house_b', x: 9.4, y: 4.0, s: 2, u: 4 },
   { k: 'lamp_post', x: 2.6, y: 8.3, s: 2 }, { k: 'lamp_post', x: 8.0, y: 6.0, s: 2 },
   { k: 'snowman_3', x: -3.6, y: 7.2, s: 2 },

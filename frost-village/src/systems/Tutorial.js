@@ -15,7 +15,7 @@ import { DEPTH } from './DepthSort.js';
 import { gdist } from '../core/Iso.js';
 import { t, fmt } from '../data/strings.js';
 import { FOODS, GOODS } from '../entities/Seller.js';
-import { MINER_FOOD, MATERIALS, STORE_GOODS } from '../data/items.js';
+import { MINER_FOOD, MATERIALS, STORE_GOODS, SHOP_FOODS, BAKERY_GOODS } from '../data/items.js';
 import { buildCost } from '../entities/Site.js';
 import { BALANCE } from '../data/balance.js';
 import { MENU } from './Civic.js';
@@ -23,7 +23,8 @@ import { MENU } from './Civic.js';
 const ZONE_CHAINS = [
   // ((v4.3) planks and ingots sell at the shop's 자재 창구 (the trade post merged into the shop): seller 'mat')
   { zone: 'forest', raw: 'item_log', product: 'item_plank', station: 'sawmill', seller: 'mat', worker: 'hire_lumberjack' },
-  { zone: 'farm', raw: 'item_wheat', product: 'item_bread', station: 'bakery', seller: 'market', worker: 'hire_farmer' },
+  // ((v4.3 밀밭 · 빵집) bread sells at the bakery's own stall: seller 'bakery' (zoneHint has the field's own steps)
+  { zone: 'farm', raw: 'item_wheat', product: 'item_bread', station: 'bakery', seller: 'bakery', worker: 'hire_farmer' },
   { zone: 'mine', raw: 'item_ore', product: 'item_ingot', station: 'smelter', seller: 'mat', worker: 'hire_miner' },
   { zone: 'hunt', raw: 'item_meat_raw', product: 'item_meat_cooked', station: 'smokehouse', seller: 'market', worker: 'hire_hunter' },
 ];
@@ -208,13 +209,17 @@ export class Tutorial {
     // ((v4-B) + the station till: wholesale, card bonuses and rent)
     const g = gs.v4 && gs.v4.growth;
     // ((v4.3) the 자재 창구 pays into the shop's one till: listed once)
-    const out = [gs.market.cash, gs.trade && gs.trade.enabled && gs.trade.cash !== gs.market.cash ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null];
+    // ((v4.3 밀밭 · 빵집) + the bakery stall's till)
+    const out = [gs.market.cash, gs.trade && gs.trade.enabled && gs.trade.cash !== gs.market.cash ? gs.trade.cash : null, gs.store && gs.store.enabled ? gs.store.cash : null, g && g.active ? g.till : null, this.stall() ? this.stall().cash : null];
     // ((v4-C) the town hall's tax box and the big restaurant's cash pad count toward the next purchase (cashHint) only:
     // they fill all the time, and a "coins are waiting" arrow to them would never leave the chief alone — the bots
     // following the arrow collected tax for half an hour instead of filling the neighbours' orders)
     if (withCivic) { const cv = gs.civic; if (cv && cv.hall && cv.hall.enabled) out.push(cv.hall.tax); if (cv && cv.restaurant && cv.restaurant.enabled) out.push(cv.restaurant.cash); }
     return out.filter(Boolean);
   }
+
+  /** ((v4.3 밀밭 · 빵집) the bakery's stall once the bakery stands (else null) */
+  stall() { const b = this.gs.bakery; return b && b.built && b.stall.enabled ? b.stall : null; }
 
   // ---------------------------------------------------------------- (v4-B, docs/v4_plan.md §15.3)
   growth() { const v4 = this.gs.v4; return v4 && v4.growth && v4.growth.active ? v4.growth : null; }
@@ -247,7 +252,7 @@ export class Tutorial {
   orderFirst(ty) {
     const gs = this.gs, g = this.growth();
     if (!g || !g.active || g.needOf(ty) <= 0) return false;
-    const shelf = FOODS.indexOf(ty) >= 0 ? gs.market : GOODS.indexOf(ty) >= 0 ? (gs.trade.enabled ? gs.trade : null) : STORE_GOODS.indexOf(ty) >= 0 ? gs.store : null;
+    const shelf = BAKERY_GOODS.indexOf(ty) >= 0 ? this.stall() : SHOP_FOODS.indexOf(ty) >= 0 ? gs.market : GOODS.indexOf(ty) >= 0 ? (gs.trade.enabled ? gs.trade : null) : STORE_GOODS.indexOf(ty) >= 0 ? gs.store : null;
     const full = !shelf || !shelf.enabled || shelf.stock.countOf(ty) >= shelf.maxPerType * 0.5;
     return full || this.cardStuck(g, ty);
   }
@@ -292,7 +297,7 @@ export class Tutorial {
     // 7. happiness below the bar and a shelf item is gone: that shelf (idle only)
     if (g && idle && nb.rank && nb.rank.level < 2 && g.happiness() < ((BALANCE.v4.rank && BALANCE.v4.rank[2] && BALANCE.v4.rank[2].happy) || 80)) {
       const m = gs.market;
-      const ty = m.availableFoods ? FOODS.find((f) => m.stock.countOf(f) === 0 && gs.stationList.some((st) => st.output === f && st.enabled)) : null;
+      const ty = m.availableFoods ? SHOP_FOODS.find((f) => m.stock.countOf(f) === 0 && gs.stationList.some((st) => st.output === f && st.enabled)) : null;
       if (ty) { set(m.shelf.x, m.shelf.y, 60, 'obj_happy_low:' + ty, t('obj_happy_low', { item: t(ty) })); return true; }
     }
     // 8. idle with nothing else to do: the focus order card (text)
@@ -567,16 +572,20 @@ export class Tutorial {
     const mr = m.waitRegister || m.register;
     const mWait = m.waitingPay && !mr.clerk ? m.waitPayT : 0;
     const tWait = tr.enabled && tr.waitingPay && !tr.register.clerk ? tr.waitT : 0;
+    // ((v4.3 밀밭 · 빵집) the bakery stall's line waits to pay with no 판매원: its register R (after 2 s, as the store's)
+    const bk = this.stall();
+    const bWait = bk && bk.waitingPay && !bk.register.clerk ? bk.waitPayT : 0;
     const need = urgent ? 9 : 1.2;
     let reg = null, key = null;
-    if (mWait > need && (!tWait || mWait >= tWait)) { reg = mr; key = 'obj_register'; }
+    if (mWait > need && (!tWait || mWait >= tWait) && (!bWait || mWait >= bWait)) { reg = mr; key = 'obj_register'; }
+    else if (bWait > Math.max(2, need) && (!tWait || bWait >= tWait)) { reg = bk.register; key = 'obj_bakery_register'; }
     else if (tWait > need + 1) { reg = tr.register; key = 'obj_register_trade'; }
     if (!reg) return false;
     if (reg.pad.contains(p.x, p.y)) { this.textKey = 'obj_register_wait'; return true; }
     // a gentle toast the first times the line gets stuck far away
     if (urgent && gdist(p.x, p.y, reg.x, reg.y) > 420 && gs.time.now - (this.waitToastT || -1e9) > 45000) {
       this.waitToastT = gs.time.now;
-      gs.ui.toast(t(reg === mr ? 'customersWaiting' : 'merchantWaiting'));
+      gs.ui.toast(t(reg === mr || (bk && reg === bk.register) ? 'customersWaiting' : 'merchantWaiting'));
     }
     set(reg.x, reg.y, 46, key);
     return true;
@@ -626,6 +635,8 @@ export class Tutorial {
       return this.v42Dest(type);
     }
     if (type === 'item_fish_big') return gs.warehouse ? D(gs.warehouse.inPad, null, 'place_warehouse', gs.warehouse.sink, gs.warehouse.room) : this.v42Dest(type);
+    // ((v4.3 밀밭 · 빵집) bread: the bakery stall's case while it has room (the food box / the restaurant / a site came first above)
+    if (BAKERY_GOODS.indexOf(type) >= 0) { const S = this.stall(); return S && S.stock.countOf(type) < S.maxPerType ? D(S.shelf, 'obj_bread_shelf', 'place_bakery', S.sink, S.maxPerType - S.stock.countWithIncoming(type)) : this.v42Dest(type); }
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType ? D(gs.market.shelf, SELL_KEY[type], 'place_market', gs.market.sink, gs.market.maxPerType - gs.market.stock.countWithIncoming(type)) : this.v42Dest(type);
     if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType ? D(gs.trade.shelf, SELL_KEY[type], 'place_trade', gs.trade.sink, gs.trade.maxPerType - gs.trade.stock.countWithIncoming(type)) : this.v42Dest(type);
     const st = gs.stationByInput[type];
@@ -662,6 +673,7 @@ export class Tutorial {
   /** (v4-B) does the shelf that sells `type` have room? */
   shelfRoom(type) {
     const gs = this.gs;
+    if (BAKERY_GOODS.indexOf(type) >= 0) { const S = this.stall(); return !!(S && S.stock.countOf(type) < S.maxPerType); }
     if (FOODS.indexOf(type) >= 0) return gs.market.stock.countOf(type) < gs.market.maxPerType;
     if (GOODS.indexOf(type) >= 0) return gs.trade.enabled && gs.trade.stock.countOf(type) < gs.trade.maxPerType;
     if (STORE_GOODS.indexOf(type) >= 0) return !!(gs.store && gs.store.enabled && gs.store.stock.countOf(type) < gs.store.maxPerType);
@@ -786,10 +798,13 @@ export class Tutorial {
     const gs = this.gs, p = gs.player, prog = gs.progress;
     for (const z of ZONE_CHAINS) {
       if (!prog.isDone('zone_' + z.zone) || prog.hints[z.zone]) continue;
+      // ((v4.3 밀밭 · 빵집) the field's lesson starts once its bakery stands (before that: the 빵집 짓기 pad, like any pad)
+      if (z.seller === 'bakery' && !this.stall()) continue;
       // the lesson is over once the zone's worker does the gathering, or after a while
       this.zoneT[z.zone] = (this.zoneT[z.zone] || 0) + dt;
       if (prog.isDone(z.worker) || this.zoneT[z.zone] > ZONE_HINT_MAX) { prog.hints[z.zone] = true; continue; }
       const st = gs.stations[z.station];
+      if (z.seller === 'bakery') { if (this.fieldHint(set, z, st)) return true; continue; }
       const seller = z.seller === 'mat' ? gs.trade.shelf : gs.market.shelf;
       const raw = p.stack.countOf(z.raw), room = p.room;
       if (p.stack.countOf(z.product) > 0) { set(seller.x, seller.y, 60, 'obj_' + z.zone + '_4'); return true; }
@@ -817,6 +832,40 @@ export class Tutorial {
       return false;
     }
     return false;
+  }
+
+  /**
+   * ((v4.3 밀밭 · 빵집) the field's lesson: wheat → the bakery's oven door I (obj_farm_2); wheat at the oven and no baker →
+   * the doorway pad W (obj_op_bakery); bread on the case, customers waiting and no 판매원 → the stall's register R
+   * (obj_farm_4); bread in the bag → where it goes (the food box / the restaurant, else the stall's shelf); the rack's
+   * bread → take it (obj_farm_3); else the nearest ripe wheat. Over once
+   * a loaf sold at the stall (hints.farm) or the farmer is hired (zoneHint); it starts once the bakery stands
+   */
+  fieldHint(set, z, st) {
+    const gs = this.gs, p = gs.player, prog = gs.progress, S = this.stall();
+    const raw = p.stack.countOf(z.raw), bread = p.stack.countOf(z.product), room = p.room;
+    if (!S || !st || !st.enabled) return false;
+    if (bread > 0) { const d = this.destination(z.product); if (d) { if (d.pad.contains(p.x, p.y)) this.textKey = d.key; else set(d.pad.x, d.pad.y, 60, d.key, d.text); return true; } }
+    // customers wait to pay at the stall with nobody at R
+    if (!S.register.clerk && S.waitingPay) { if (S.register.pad.contains(p.x, p.y)) this.textKey = 'obj_register_wait'; else set(S.register.x, S.register.y, 46, 'obj_farm_4'); return true; }
+    const op = st.op, baker = !op || !!op.operator;
+    if (raw > 0 && (room <= 0 || raw >= 3)) { if (st.inPad.contains(p.x, p.y)) { this.textKey = 'obj_farm_2'; return true; } set(st.inPad.x, st.inPad.y, 50, 'obj_farm_2'); return true; }
+    if (!baker && (st.inStack.count > 0 || st.oven > 0) && raw === 0) { if (op.pad.contains(p.x, p.y)) this.textKey = 'obj_operating'; else set(op.x, op.y, 50, 'obj_op_bakery'); return true; }
+    // bread on the case and a line: the register (the customers pay there)
+    if (!S.register.clerk && S.stock.count > 0 && S.queue.some((c) => c.arrived)) { if (S.register.pad.contains(p.x, p.y)) this.textKey = 'obj_register_wait'; else set(S.register.x, S.register.y, 46, 'obj_farm_4'); return true; }
+    if (room <= 0) return false;
+    if (st.outStack.count > 0 && raw === 0 && S.stock.count < 3) { set(st.outPad.x, st.outPad.y, 80, 'obj_farm_3'); return true; }
+    return this.ripeWheat(set, z);
+  }
+  /** the nearest ripe wheat (the field's first step) */
+  ripeWheat(set, z) {
+    const gs = this.gs, p = gs.player;
+    let best = null, bd = 1e12;
+    for (const n of gs.wheat) { if (!n.ready()) continue; const d = gdist(p.x, p.y, n.x, n.y) + (gs.collision.fenceBetween && gdist(p.x, p.y, n.x, n.y) > 120 && gs.collision.fenceBetween(p.x, p.y, n.x, n.y) ? 700 : 0); if (d < bd) { bd = d; best = n; } }
+    if (!best) return false;
+    if (gdist(p.x, p.y, best.x, best.y) > 90) set(best.x, best.y, 90, 'obj_farm_1');
+    else { this.textKey = 'obj_farm_1'; this.target = null; }
+    return true;
   }
 
   /** idle player: the next useful thing to do. Text = the specific instruction, or the next goal. */

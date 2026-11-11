@@ -116,12 +116,13 @@ export const PLACES = {
   'p:school':      Object.assign(front('t_school', -1.3) || P(39.3, -11.8), { name: { ko: '솔방울 학교', en: 'Pinecone school' } }),
   'p:mail_square': Object.assign(P(6.2, -3.4), { name: { ko: '서리역 우체통', en: 'Station mailbox' } }),
   'p:mail_east':   Object.assign(node('east_link') || { x: 1600, y: 930 }, { name: { ko: '동쪽 길 우체통', en: 'East path mailbox' } }),
-  'p:mail_farm':   Object.assign(node('farm_link') || { x: 1196, y: 1158 }, { name: { ko: '밭 앞 우체통', en: 'Farm mailbox' } }),
+  'p:mail_farm':   Object.assign(node('farm_gate') || { x: 1180, y: 1320 }, { name: { ko: '밭 앞 우체통', en: 'Farm mailbox' } }),   // ((v4.3 밀밭 · 빵집) farm_link is gone
   'p:mail_forest': Object.assign(node('forest_link') || { x: 772, y: 1148 }, { name: { ko: '숲 앞 우체통', en: 'Forest mailbox' } }),
   'p:herbalist':   Object.assign(node('w_x') || { x: -470, y: 1190 }, { name: { ko: '서쪽 숲마을 약초꾼', en: 'Herbalist (west wood)' } }),
   'p:big_rest':    Object.assign(node('w_rest') || { x: -330, y: 900 }, { name: { ko: '큰 식당', en: 'Big restaurant' } }),
   'p:hall':        Object.assign(node('w_front') || { x: -880, y: 2110 }, { name: { ko: '마을회관', en: 'Village hall' } }),
-  'p:bakery':      Object.assign((() => { const s = stationOf('bakery'); return s ? { x: s.x - 118, y: s.y + 60 } : { x: 1290, y: 1330 }; })(), { name: { ko: '빵집', en: 'Bakery' } }),
+  // ((v4.3 밀밭 · 빵집) the bakery cottage's bread rack O (+ 40 px south): the cottage stands at the gateway, out of the field
+  'p:bakery':      Object.assign((() => { const s = stationOf('bakery'); return s ? { x: s.x + s.out[0], y: s.y + s.out[1] + 40 } : { x: 1352, y: 1256 }; })(), { name: { ko: '빵집', en: 'Bakery' } }),
 };
 
 // ---------------------------------------------------------------------------------------------- 촌장 배달 운전 (미션 B1–B12)

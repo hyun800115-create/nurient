@@ -101,11 +101,12 @@ export const BALANCE = {
     raw_sawmill: 170,         //    통나무 짐꾼 — 통나무 더미 → 제재소
     porter_sawmill: 220,      //    판자 짐꾼 — 제재소 → 교역소
     // 밀 라인 (가방 업그레이드는 나무꾼 고용 뒤 작업대에서 → 위 upgrades)
-    zone_farm: 300,           // 7. 농장 (밀밭 + 빵 오븐)
-    op_bakery: 260,           // 8. 빵집 아주머니
-    hire_farmer: 380,         // 9. 농부
-    raw_bakery: 340,          //    밀 짐꾼
-    porter_bakery: 420,       //    빵 짐꾼
+    zone_farm: 150,           // 7. 밀밭 (밀밭 + 농막) — ((v4.3) 빵집은 따로 지어요: 아래 bakery43.build)
+    hire_clerk_bakery: 80,    // 8. 빵집 판매원 — 가판대에서 빵을 대신 팔아요
+    op_bakery: 260,           // 9. 제빵사 (빵집 아주머니)
+    hire_farmer: 380,         // 10. 농부
+    raw_bakery: 340,          //    밀 짐꾼 (밀 더미 → 빵집 오븐)
+    porter_bakery: 420,       //    빵 짐꾼 (빵 선반 → 광부 식량 상자 · 식당 · 창고)
     // 광석 라인
     zone_mine: 600,           // 10. 광산 (광석 바위 + 제련소)
     op_smelter: 480,          // 11. 대장장이 언니
@@ -216,12 +217,25 @@ export const BALANCE = {
   //    상인은 자재 창구에서 위 trade.buyInterval 그대로 판자·주괴를 사 가요 (점원이 팔면 register.clerkTradeSlow 배)
   //    1단 = 처음 (먹거리 창구 하나), 2단 = 숲을 열 때 함께 (자재 · 먹거리), 3단 = 빵이 처음 팔린 뒤 아래 값으로 (자재 · 생선 · 빵·고기)
   market43: {
-    stage3: { coins: 400, item_plank: 8 },    // 눈꽃 시장 (3단) 값: 코인 + 판자 (빵이 처음 팔리면 발판이 생겨요)
+    stage3: { coins: 400, item_plank: 8 },    // 눈꽃 시장 (3단) 값: 코인 + 판자 ((v4.3 밀밭 · 빵집) 마을 완성 뒤 고기가 처음 팔리면 발판이 생겨요)
     shelfMax: [40, 40, 60],                   // 단계별로 종류마다 올려 두는 최대 개수 (1단 = 예전과 같은 40, 자재도 같아요)
     spawnMul: [1, 1, 1.1],                    // 단계별 손님이 오는 빠르기 배율 (1·2단 = 예전과 같음, 3단은 가게가 커진 만큼 조금 더)
     lineShow: 6,                              // 한 줄에 똑바로 서는 손님 수 (넘으면 줄이 꺾여요)
     switchS: 4,                               // 손님이 원하는 먹거리가 이만큼(초) 없으면, 점원이 있고 물건이 있는 다른 줄로 옮겨 가요
-    clerk3: 150,                              // 3단 '빵·고기' 창구 점원 값
+    clerk3: 150,                              // 3단 '고기' 창구 점원 값 ((v4.3 밀밭 · 빵집) 빵은 빵집 가판대에서 팔아요)
+  },
+
+  // ── (v4.3 밀밭 · 빵집) 빵집: 밀밭 옆 길목의 오두막 + 가판대. 빵은 이제 빵집 가판대에서만 팔아요
+  //    (가게의 3단 「눈꽃 시장」 셋째 창구는 고기 창구: 마을 완성 뒤 고기가 처음 팔리면 발판이 생겨요)
+  bakery43: {
+    build: { coins: 150, item_plank: 4 },   // 빵집 짓기 값 (코인 + 판자)
+    stallMax: 24,             // 가판대에 올려 두는 빵 최대 개수
+    fullAt: 12,               // 가판대 그림이 '가득' 으로 바뀌는 빵 개수 (1 ~ fullAt-1 = 조금)
+    batch: 3,                 // 오븐에서 한 번에 꺼내는 빵 개수
+    spawnEvery: 3.2,          // 빵집 손님이 오는 간격(초) (마을 완성 전) — (G2: 3.6 이면 마을 완성이 0.7 분쯤 늦어져서 3.2)
+    spawnEveryLate: 2.6,      // 마을 완성 뒤
+    wantMax: 3,               // 손님 한 명이 사는 빵 최대 개수
+    maxQueue: 5,              // 줄 설 수 있는 손님 수
   },
 
   // ── 코인 ─────────────────────────────────────────────────
@@ -384,7 +398,8 @@ export const BALANCE = {
     //    storeChance = 잡화점에 들를 확률, shopChance = 새로 연 가게에 들를 확률, speed = 걷는 속도(px/초)
     //    maxInVillage = 우리 마을에 한꺼번에 와 있는 이웃 최대 수 (이보다 많으면 다음 기차는 덜 태워 와요; 폰이 버벅이지 않게)
     visitors: { base: 4, perShop: 1, perRank: 3, dawn: 0.5, day: 1.0, dusk: 1.3, night: 0.1,
-                wantMin: 2, wantMax: 4, patience: 60, shopChance: 0.45, storeChance: 0.25, regularAt: 3, speed: 105, maxInVillage: 24 },
+                wantMin: 2, wantMax: 4, patience: 60, shopChance: 0.45, storeChance: 0.25, regularAt: 3, speed: 105, maxInVillage: 24,
+                bakeryChance: 0.35 },   // ((v4.3) bakeryChance = 빵집 가판대에 들를 확률 (빵이 있을 때))
     // ── 솔방울 마을: people = 주민 수, peopleRank2 = 읍이 되면, seed = 주민을 만드는 씨앗(바꾸면 다른 사람들)
     //    walk = 걷는 속도(px/초), tripChance = 하루에 우리 마을로 나들이 갈 확률,
     //    inviteAfter = 첫 가게가 안 열려도 첫 기차 뒤 이만큼(초) 지나면 촌장님이 초대하러 와요

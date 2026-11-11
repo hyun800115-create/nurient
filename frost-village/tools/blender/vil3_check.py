@@ -37,6 +37,10 @@ CORE = {'idle': (4, 6, -1, L5), 'walk': (8, 12, -1, L5), 'carry_walk': (8, 12, -
         'surprised': (6, 12, 0, S3), 'angry': (6, 10, -1, S3), 'sad': (4, 6, -1, S3), 'hit': (6, 12, 0, S3),
         'shiver': (4, 12, -1, S3)}
 OPERATE = (8, 10, -1, L5)
+# (v4.3 bakery split) the baker's motions in the bakery43 cottage replace her generic operate (written out
+# independently of vil3_anim.BAKER43_ANIMS): frames, fps, repeat, dirs
+BAKER43_ANIMS = {'knead': (8, 10, -1, ['SE']), 'oven_in': (6, 10, 0, ['E']), 'oven_out': (6, 10, 0, ['E'])}
+BAKER43 = {'npc_aunt': {a: (v[3], 'bakery43_back') for a, v in BAKER43_ANIMS.items()}}
 NEW = ['npc_sawyer', 'npc_smoker', 'npc_cannery']
 OVERRIDE = {'npc_chef': 'villagers2', 'npc_aunt': 'villagers', 'npc_blacksmith': 'villagers'}
 STATION = {'npc_chef': 'station_grill', 'npc_aunt': 'station_bakery', 'npc_blacksmith': 'station_smelter',
@@ -84,8 +88,9 @@ def main():
             errors.append(f'{key}: role {c.get("role")} not in kid|teen|adult|elder')
         if not (-110 < c.get('headTop', 0) < -30):
             errors.append(f'{key}: headTop {c.get("headTop")} out of range')
-        if c.get('operates') != [STATION[key]]:
-            errors.append(f'{key}: operates {c.get("operates")} != [{STATION[key]}]')
+        want_op = ['bakery43_back'] if key in BAKER43 else [STATION[key]]
+        if c.get('operates') != want_op:
+            errors.append(f'{key}: operates {c.get("operates")} != {want_op}')
         # ---- expected anims
         if key in OVERRIDE:
             src = old.get(OVERRIDE[key], {})
@@ -126,7 +131,11 @@ def main():
                 warns.append(f'{key}: portrait key {c["portrait"]} not in the old fragment')
         else:
             exp = dict(CORE)
-        exp['operate'] = OPERATE
+        if key in BAKER43:
+            for an, info in BAKER43_ANIMS.items():
+                exp[an] = info
+        else:
+            exp['operate'] = OPERATE
         for a, (fr, fps, rep, dirs) in exp.items():
             info = c['anims'].get(a)
             if not info:
@@ -138,30 +147,32 @@ def main():
         for a in c['anims']:
             if a not in exp:
                 errors.append(f'{key}: unexpected anim {a}')
-        op = c['anims'].get('operate', {})
-        imf = op.get('impactFrame')
-        if imf is None or not (0 <= imf < op.get('frames', 0)):
-            errors.append(f'{key}.operate: impactFrame missing/out of range')
-        ip = op.get('impactPoint', {})
-        for d in L5:
-            v = ip.get(d)
-            if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, int) for x in v)):
-                errors.append(f'{key}.operate: impactPoint[{d}] missing/not [int, int]')
-            elif not (-64 <= v[0] <= 64 and -104 <= v[1] <= 24):
-                errors.append(f'{key}.operate: impactPoint[{d}] {v} outside the frame')
-        beats = op.get('beats', [])
-        if not beats or beats[0].get('frame') != imf or beats[0].get('point') != ip:
-            errors.append(f'{key}.operate: beats[0] must repeat impactFrame/impactPoint')
-        for b in beats:
-            if not (0 <= b.get('frame', -1) < 8) or not b.get('kind') or set(b.get('point', {})) != set(L5):
-                errors.append(f'{key}.operate: bad beat {b}')
-        if op.get('station') != STATION[key]:
-            errors.append(f'{key}.operate: station {op.get("station")} != {STATION[key]}')
-        if not isinstance(op.get('workTool'), str) or len(op.get('workTool', '')) < 20:
-            errors.append(f'{key}.operate: workTool note missing')
-        ws = op.get('workSpot', {})
-        if not (0.1 < ws.get('forwardM', 0) < 1.0 and 0.3 < ws.get('heightM', 0) < 1.2):
-            errors.append(f'{key}.operate: workSpot {ws} implausible')
+        for an, (adirs, station) in (BAKER43[key].items() if key in BAKER43 else (('operate', (L5, STATION[key])),)):
+            op = c['anims'].get(an, {})
+            imf = op.get('impactFrame')
+            if imf is None or not (0 <= imf < op.get('frames', 0)):
+                errors.append(f'{key}.{an}: impactFrame missing/out of range')
+            ip = op.get('impactPoint', {})
+            for d in adirs:
+                v = ip.get(d)
+                if not (isinstance(v, list) and len(v) == 2 and all(isinstance(x, int) for x in v)):
+                    errors.append(f'{key}.{an}: impactPoint[{d}] missing/not [int, int]')
+                elif not (-64 <= v[0] <= 64 and -104 <= v[1] <= 24):
+                    errors.append(f'{key}.{an}: impactPoint[{d}] {v} outside the frame')
+            beats = op.get('beats', [])
+            if not beats or beats[0].get('frame') != imf or beats[0].get('point') != ip:
+                errors.append(f'{key}.{an}: beats[0] must repeat impactFrame/impactPoint')
+            for b in beats:
+                if not (0 <= b.get('frame', -1) < op.get('frames', 8)) or not b.get('kind') or \
+                        set(b.get('point', {})) != set(adirs):
+                    errors.append(f'{key}.{an}: bad beat {b}')
+            if op.get('station') != station:
+                errors.append(f'{key}.{an}: station {op.get("station")} != {station}')
+            if not isinstance(op.get('workTool'), str) or len(op.get('workTool', '')) < 20:
+                errors.append(f'{key}.{an}: workTool note missing')
+            ws = op.get('workSpot', {})
+            if not (0.1 < ws.get('forwardM', 0) < 1.0 and 0.3 < ws.get('heightM', 0) < 1.2):
+                errors.append(f'{key}.{an}: workSpot {ws} implausible')
         # ---- atlas
         a = atlases.get(c['atlas'])
         if not a:

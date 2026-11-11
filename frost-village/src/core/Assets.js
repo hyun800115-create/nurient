@@ -8,7 +8,7 @@
 import { Placeholders } from './Placeholders.js';
 import { TF } from './Townfolk.js';
 
-export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5', 'ui7', 'market', 'deck43'];   // ((v4.3) deck43: the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims — on screen at second 0)
+export const FRAGMENTS = ['characters', 'props', 'fx', 'ui', 'ground', 'audio', 'villagers', 'life_props', 'emotes', 'villagers2', 'villagers3', 'buildings', 'ui2', 'audio2', 'workers', 'pets2', 'water', 'audio5', 'ui7', 'market', 'deck43', 'bakery43'];   // ((v4.3) deck43: the fishing deck, its rods, the fish crate, the 옷·신발 공방, the deck anims — on screen at second 0)
 // ((v4.2.0.2) + market = the first shop's stall stages (tools/blender/market_render.py + market_pack.py): stage 1
 //  「눈꽃 노점」 is on screen at second 0 of a new game, so its one small page loads at boot like ui7)
 // ((v4.2.0.1) + ui7 = the first-run tutorial's pointing mitten, tap ripple and spotlight hole (tools/fx/gen_ui7.py): one
@@ -34,6 +34,9 @@ export const WATER_DATA = /^water_(waves_a|waves_b|foam|lut|shore_ramp|field_vil
 // ((v4.3) the shop's later stages (assets/market market_s2, market_s3): after the title, when the village nears them
 //  (Game.lazyAllowed); stage 1 「눈꽃 노점」 is in the boot set
 export const MARKET_LATE = /^market_s[2-9]$/;
+// ((v4.3 밀밭 · 빵집) the bakery cottage, its stall and the field's 농막 / scarecrow / sled / sacks (assets/bakery43, one page): after the
+//  title, once the field is near (Game.lazyAllowed: the forest's lumberjack hired, or the field already open)
+export const BAKERY_LATE = /^bakery43$/;
 // (v4-C2) fragments of which the game uses only some keys yet; the rest is never loaded and the artifact build
 // leaves those files out (tools/build/build_artifact.mjs reads this line: keep it one JSON-like object)
 export const USED_ONLY = { "civic": ["civ_bank"], "logistics": ["lgx_center_a", "lgx_center_b", "lgx_center_c", "lgx_center_d", "lgx_items", "lgx_forklift"], "vehicles": ["veh_cargo_sleigh"], "audio5": ["amb_sea_waves"], "audio4": ["sfx_ship_horn_big", "sfx_seagull_1"], "water": ["water_waves_a", "water_waves_b", "water_foam", "water_lut", "water_shore_ramp", "water_field_village", "fx_splash_small", "fx_wake_v2", "fx_wake_v2_s", "fx_wake_v2_e", "fx_wake_v2_ne", "fx_wake_v2_n", "fx_wave_crash"] };
@@ -84,7 +87,9 @@ const ANIM_FALLBACK = {
   //  loop on his landing (harvest's beat))
   reel: ['harvest', 'idle'], fish: ['harvest', 'idle'], fsit_cast: ['work', 'idle'], fsit_wait: ['idle'], fsit_bite: ['work', 'idle'], fsit_reel: ['work', 'idle'],
   // (v3.5) station operators: a worker look (no `operate`) swings its work tool instead; dog play
-  operate: ['work', 'idle'], pet: ['idle'], give: ['idle'], eat: ['sit', 'happy', 'idle'], roll: ['sit', 'happy', 'idle'],
+  operate: ['work', 'idle'], pet: ['idle'],
+  // ((v4.3 밀밭 · 빵집) the baker's three motions: an older asset build without them plays operate (if any), else idle
+  knead: ['operate', 'idle'], oven_in: ['operate', 'idle'], oven_out: ['operate', 'idle'], give: ['idle'], eat: ['sit', 'happy', 'idle'], roll: ['sit', 'happy', 'idle'],
   beg: ['sit', 'happy', 'idle'], run_ball: ['run', 'walk'], catch: ['happy', 'idle'], trick: ['happy', 'idle'],
 };
 
@@ -266,7 +271,7 @@ export const Assets = {
   gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
 
   /** is file `key` one of the pictures that load after the title? */
-  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || MARKET_LATE.test(key) || this.lateFrag.has(this.fragOf[key]); },
+  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || MARKET_LATE.test(key) || BAKERY_LATE.test(key) || this.lateFrag.has(this.fragOf[key]); },
 
   /**
    * (v4-C2) fetch after-title pictures now, outside any scene's loader (plain Image elements added to the

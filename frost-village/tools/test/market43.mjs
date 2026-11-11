@@ -3,16 +3,18 @@
 // 1. stage 1 = the 4.2.0.2 stall: one food line, no 자재 창구 (gs.trade off), no trade post anywhere
 // 2. the forest brings stage 2 (mkt_s2 comes with zone_forest): 자재 창구 (west) + 먹거리, the merchant at the 자재 창구,
 //    the first clerk at the food counter's post, the till / racks moved, the stage-2 page loaded
-// 3. the first bread sold shows the 눈꽃 시장 pad (400 + 8 planks) on the stall clerk's spot; buying it -> stage 3
-//    (자재 · 생선 · 빵·고기), racks 60 a kind, then the 빵·고기 clerk's pad
-// 4. lines by kind, served-only: with only the fish clerk, every new customer wants fish; the chief on the 빵·고기 register
-//    opens it at once (new customers want bread / meat there and pay); off it, the ones who got nothing go to a served line
-// 5. switching: fish out for market43.switchS s -> the fish line's front customer moves to the 빵·고기 line and wants bread
+// 3. ((v4.3 밀밭 · 빵집, D4 alternative B) the 눈꽃 시장 pad (400 + 8 planks) shows on the stall clerk's spot only after village
+//    complete (hire_hunter) AND the first smoked meat sold; buying it -> stage 3 (자재 · 생선 · 고기), racks 60 a kind, then the
+//    고기 clerk's pad. Bread is never on the shop's rack (the bakery's stall sells it)
+// 4. lines by kind, served-only: with only the fish clerk, every new customer wants fish; the chief on the 고기 register
+//    opens it at once (new customers want meat there and pay); off it, the ones who got nothing go to a served line
+// 5. switching: fish out for market43.switchS s -> the fish line's front customer moves to the 고기 line and wants meat
 // 6. spawnMul: customers come 1.1x as often at stage 3 as at stage 2 (same spawn points)
 // 7. the merchant at the 자재 창구 buys at the trade post's rate: 22 frames a plank with the clerk (163.6 a min), 17 with
 //    the chief (211.8 a min) — the M0 baseline's numbers
 // 8. old saves (4.1 smart 25 / 46 min, 3.5 12 min): the trade post's planks / ingots on the 자재 창구 rack, its coins in the
-//    shop's till, its clerk the 자재 점원; stage from progress (bread selling -> 3, free, with the 빵·고기 clerk); nothing lost
+//    shop's till, its clerk the 자재 점원; stage from progress (bread selling -> 3, free, with the 고기 clerk); its rack's bread
+//    went to the bakery (no bread on the shop's rack); nothing lost
 // 9. save + reload of a stage-3 village keeps the stage, 60-a-kind racks and the till; 0 page errors
 import fs from 'node:fs';
 import path from 'node:path';
@@ -98,23 +100,27 @@ try {
   }
   // ---------------------------------------------------------------- 3. stage 3 after the first bread sale
   {
-    await ev(page, () => { const F = window.__FV; F.give(20000); for (const id of ['op_sawmill', 'hire_lumberjack', 'zone_farm', 'op_bakery', 'hire_farmer', 'zone_mine', 'op_smelter', 'hire_miner', 'zone_hunt']) F.doneStep(id); });
+    await ev(page, () => { const F = window.__FV; F.give(20000); for (const id of ['op_sawmill', 'hire_lumberjack', 'zone_farm', 'bld_bakery', 'hire_clerk_bakery', 'op_bakery', 'hire_farmer', 'zone_mine', 'op_smelter', 'hire_miner', 'zone_hunt']) F.doneStep(id); });
     await advance(page, 2);
-    const before = await ev(page, () => !!window.__FV.scene.progress.pads.mkt_s3);
-    ok(!before, 'no 눈꽃 시장 pad before the first bread is sold');
-    // a customer buys bread: the flag comes from the sale itself
+    const before = await ev(page, () => ({ pad: !!window.__FV.scene.progress.pads.mkt_s3, bread: window.__FV.scene.market.accepts('item_bread') }));
+    ok(!before.pad && !before.bread, 'no 눈꽃 시장 pad before village complete; the shop takes no bread', before);
+    // a customer buys smoked meat (the flag comes from the sale itself) — still no pad before village complete
     await ev(page, () => {
       const g = window.__FV.scene, m = g.market, L = m.lanes.food;
       for (const c of L.queue.slice()) { c.despawn(); }
       L.queue.length = 0;
-      for (let i = 0; i < 6; i++) m.stock.push('item_bread', null, g.effects);
-      const c = m.spawnCustomer(0); c.setWant('item_bread'); c.want.count = 1; c.need = 1;
+      for (let i = 0; i < 6; i++) m.stock.push('item_meat_cooked', null, g.effects);
+      const c = m.spawnCustomer(0); c.setWant('item_meat_cooked'); c.want.count = 1; c.need = 1;
       m.spawnT = 1e9;
     });
-    await until(page, () => !!window.__FV.scene.progress.flags.firstBreadSale, 20);
+    await until(page, () => !!window.__FV.scene.progress.flags.firstMeatSale, 20);
+    await advance(page, 2);
+    const mid = await ev(page, () => ({ pad: !!window.__FV.scene.progress.pads.mkt_s3, flag: !!window.__FV.scene.progress.flags.firstMeatSale }));
+    ok(mid.flag && !mid.pad, 'the first meat sale alone (before village complete) brings no 눈꽃 시장 pad', mid);
+    await ev(page, () => { const F = window.__FV; for (const id of ['op_smokehouse', 'hire_hunter']) F.doneStep(id); });
     await advance(page, 2);
     const p = await ev(page, () => { const g = window.__FV.scene, pd = g.progress.pads.mkt_s3; return pd ? { x: pd.x, y: pd.y, cost: pd.cost, items: pd.items } : null; });
-    ok(!!p && p.x === 1525 && p.y === 900 && p.cost === 400 && p.items && p.items.item_plank === 8, 'the first bread sold shows the 눈꽃 시장 pad (400 + 8 planks) on the stall clerk\'s spot', p);
+    ok(!!p && p.x === 1525 && p.y === 900 && p.cost === 400 && p.items && p.items.item_plank === 8, 'after village complete (with meat sold) the 눈꽃 시장 pad (400 + 8 planks) shows on the stall clerk\'s spot', p);
     await ev(page, () => { window.__FV.completeStep('mkt_s3'); window.__FV.scene.market.spawnT = 1; });
     await advance(page, 3);
     await until(page, () => !window.__FV.assets().pending('market_s3_back'), 40);
@@ -122,15 +128,17 @@ try {
       const g = window.__FV.scene, m = g.market;
       return { stage: m.stage, open: Object.keys(m.lanes).filter((k) => m.lanes[k].open), A: m.seats.A.seller.id, B: !!m.seats.B.clerk, max: m.maxPerType, matMax: g.trade.maxPerType, pad: !!g.progress.pads.hire_clerk_s3, loaded: window.__FV.assets().has('market_s3_back') };
     });
-    ok(r.stage === 3 && r.open.join() === 'fish,breadmeat' && r.A === 'fish' && !r.B, 'stage 3: 자재 · 생선 · 빵·고기, the first clerk at the fish counter', r);
+    ok(r.stage === 3 && r.open.join() === 'fish,meat' && r.A === 'fish' && !r.B, 'stage 3: 자재 · 생선 · 고기, the first clerk at the fish counter', r);
+    const pl = await ev(page, () => { const m = window.__FV.scene.market; return m.plates.filter((q) => q.on).map((q) => q.key + ':' + (q.icon && q.icon.frame ? q.icon.frame.name : '')); });
+    ok(pl.length === 0 || pl.some((q) => /plate_(breadmeat|meat):item_meat_cooked/.test(q)), 'stage 3: the third plate reads 고기 with the meat picture', pl);
     ok(r.max === 60 && r.matMax === 60 && r.loaded, 'stage 3: 60 a kind on both racks, its page loaded', r);
-    ok(r.pad, 'the 빵·고기 clerk\'s pad comes after the stage', r);
+    ok(r.pad, 'the 고기 clerk\'s pad comes after the stage', r);
   }
   // ---------------------------------------------------------------- 4. served-only lines, the chief opens a counter
   {
     const r = await ev(page, () => {
       const g = window.__FV.scene, m = g.market, F = window.__FV;
-      for (const ty of ['item_fish_cooked', 'item_bread', 'item_meat_cooked']) while (m.stock.countOf(ty) < 30) m.stock.push(ty, null, g.effects);
+      for (const ty of ['item_fish_cooked', 'item_meat_cooked']) while (m.stock.countOf(ty) < 30) m.stock.push(ty, null, g.effects);
       F.teleport(m.x + 400, m.y + 400);
       window.__step.run(0.2);
       const n = { fish: 0, bread: 0, meat: 0, lane: {} };
@@ -141,28 +149,32 @@ try {
     const r2 = await ev(page, () => {
       const g = window.__FV.scene, m = g.market, F = window.__FV, R = m.seats.B;
       F.teleport(R.x, R.y); window.__step.run(0.2);
-      const n = { fish: 0, bread: 0, meat: 0, lane: {}, chief: R.chief, served: m.lanes.breadmeat.served };
+      const n = { fish: 0, bread: 0, meat: 0, lane: {}, chief: R.chief, served: m.lanes.meat.served };
       for (let i = 0; i < 300; i++) { const w = m.makeWant(); n[w.type.replace('item_', '').replace('_cooked', '')]++; n.lane[w.lane.id] = (n.lane[w.lane.id] || 0) + 1; }
       return n;
     });
-    ok(r2.chief && r2.served && r2.bread + r2.meat > 60 && r2.lane.breadmeat === r2.bread + r2.meat, 'the chief on the 빵·고기 register opens it at once: bread / meat customers come to that line', r2);
+    ok(r2.chief && r2.served && r2.meat > 60 && r2.bread === 0 && r2.lane.meat === r2.meat, 'the chief on the 고기 register opens it at once: meat customers come to that line (nobody wants bread here)', r2);
     // the chief serves the opened line for a while: customers there pay
     const sold = await ev(page, () => {
       const g = window.__FV.scene, m = g.market;
       window.__soldBM = 0;
-      g.events.on('sold', (v, c) => { if (c && c.market === m.lanes.breadmeat) window.__soldBM++; });
+      g.events.on('sold', (v, c) => { if (c && c.market === m.lanes.meat) window.__soldBM++; });
       m.spawnT = 0;
       window.__step.run(40);
-      return { sold: window.__soldBM, q: m.lanes.breadmeat.queue.length };
+      return { sold: window.__soldBM, q: m.lanes.meat.queue.length };
     });
     ok(sold.sold >= 3, 'customers in the line the chief opened pay there', sold);
     // the chief steps off: the ones who got nothing go to a served line after switchS
     const off = await ev(page, () => {
-      const g = window.__FV.scene, m = g.market, F = window.__FV, L = m.lanes.breadmeat;
+      const g = window.__FV.scene, m = g.market, F = window.__FV, L = m.lanes.meat;
       // ((review SUITES-5) the fish rack topped up again: 40 s of selling may have emptied it, and moveOn only sends
       //  customers to a served line that has goods (the designed rule) — the check is about the move, not the stock)
       while (m.stock.countOf('item_fish_cooked') < 30) m.stock.push('item_fish_cooked', null, g.effects);
-      for (let i = 0; i < 4; i++) { const c = m.spawnCustomer(); m.lanes.fish.queue.splice(m.lanes.fish.queue.indexOf(c), 1); L.queue.push(c); c.market = L; c.setWant('item_bread'); }
+      // ((v4.3 밀밭 · 빵집) room in the fish line for them (moveOn never overfills a line past maxQueue): the meat line starts
+      //  with just the four below, the fish line with at most three — the 40 s of selling above can leave both lines long)
+      for (const c of L.queue.slice()) { try { c.despawn(); } catch (e) { /* */ } } L.queue.length = 0;
+      { const F2 = m.lanes.fish.queue; while (F2.length > 3) { const c = F2.pop(); try { c.despawn(); } catch (e) { /* */ } } }
+      for (let i = 0; i < 4; i++) { const c = m.spawnCustomer(); m.lanes.fish.queue.splice(m.lanes.fish.queue.indexOf(c), 1); L.queue.push(c); c.market = L; c.setWant('item_meat_cooked'); }
       m.spawnT = 1e9;
       F.teleport(m.x + 400, m.y + 400);
       window.__step.run(0.5);
@@ -178,18 +190,18 @@ try {
     await ev(page, () => window.__FV.doneStep('hire_clerk_s3'));
     await advance(page, 3);
     const r = await ev(page, () => {
-      const g = window.__FV.scene, m = g.market, F = window.__FV, Lf = m.lanes.fish, Lb = m.lanes.breadmeat;
+      const g = window.__FV.scene, m = g.market, F = window.__FV, Lf = m.lanes.fish, Lb = m.lanes.meat;
       for (const l of [Lf, Lb]) { for (const c of l.queue.slice()) c.despawn(); l.queue.length = 0; }
       m.spawnT = 1e9;
       while (m.stock.countOf('item_fish_cooked') > 0) { const q = m.stock.pop('item_fish_cooked'); if (q && q.spr) g.effects.releaseItem(q.spr); }
-      while (m.stock.countOf('item_bread') < 30) m.stock.push('item_bread', null, g.effects);
+      while (m.stock.countOf('item_meat_cooked') < 30) m.stock.push('item_meat_cooked', null, g.effects);
       const c = m.spawnCustomer(0);
       if (c.market !== Lf) { c.market.queue.splice(c.market.queue.indexOf(c), 1); Lf.queue.unshift(c); c.market = Lf; }
       c.setWant('item_fish_cooked'); c.want.count = 2; c.need = 2;
       window.__step.run((window.__BAL && window.__BAL.market43 ? window.__BAL.market43.switchS : 4) + 1.5);
       return { inBM: c.market === Lb, want: c.want.type, servedB: Lb.served, bClerk: !!m.seats.B.clerk };
     });
-    ok(r.inBM && r.want === 'item_bread', 'fish out for switchS s: the fish line\'s front customer moves to the 빵·고기 line and takes bread', r);
+    ok(r.inBM && r.want === 'item_meat_cooked', 'fish out for switchS s: the fish line\'s front customer moves to the 고기 line and takes meat', r);
   }
   // ---------------------------------------------------------------- 6. spawnMul
   {
@@ -234,13 +246,13 @@ try {
   {
     const sv = await ev(page, () => {
       const g = window.__FV.scene, m = g.market;
-      for (const ty of ['item_fish_cooked', 'item_bread', 'item_meat_cooked']) while (m.stock.countOf(ty) < 55) m.stock.push(ty, null, g.effects);
+      for (const ty of ['item_fish_cooked', 'item_meat_cooked']) while (m.stock.countOf(ty) < 55) m.stock.push(ty, null, g.effects);
       g.save(true);
       return { save: localStorage.getItem('frostVillage.save.v1'), till: m.cash.value, stock: m.stock.count };
     });
     const b2 = await boot(sv.save);
-    const r = await ev(b2.page, () => { const g = window.__FV.scene, m = g.market, L = g.shopLoaded; return { stage: L.stage, fish: L.food.item_fish_cooked, bread: L.food.item_bread, till: L.till, clerks: Object.keys(m.seats).filter((k) => m.seats[k].clerk) }; });
-    ok(r.stage === 3 && r.fish >= 55 && r.bread >= 55 && r.clerks.join() === 'A,M,B', 'a stage-3 village reloads at stage 3 (55 a kind kept on the 60 racks), every clerk back', r);
+    const r = await ev(b2.page, () => { const g = window.__FV.scene, m = g.market, L = g.shopLoaded; return { stage: L.stage, fish: L.food.item_fish_cooked, meat: L.food.item_meat_cooked, bread: L.food.item_bread, till: L.till, clerks: Object.keys(m.seats).filter((k) => m.seats[k].clerk) }; });
+    ok(r.stage === 3 && r.fish >= 55 && r.meat >= 55 && r.bread === 0 && r.clerks.join() === 'A,M,B', 'a stage-3 village reloads at stage 3 (55 a kind kept on the 60 racks), every clerk back', r);
     ok(r.till >= sv.till, 'the till comes back (paid-for items in the line come back on the rack)', { saved: sv.till, now: r.till });
     const art9 = await shownArt(b2.page);
     ok(artOk(art9, 3), 'after the reload the shop shows the stage-3 picture (not the stage-2 page that arrives first)', art9);
@@ -269,10 +281,10 @@ try {
     ok(r.stage === want && r.flags.shop43, f + ': stage ' + want + ' from its progress', r);
     const cap = r.stage >= 3 ? 60 : 40;
     ok(r.mat.plank === Math.min(cap, tr.stock.item_plank || 0) && r.mat.ingot === Math.min(cap, tr.stock.item_ingot || 0), f + ': the trade post\'s planks / ingots on the 자재 창구 rack', { old: tr.stock, now: r.mat });
-    ok(r.food.fish === Math.min(cap, mk.stock.item_fish_cooked || 0) && r.food.bread === Math.min(cap, mk.stock.item_bread || 0) && r.food.meat === Math.min(cap, mk.stock.item_meat_cooked || 0), f + ': the stall\'s food on the food rack', { old: mk.stock, now: r.food });
+    ok(r.food.fish === Math.min(cap, mk.stock.item_fish_cooked || 0) && !r.food.bread && r.food.meat === Math.min(cap, mk.stock.item_meat_cooked || 0), f + ': the stall\'s fish / meat on the food rack, its bread gone to the bakery', { old: mk.stock, now: r.food });
     ok(Math.abs(r.till - ((mk.cash || 0) + (tr.cash || 0))) <= 1 && r.coins >= (old.coins || 0), f + ': the trade post\'s coins in the shop\'s till, the wallet kept', { till: r.till, old: (mk.cash || 0) + (tr.cash || 0), coins: r.coins, oldCoins: old.coins });
     if (pd.hire_clerk_trade) ok(r.matClerk && r.tradeOn, f + ': the trade post\'s clerk is the 자재 점원', r);
-    if (want === 3) ok(r.bClerk && r.aClerk, f + ': stage 3 for free with its 빵·고기 clerk (one clerk sold every food there)', r);
+    if (want === 3) ok(r.bClerk && r.aClerk, f + ': stage 3 for free with its 고기 clerk (one clerk sold every food there)', r);
     if (want >= 2) { const a8 = await shownArt(b.page); ok(artOk(a8, want), f + ': the stage-' + want + ' picture is shown', a8); }
     const lost = Object.keys(pd).filter((k) => pd[k] && r.done.indexOf(k) < 0);
     ok(!lost.length, f + ': every step it had is still done', lost);

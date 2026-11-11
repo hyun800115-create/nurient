@@ -171,7 +171,7 @@ class World extends Phaser.Scene {
     S('notice_board', 1010, 600, 0.85);
     this.places.set('p:board', { x: 1000, y: 640 });
     // the bakery (빵집 아주머니's oven) on the left; the cake pad in front of it
-    S('station_bakery', 735, 720, 0.85);
+    S('bakery43_back', 735, 720, 0.85);     // ((v4.3 밀밭 · 빵집) the bakery cottage (the old oven picture is gone)
     this.places.set('p:bakery', { x: 800, y: 830 });
     S('picnic_table', 800, 1030, 0.85);
     this.places.set('p:picnic', { x: 800, y: 1060 });

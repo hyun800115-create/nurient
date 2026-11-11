@@ -1,6 +1,6 @@
 {
  "version": 1,
- "generator": "tools/blender/prop_render.py + prop_pack.py",
+ "generator": "tools/blender/prop_render.py + prop_pack.py + tools/blender/prop_repack.py",
  "conventions": {
   "ppu": 64,
   "anchor": "normalised [ax, ay] of the full untrimmed frame = world origin = footprint centre (items: bottom centre of the item).",
@@ -11,7 +11,8 @@
   "shadows": "props/buildings have a baked soft shadow falling screen down-right; items have none.",
   "carryScale": "items: recommended scale for stacks carried in a character's hands (chibi bodies; at 1x an item is head-wide). Draw carried copy i at scale carryScale and y - i*stackStep*carryScale. Ground/pad towers and UI icons stay at scale 1 (stackStep is native).",
   "fxPoints": "stations: px offsets [dx, dy] from the anchor where game FX can be spawned (fire = flame/heat source, smoke = just above the chimney/vent top, blade, dust, crucible).",
-  "work": "stations: the idle frame is the resting state (embers banked, no smoke); anims.work is a seamless 4-frame loop with flames, smoke puffs and moving parts baked in. All frames share frameSize and anchor, so swap frames in place."
+  "work": "stations: the idle frame is the resting state (embers banked, no smoke); anims.work is a seamless 4-frame loop with flames, smoke puffs and moving parts baked in. All frames share frameSize and anchor, so swap frames in place.",
+  "repack43": "(v4.3 bakery split) props_buildings repacked by tools/blender/prop_repack.py without station_bakery (+ its 4 work frames), market_counter, trade_post, upgrade_bench and fish_net (no longer drawn: the bakery43 cottage, the market stalls, the 자재 창구, workshop43 and the fishing deck replaced them)."
  },
  "atlases": [
   {
@@ -466,51 +467,6 @@
    },
    "notes": "Sawmill: log bench with circular blade (log feeds from the left/up-left, planks out at +X / screen down-right). work = blade spins (4-frame seamless loop)."
   },
-  "station_bakery": {
-   "atlas": "props_buildings",
-   "frame": "station_bakery",
-   "anchor": [
-    0.44697,
-    0.70977
-   ],
-   "kind": "station",
-   "footprint": [
-    208,
-    104
-   ],
-   "anims": {
-    "work": {
-     "frames": [
-      "station_bakery_work_0",
-      "station_bakery_work_1",
-      "station_bakery_work_2",
-      "station_bakery_work_3"
-     ],
-     "fps": 6,
-     "repeat": -1
-    }
-   },
-   "frameSize": [
-    264,
-    348
-   ],
-   "topPx": 159,
-   "footprintM": [
-    2.4,
-    2.2
-   ],
-   "fxPoints": {
-    "fire": [
-     0,
-     -3
-    ],
-    "smoke": [
-     0,
-     -167
-    ]
-   },
-   "notes": "Bread oven: stone plinth + clay dome; the glowing mouth faces the camera (screen down). work = mouth glow pulses."
-  },
   "station_smelter": {
    "atlas": "props_buildings",
    "frame": "station_smelter",
@@ -605,54 +561,6 @@
    },
    "notes": "Smokehouse: plank hut with an open meat rack in front (-Y / down-left) over embers. work = embers glow pulse."
   },
-  "market_counter": {
-   "atlas": "props_buildings",
-   "frame": "market_counter",
-   "anchor": [
-    0.35204,
-    0.62784
-   ],
-   "kind": "building",
-   "footprint": [
-    195,
-    97
-   ],
-   "frameSize": [
-    392,
-    352
-   ],
-   "topPx": 200,
-   "front": "-Y",
-   "footprintM": [
-    3.0,
-    1.3
-   ],
-   "notes": "Food stall. Front (customer side) faces screen down-left (world -Y); the seller side is the back (screen up-right)."
-  },
-  "trade_post": {
-   "atlas": "props_buildings",
-   "frame": "trade_post",
-   "anchor": [
-    0.34737,
-    0.6236
-   ],
-   "kind": "building",
-   "footprint": [
-    213,
-    106
-   ],
-   "frameSize": [
-    380,
-    356
-   ],
-   "topPx": 202,
-   "front": "-Y",
-   "footprintM": [
-    3.0,
-    1.7
-   ],
-   "notes": "Merchant sled with crates, sacks and a blue awning. Front faces screen down-left (world -Y); runners curl up at +X (screen down-right)."
-  },
   "worker_hut": {
    "atlas": "props_buildings",
    "frame": "worker_hut",
@@ -746,53 +654,6 @@
     "radius": 0.6
    },
    "notes": "Logs + stone ring; the flames are drawn by the game (fx_fire) at the anchor, ~20 px up."
-  },
-  "upgrade_bench": {
-   "atlas": "props_buildings",
-   "frame": "upgrade_bench",
-   "anchor": [
-    0.35606,
-    0.66935
-   ],
-   "kind": "building",
-   "footprint": [
-    167,
-    84
-   ],
-   "frameSize": [
-    264,
-    248
-   ],
-   "topPx": 146,
-   "front": "-Y",
-   "footprintM": [
-    2.4,
-    1.3
-   ],
-   "notes": "Backpack upgrade workbench: table with backpack, anvil on a stump, tool board at the back."
-  },
-  "fish_net": {
-   "atlas": "props_buildings",
-   "frame": "fish_net",
-   "anchor": [
-    0.41092,
-    0.44712
-   ],
-   "kind": "building",
-   "footprint": [
-    253,
-    127
-   ],
-   "frameSize": [
-    348,
-    208
-   ],
-   "topPx": 72,
-   "footprintM": [
-    2.8,
-    2.8
-   ],
-   "notes": "V-shaped fish trap net on poles. The closed corner points at the camera (screen down); the open side faces screen up (the sea). Empty (v4.2.0.1: the catch is the game's jumping fish, one per fish held). Place it on the shoreline."
   },
   "dock_pier": {
    "atlas": "props_buildings",

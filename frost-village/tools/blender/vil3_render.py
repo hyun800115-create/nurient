@@ -139,24 +139,39 @@ def write_meta(key, rig, anims, outdir):
             bpy.context.view_layer.update()
             ip[d] = px_off(rig.meta['serve_prop'].matrix_world.translation)
         sinfo['impactPoint'] = ip
-    # operate: impactPoint (fx marker on impactFrame) + beats (+ IK reach check)
-    oinfo = meta['anims']['operate']
+    # operate (and the v4.3 baker's knead / oven_in / oven_out): impactPoint (fx marker on impactFrame) + beats
+    # (+ IK reach check)
     role = vb3.ROLE[key]
-    R = va3.ROLES[role]
-    f1 = oinfo['impactFrame']
-    f2, kind2 = R['beat2']
-    ip, ip2, err = {}, {}, 0.0
-    for d in oinfo['dirs']:
-        for i in range(oinfo['frames']):
-            apply(rig, vb3.pose_for(rig, 'operate', i, d), d)
-            err = max(err, rig.meta.get('pin_err', 0.0))
-            if i == f1:
-                ip[d] = marker_px(rig, 'op_fx')
-            if i == f2:
-                ip2[d] = marker_px(rig, 'op_fx2')
-    oinfo['impactPoint'] = ip
-    oinfo['beats'] = [{'frame': f1, 'kind': R['impact'], 'point': ip},
-                      {'frame': f2, 'kind': kind2, 'point': ip2}]
+    err = 0.0
+    for anim in [a for a in ('operate',) + tuple(va3.BAKER43_ANIMS) if a in meta['anims']]:
+        oinfo = meta['anims'][anim]
+        if anim == 'operate':
+            R = va3.ROLES[role]
+            kind1, (f2, kind2) = R['impact'], R['beat2']
+        else:
+            kind1, (f2, kind2) = va3.BAKER43_BEATS[anim]
+        f1 = oinfo['impactFrame']
+        ip, ip2 = {}, {}
+        for d in oinfo['dirs']:
+            for i in range(oinfo['frames']):
+                apply(rig, vb3.pose_for(rig, anim, i, d), d)
+                err = max(err, rig.meta.get('pin_err', 0.0))
+                if i == f1:
+                    ip[d] = marker_px(rig, 'op_fx')
+                if i == f2:
+                    ip2[d] = marker_px(rig, 'op_fx2')
+        oinfo['impactPoint'] = ip
+        oinfo['beats'] = [{'frame': f1, 'kind': kind1, 'point': ip},
+                          {'frame': f2, 'kind': kind2, 'point': ip2}]
+        if anim != 'operate':
+            # where the tool tip is on every frame (the game can follow the peel / the dough with particles)
+            tips = {}
+            for d in oinfo['dirs']:
+                tips[d] = []
+                for i in range(oinfo['frames']):
+                    apply(rig, vb3.pose_for(rig, anim, i, d), d)
+                    tips[d].append(marker_px(rig, 'op_fx'))
+            oinfo['toolPoints'] = tips
     meta['pinErr'] = round(err, 4)
     apply(rig, vb3.pose_for(rig, 'idle', 0, 'S'), 'S')
     meta['headTop'] = vr2.head_top_px(rig)
@@ -167,17 +182,19 @@ def write_meta(key, rig, anims, outdir):
         meta['headTopSit'] = vr2.head_top_px(rig)
     with open(os.path.join(outdir, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=1)
-    print(f'[{key}] meta: operate impact {ip}  pinErr {err * 100:.2f} cm', flush=True)
+    print(f'[{key}] meta: impact points written  pinErr {err * 100:.2f} cm', flush=True)
 
 
 def pincheck(key):
     rig = vb3.build(key)
-    info = vb3.anims_for(key)['operate']
+    anims = vb3.anims_for(key)
     worst = []
-    for d in info['dirs']:
-        for i in range(info['frames']):
-            apply(rig, vb3.pose_for(rig, 'operate', i, d), d)
-            worst.append((rig.meta.get('pin_err', 0.0), d, i))
+    for anim in [a for a in ('operate',) + tuple(va3.BAKER43_ANIMS) if a in anims]:
+        info = anims[anim]
+        for d in info['dirs']:
+            for i in range(info['frames']):
+                apply(rig, vb3.pose_for(rig, anim, i, d), d)
+                worst.append((rig.meta.get('pin_err', 0.0), d + ' ' + anim, i))
     worst.sort(reverse=True)
     print(f'[{key}] pin error worst: ' + ', '.join(f'{d}{i} {e * 100:.1f}cm' for e, d, i in worst[:6]), flush=True)
 

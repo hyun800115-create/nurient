@@ -9,6 +9,7 @@
 import { Character } from './Character.js';
 import { Assets } from '../core/Assets.js';
 import { BALANCE } from '../data/balance.js';
+import { WORLD } from '../data/world.js';
 import { gdist } from '../core/Iso.js';
 import { DEPTH } from '../systems/DepthSort.js';
 import { shoreY } from '../systems/Collision.js';
@@ -165,13 +166,20 @@ export class Worker extends Character {
         else {
           // nothing to do: wait at home
           this.waitT -= dt;
+          // ((v4.3 밀밭 · 빵집) a farmer with no ripe wheat for a while rests by the 농막's door (world.js workerRest)
+          const now = gs.time.now;
+          if (!(now - (this.idleAt || -1e9) < 250)) { this.idleFor = 0; this.restAt = null; }
+          this.idleFor = (this.idleFor || 0) + dt;
+          const RW = WORLD.workerRest && WORLD.workerRest[this.type];
+          if (RW && !this.restAt && this.idleFor > (Number(RW.afterS) || 8) && gs.workerHome) { this.restAt = gs.workerHome(this.type, this.index, true); this.homeBest = Infinity; this.homeT = 0; }
+          const home = this.restAt || this.home;
           // ((v4.2.0.1) near home, or no nearer to it for a second (a prop on the spot): stand — he walked on the spot there)
-          const hd = gdist(this.x, this.y, this.home[0], this.home[1]), now = gs.time.now;
+          const hd = gdist(this.x, this.y, home[0], home[1]);
           if (!(now - (this.idleAt || -1e9) < 250)) { this.homeBest = Infinity; this.homeT = 0; }      // (just came back idle)
           this.idleAt = now;
           if (hd < this.homeBest - 4) { this.homeBest = hd; this.homeT = 0; } else this.homeT += dt;
           if (this.homeT > 1 && hd < 60) { this.vx = this.vy = 0; this.locomotion(false); }
-          else if (gs.moveAgent(this, this.home[0], this.home[1], this.speed * 0.7, dt, 10)) {
+          else if (gs.moveAgent(this, home[0], home[1], this.speed * 0.7, dt, 10)) {
             this.vx = this.vy = 0;
             if (this.dir !== 2) { this.dir = 2; this.play(this.animName, true); }
             this.locomotion(false);
@@ -659,6 +667,17 @@ export class Porter extends Hauler {
     if (this.only) return ty !== this.only;
     return meatCansLeft(this.gs, this.station, ty);
   }
+  /** ((v4.3 밀밭 · 빵집) the sink this porter never carries to: the bakery's stall (its oven fills the case itself; the 빵 짐꾼
+   *  takes the rack's surplus to the miners' food box, the restaurant, the 창고, the export dock) */
+  ownSink() { const st = this.station; return st && st.stall && st.stall.sink ? st.stall.sink : null; }
+  planDest(exclude) {
+    const own = this.ownSink();
+    if (!own) return super.planDest(exclude);
+    const L = this.gs.logistics, ty = this.carriedType();
+    if (!L || !ty) return null;
+    const b = L.best(ty, this.x, this.y, { exclude, exclude2: own });
+    return b ? b.sink : null;
+  }
   /** the topmost item of the pad this porter may take (null: none) */
   topType() { const out = this.station.outStack; for (let i = out.items.length - 1; i >= 0; i--) if (!this.skips(out.items[i].type)) return out.items[i].type; return null; }
 
@@ -684,7 +703,7 @@ export class Porter extends Hauler {
       if (seen[it.type]) continue;
       seen[it.type] = true;
       if (this.skips(it.type)) continue;
-      const b = L.best(it.type, this.x, this.y);
+      const b = L.best(it.type, this.x, this.y, { exclude2: this.ownSink() });
       if (b && out.countOf(it.type) <= this.keepFor(it.type, b.prio)) continue;
       if (b && (!best || b.prio > best.prio || (b.prio === best.prio && out.countOf(it.type) > out.countOf(best.type)))) best = { sink: b.sink, type: it.type, n: b.n, prio: b.prio };
     }

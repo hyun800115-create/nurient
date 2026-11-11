@@ -5,11 +5,16 @@
   const FV = window.__FV;
   const gs = FV.scene;
   const FOODS = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
+  // ((v4.3 밀밭 · 빵집) the shop's food counters sell fish + meat; bread sells at the bakery's own stall (gs.bakery.stall)
+  const SHOP_FOODS = ['item_fish_cooked', 'item_meat_cooked'];
+  const BREAD = ['item_bread'];
+  const stallOf = () => (gs.bakery && gs.bakery.built && gs.bakery.stall.enabled ? gs.bakery.stall : null);
+  const goodsOf = (sh) => (sh === gs.market ? SHOP_FOODS : sh === gs.store ? STORE : sh && sh === stallOf() ? BREAD : GOODS);
   const GOODS = ['item_plank', 'item_ingot'];
   const RAW_ST = { item_fish_raw: 'grill', item_log: 'sawmill', item_wheat: 'bakery', item_ore: 'smelter', item_meat_raw: 'smokehouse' };
   // (v3) the cannery takes boat fish too
   const ST_RAW = { grill: 'item_fish_raw', sawmill: 'item_log', bakery: 'item_wheat', smelter: 'item_ore', smokehouse: 'item_meat_raw' };
-  const ST_SELL = { grill: 'market', sawmill: 'trade', bakery: 'market', smelter: 'trade', smokehouse: 'market' };
+  const ST_SELL = { grill: 'market', sawmill: 'trade', bakery: 'bakery', smelter: 'trade', smokehouse: 'market' };
   const ST_ZONE = { grill: 'plaza', sawmill: 'forest', bakery: 'farm', smelter: 'mine', smokehouse: 'hunt' };
   const gd = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) * 2);
   // (v3.5) division of labour: a station without an operator only works while the chief stands on its work spot
@@ -156,11 +161,11 @@
     if (aff.length) return aff[0];
     return main || cands.sort((a, b) => a.remaining - b.remaining)[0] || null;
   }
-  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled && gs.trade.cash !== gs.market.cash) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; for (const c of civicCash()) v += c.value; return v; }
+  function cashTotal() { let v = gs.market.cash.value; if (gs.trade.enabled && gs.trade.cash !== gs.market.cash) v += gs.trade.cash.value; if (gs.store) v += gs.store.cash.value; if (stallOf()) v += stallOf().cash.value; const G = gs.v4 && gs.v4.growth; if (G && G.till) v += G.till.value; for (const c of civicCash()) v += c.value; return v; }
   // (v4-C) the big restaurant's cash pad and the town hall's tax box: a person picks them up like any till
   function civicCash() { const C = gs.civic, o = []; if (!C) return o; if (C.restaurant && C.restaurant.enabled && C.restaurant.cash && C.restaurant.cash.value >= 40) o.push(C.restaurant.cash); if (C.hall && C.hall.enabled && C.hall.tax && C.hall.tax.value >= 40) o.push(C.hall.tax); return o; }
   const STORE = ['item_can', 'item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'];
-  function shelfFor(type) { return FOODS.includes(type) ? gs.market : GOODS.includes(type) && gs.trade.enabled ? gs.trade : STORE.includes(type) && gs.store && gs.store.enabled ? gs.store : null; }
+  function shelfFor(type) { return BREAD.includes(type) ? stallOf() : SHOP_FOODS.includes(type) ? gs.market : GOODS.includes(type) && gs.trade.enabled ? gs.trade : STORE.includes(type) && gs.store && gs.store.enabled ? gs.store : null; }
   function canSell(type) { const s = shelfFor(type); return s && s.stock.countOf(type) + 0 < s.maxPerType; }
 
   // ------------------------------------------------------------------ (v3) helpers
@@ -274,11 +279,16 @@
     // 0. (v2) customers / the merchant wait at an empty register: stand there until they have paid
     {
       const m = gs.market, tr = gs.trade;
-      const sellFood = Object.keys(b).some((t) => FOODS.includes(t) && canSell(t));
+      const sellFood = Object.keys(b).some((t) => SHOP_FOODS.includes(t) && canSell(t));
       // ((v4.3) the staged shop: the food counter whose line waits to pay with no clerk (the stall's register before))
       const mr = m.waitRegister || m.register;
       if (m.waitingPay && !mr.clerk && !sellFood) { setTask('register', mr, { seller: m, label: 'market', tol: 5 }); return; }
       if (tr.enabled && tr.stock.count > (tr.kept ? tr.kept() : 0) && !tr.register.clerk && !Object.keys(b).some((t) => GOODS.includes(t))) { setTask('register', tr.register, { seller: tr, label: 'trade', tol: 5 }); return; }
+    }
+    // 0a. ((v4.3 밀밭 · 빵집) the bakery stall's line waits at its register R with no 판매원
+    {
+      const bk = stallOf();
+      if (bk && bk.waitingPay && !bk.register.clerk && !b.item_bread) { setTask('register', bk.register, { seller: bk, label: 'bakery', tol: 5 }); return; }
     }
     // 0b. (v3) the general store's line waits at its register
     {
@@ -351,7 +361,7 @@
     {
       const ct0 = cashTotal();
       // (v2) like a person: a coin pile you walk past, or one that has grown big, gets picked up
-      const nearPile = [gs.market.cash].concat(gs.trade.enabled ? [gs.trade.cash] : []).some((c) => c.value > 0 && gd(p.x, p.y, c.x, c.y) < 260);
+      const nearPile = [gs.market.cash].concat(gs.trade.enabled ? [gs.trade.cash] : [], stallOf() ? [stallOf().cash] : []).some((c) => c.value > 0 && gd(p.x, p.y, c.x, c.y) < 260);
       if (ct0 > 0 && ((want && coins < want.remaining && coins + ct0 >= want.remaining) || ct0 >= (bot.opts.pileMax || 80) || nearPile)) return cashTask();
     }
     // 3. bag full -> sell
@@ -437,14 +447,16 @@
   function sellTask(types) {
     const p = P();
     const shelves = [];
-    if (types.some((t) => FOODS.includes(t))) shelves.push(gs.market);
+    if (types.some((t) => SHOP_FOODS.includes(t))) shelves.push(gs.market);
+    if (stallOf() && types.some((t) => BREAD.includes(t))) shelves.push(stallOf());
     if (types.some((t) => GOODS.includes(t))) shelves.push(gs.trade);
     if (gs.store && types.some((t) => STORE.includes(t))) shelves.push(gs.store);
     // go where most of the bag can be sold (a lone bread must not keep 25 ingots in the bag forever)
-    const b = bag(), n = (sh) => types.filter((t) => (sh === gs.market ? FOODS : sh === gs.store ? STORE : GOODS).includes(t)).reduce((k, t) => k + (b[t] || 0), 0);
+    const b = bag(), n = (sh) => types.filter((t) => goodsOf(sh).includes(t)).reduce((k, t) => k + (b[t] || 0), 0);
     shelves.sort((a, c) => (n(c) - n(a)) || (gd(p.x, p.y, a.shelf.x, a.shelf.y) - gd(p.x, p.y, c.shelf.x, c.shelf.y)));
     const s = shelves[0];
-    setTask('sell', s.shelf, { seller: s, label: s === gs.market ? 'market' : s === gs.store ? 'store' : 'trade', tol: 6 });
+    if (!s) return;
+    setTask('sell', s.shelf, { seller: s, label: s === gs.market ? 'market' : s === gs.store ? 'store' : s === stallOf() ? 'bakery' : 'trade', tol: 6 });
   }
   function cashTask() {
     const p = P();
@@ -454,6 +466,7 @@
     const G = gs.v4 && gs.v4.growth;
     if (G && G.till && G.till.value >= 40) cs.push(G.till);
     if (gs.store && gs.store.cash) cs.push(gs.store.cash);
+    if (stallOf()) cs.push(stallOf().cash);
     cs.push(...civicCash());
     const c = cs.filter((c) => c.value > 0).sort((a, b) => gd(p.x, p.y, a.x, a.y) - gd(p.x, p.y, b.x, b.y))[0];
     if (!c) return;
@@ -473,7 +486,7 @@
         return false;
       }
       case 'sell': {
-        const types = Object.keys(b).filter((t) => (tk.seller === gs.market ? FOODS : tk.seller === gs.store ? STORE : GOODS).includes(t));
+        const types = Object.keys(b).filter((t) => goodsOf(tk.seller).includes(t));
         if (!types.length) return true;
         if (!types.some((t) => tk.seller.stock.countOf(t) < tk.seller.maxPerType)) { tk.fullT = (tk.fullT || 0) + bot.dt; if (tk.fullT > 1) return true; }
         return false;
@@ -490,9 +503,9 @@
       }
       case 'cash': return tk.cash.value <= 0;
       case 'register': {
-        if (tk.seller === gs.market || (gs.store && tk.seller === gs.store)) {
-          // stay while customers still have food (cans, tools) coming / are paying
-          const S = tk.seller, f = S.queue[0], goods = S === gs.market ? FOODS : STORE;
+        if (tk.seller === gs.market || (gs.store && tk.seller === gs.store) || tk.seller === stallOf()) {
+          // stay while customers still have food (cans, tools, bread) coming / are paying
+          const S = tk.seller, f = S.queue[0], goods = goodsOf(S);
           const busy = S.waitingPay || (f && f.need > 0 && goods.some((x) => S.stock.countOf(x) > 0));
           if (!busy) { tk.idleT = (tk.idleT || 0) + bot.dt; return tk.idleT > 0.5; }
           tk.idleT = 0;
@@ -659,7 +672,8 @@
       st: Object.fromEntries(gs.stationList.filter((x) => x.enabled).map((x) => [x.id, x.inStack.count + '/' + x.outStack.count])),
       mk: s.market, tr: s.trade, w: s.workers.map((w) => w.type[0] + ':' + w.state + ':' + w.carry).join(' '),
       obj: s.objective, arrow: !!gs.tutorial.target,
-      shelf: Object.fromEntries(FOODS.map((f) => [f.slice(5, 9), gs.market.stock.countOf(f)])),
+      // ((v4.3 밀밭 · 빵집) bread's shelf is the bakery stall's case
+      shelf: Object.fromEntries(FOODS.map((f) => [f.slice(5, 9), f === 'item_bread' ? (stallOf() ? stallOf().stock.countOf(f) : 0) : gs.market.stock.countOf(f)])),
       front: (() => { const f = gs.market.queue[0]; if (!f) return null; const sp = gs.market.slotPos(0); return { st: f.state, arr: f.arrived, want: f.want.type.slice(5, 9) + 'x' + f.want.count, need: f.need, got: f.got, dSlot: Math.round(Math.hypot(f.x - sp.x, f.y - sp.y)), path: f.path.length }; })(),
       leaving: gs.market.leaving.length, agents: gs.agents.length, stall: +bot.stallT.toFixed(1),
       goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null, built: Object.keys(gs.built).length, pop: gs.life ? gs.life.people() + '/' + gs.popCap() + '+' + gs.life.waiting.length : '', hungry: +bot.hungryT.toFixed(1),

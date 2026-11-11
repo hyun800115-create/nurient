@@ -13,7 +13,7 @@ import { BALANCE } from '../data/balance.js';
 export const LINES = [
   { id: 'grill', pile: 'fish', raw: 'item_fish_raw', product: 'item_fish_cooked', shelf: 'market' },
   { id: 'sawmill', pile: 'log', raw: 'item_log', product: 'item_plank', shelf: 'mat' },
-  { id: 'bakery', pile: 'wheat', raw: 'item_wheat', product: 'item_bread', shelf: 'market' },
+  { id: 'bakery', pile: 'wheat', raw: 'item_wheat', product: 'item_bread', shelf: 'bakery' },     // ((v4.3 밀밭 · 빵집) the bakery's own stall
   { id: 'smelter', pile: 'ore', raw: 'item_ore', product: 'item_ingot', shelf: 'mat' },
   { id: 'smokehouse', pile: 'meat', raw: 'item_meat_raw', product: 'item_meat_cooked', shelf: 'market' },
 ];

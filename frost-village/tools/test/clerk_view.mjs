@@ -14,6 +14,9 @@
 //  food line: the next line's front bubble is the one that can cover a clerk), faces SW at her post, and the stage's
 //  signboard stays >= 95 % visible with full racks. Stage 1 = the checks above, at the 4.2.0.2 stall.
 //  -> docs/previews/screens_v2/v43_clerks_s2.jpg, v43_clerks_s3.jpg
+// ((v4.3 밀밭 · 빵집, gate G6) + the bakery stall's 판매원 with its line's front customers present, and the 제빵사 inside the
+//  cottage in each of her motions (knead SE, oven_in / oven_out W): each >= --min % visible. The shop's rack holds fish and
+//  meat only now (no bread tower). -> docs/previews/screens_v2/v43_bakery_clerk.jpg, v43_baker_<motion>.jpg
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
@@ -131,12 +134,12 @@ try {
   if (sign.none) console.log('(no signboard: the old stall art)');
   else if (sign.share >= 95) console.log(`ok   signboard visible ${sign.share} % with a full shelf (${sign.stock} items, towers drawn up to ${sign.drawMax})`);
   else { fails++; console.log('FAIL signboard hidden by the shelf towers', JSON.stringify(sign)); }
-  // ((v4.2.0.2 fix R4) the same full shelf: the bread tower (a bread layer is ~1.5x a fish layer, world.js stockDrawMaxBy)
-  //  tops out no higher than the fish tower, which stays under the board — at 18 layers it rose over the board's right end)
+  // ((v4.3 밀밭 · 빵집) the same full shelf: fish and meat towers only — bread sells at the bakery's stall (was R4: the bread
+  //  tower topped out no higher than the fish tower)
   if (!sign.none) {
-    const tw = await ev(() => { const m = window.__FV.scene.market, s = m.stock; s.place(); const top = {}, n = {}; for (const it of s.items) { const k = it.type.replace('item_', ''); n[k] = (n[k] || 0) + 1; if (!(k in top) || it.y < top[k]) top[k] = it.y; } for (const k in top) top[k] = Math.round(top[k] - m.y); return { top, n, by: s.drawMaxBy }; });
-    if (tw.top.bread != null && tw.top.fish_cooked != null && tw.top.bread >= tw.top.fish_cooked - 2) console.log(`ok   bread tower top ${tw.top.bread} px <= fish tower top ${tw.top.fish_cooked} px (from the stall's anchor; ${tw.n.bread} bread, drawn up to ${JSON.stringify(tw.by)})`);
-    else { fails++; console.log('FAIL bread tower rises above the fish tower (over the signboard\'s right end)', JSON.stringify(tw)); }
+    const tw = await ev(() => { const m = window.__FV.scene.market, s = m.stock; s.place(); const top = {}, n = {}; for (const it of s.items) { const k = it.type.replace('item_', ''); n[k] = (n[k] || 0) + 1; if (!(k in top) || it.y < top[k]) top[k] = it.y; } for (const k in top) top[k] = Math.round(top[k] - m.y); return { top, n }; });
+    if (!tw.n.bread && tw.n.fish_cooked && tw.n.meat_cooked) console.log(`ok   full shelf: fish ${tw.n.fish_cooked} + meat ${tw.n.meat_cooked}, no bread tower (the bakery's stall sells bread)`);
+    else { fails++; console.log('FAIL the shop\'s rack holds bread / misses a kind', JSON.stringify(tw)); }
   }
   // ---- ((v4.3) the staged shop: every clerk with every line's front customer present (gate G6)
   for (const st of [2, 3]) {
@@ -245,6 +248,77 @@ try {
     await ev(() => { const m = window.__FV.scene.market; window.__FV.camera(m.x - 20, m.y - 10, 1.5); });
     await advance(page, 0.3); await render(page, 3);
     await page.screenshot({ path: path.join(OUT, 'v43_clerks_s' + st + '.jpg'), type: 'jpeg', quality: 84 });
+  }
+  // ---- ((v4.3 밀밭 · 빵집, G6) the bakery stall's 판매원 with its front customers, and the 제빵사 in each motion
+  {
+    await until(page, () => { const g = window.__FV.scene, b = g.bakery; return b && b.built && b.stall.register.clerk && b.stall.register.clerk.ready && g.stations.bakery.op.operator && g.stations.bakery.op.operator.ready; }, 60);
+    await until(page, () => { const A = window.__FV.assets(), g = window.__FV.scene; return !A.pending('bakery43_back') && !A.pending('bakery43_stall_back') && g.bakery.stall.register.clerk.key.startsWith('npc_clerk') && g.stations.bakery.op.operator.key === 'npc_aunt'; }, 60);
+    await ev(() => {
+      // the share of character `c` that shows (magenta in place / magenta on top); porters / residents / workers hidden
+      window.__cvShareCh = (getC) => new Promise((resolve) => {
+        const g = window.__FV.scene, c = getC(g), s = c.sprite, cam = g.cameras.main, Rn = g.game.renderer;
+        const hid = [];
+        for (const o of g.porters.concat(g.rawPorters, (g.life ? g.life.residents : []), g.workers)) if (o.sprite && o.sprite.visible) { o.sprite.setVisible(false); hid.push(o.sprite); }
+        s.anims.pause(); window.__step.frame();
+        const b = s.getBounds(), k = cam.zoom;
+        const x = Math.max(0, Math.floor(cam.x + (b.x - cam.worldView.x) * k) - 4), y = Math.max(0, Math.floor(cam.y + (b.y - cam.worldView.y) * k) - 4);
+        const w = Math.max(1, Math.min(Rn.width - x, Math.ceil(b.width * k) + 8)), h = Math.max(1, Math.min(Rn.height - y, Math.ceil(b.height * k) + 8));
+        const count = (img, done) => { const go = () => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x2 = cv.getContext('2d'); x2.drawImage(img, 0, 0); const d = x2.getImageData(0, 0, w, h).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 70 && d[i + 2] > 200) n++; done(n); }; if (img.complete && img.naturalWidth) go(); else img.onload = go; };
+        s.setTintFill(0xff00ff);
+        Rn.snapshotArea(x, y, w, h, (imgA) => count(imgA, (a) => {
+          const d0 = s.depth, sy = c.sync; c.sync = () => {}; s.setDepth(1e7);
+          Rn.snapshotArea(x, y, w, h, (imgB) => count(imgB, (bb) => {
+            c.sync = sy; s.setDepth(d0); s.clearTint(); s.anims.resume();
+            for (const o of hid) o.setVisible(true);
+            resolve({ share: bb ? +(100 * a / bb).toFixed(1) : null, visible: a, total: bb, dir: c.dir, anim: c.animRes, frame: s.anims.currentFrame ? s.anims.currentFrame.index : null });
+          }));
+          window.__step.frame();
+        }));
+        window.__step.frame();
+      });
+    });
+    // the stall's line: three customers in place, bread on the case
+    const setup = await ev(() => {
+      const g = window.__FV.scene, S = g.bakery.stall, F = window.__FV;
+      S.spawnT = 1e9;
+      for (const c of S.queue.concat(S.leaving)) { try { c.despawn(); } catch (e) { /* */ } }
+      S.queue.length = 0; S.leaving.length = 0;
+      while (S.stock.count < 14) S.stock.push('item_bread', null, g.effects);
+      S.caseChanged();
+      for (let i = 0; i < 3; i++) { const c = S.spawnCustomer(i); c.want.count = 9; c.need = 9; }
+      const ck = S.register.clerk; ck.idleT = 1e9; ck.serveT = 0;
+      F.clearStack(); F.teleport(S.x + 420, S.y + 300);
+      F.camera(S.x + 40, S.y - 50, 1.2);
+      return { q: S.queue.length };
+    });
+    await advance(page, 1.2);
+    const reads = [];
+    for (let k = 0; k < 3; k++) { reads.push(await ev(() => window.__cvShareCh((g) => { const c = g.bakery.stall.register.clerk; c.faceFront(); c.play('idle', true); return c; }))); await advance(page, 0.5); }
+    reads.sort((p, q) => (p.share || 0) - (q.share || 0));
+    const rc = Object.assign({}, reads[1], { reads: reads.map((q) => q.share), q: setup.q });
+    if (rc.share >= MIN && rc.dir === 3) console.log(`ok   bakery 판매원 visible ${rc.share} % >= ${MIN} % with the stall's front customers present, faces SW`, JSON.stringify(rc));
+    else { fails++; console.log(`FAIL bakery 판매원 visible ${rc.share} % (gate ${MIN} %) / dir ${rc.dir}`, JSON.stringify(rc)); }
+    await render(page, 3);
+    await page.screenshot({ path: path.join(OUT, 'v43_bakery_clerk.jpg'), type: 'jpeg', quality: 84 });
+    // the baker in each motion (a frame past the middle of each anim: the peel at the oven / the palms on the dough)
+    for (const ph of [['knead', 'knead'], ['in', 'oven_in'], ['out', 'oven_out']]) {
+      const r = await ev((ph) => {
+        const g = window.__FV.scene, st = g.stations.bakery, o = st.op.operator;
+        while (st.inStack.count < 10) st.inStack.push('item_wheat', null, g.effects);
+        o.startPhase(ph[0]); o.phaseT = 1e9;
+        window.__step.run(0.3);
+        window.__FV.camera(st.x, st.y - 60, 1.2);
+        return { anim: o.animRes, phase: o.phase, dir: o.dir };
+      }, ph);
+      await advance(page, 0.2);
+      const sh = await ev(() => window.__cvShareCh((g) => g.stations.bakery.op.operator));
+      const want = ph[0] === 'knead' ? 1 : 4;
+      if (sh.share >= MIN && sh.anim === ph[1] && sh.dir === want) console.log(`ok   제빵사 ${ph[1]} visible ${sh.share} % >= ${MIN} % (dir ${sh.dir})`, JSON.stringify(Object.assign(sh, r)));
+      else { fails++; console.log(`FAIL 제빵사 ${ph[1]} visible ${sh.share} % (gate ${MIN} %) / anim ${sh.anim} / dir ${sh.dir} (want ${want})`, JSON.stringify(Object.assign(sh, r))); }
+      await render(page, 3);
+      await page.screenshot({ path: path.join(OUT, 'v43_baker_' + ph[1] + '.jpg'), type: 'jpeg', quality: 84 });
+    }
+    await ev(() => { const o = window.__FV.scene.stations.bakery.op.operator; o.phaseT = 0; window.__FV.camera(); });
   }
   await ev(([x, y]) => { window.__FV.teleport(x + 260, y + 300); window.__FV.camera(x - 30, y - 20, 1.7); }, info.t);
   await ev(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) gs.trade.stock.push('item_plank', null, gs.effects); });

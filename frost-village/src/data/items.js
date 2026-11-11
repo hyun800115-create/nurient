@@ -4,6 +4,10 @@
 import { BALANCE } from './balance.js';
 
 export const FOODS = ['item_fish_cooked', 'item_bread', 'item_meat_cooked'];
+// ((v4.3 밀밭 · 빵집) what the central shop's food counters sell (fish + meat): bread is sold only at the bakery's own stall
+//  (BAKERY_GOODS). FOODS stays "food in general" (the restaurant pantry, the save chains, missions)
+export const SHOP_FOODS = ['item_fish_cooked', 'item_meat_cooked'];
+export const BAKERY_GOODS = ['item_bread'];
 export const GOODS = ['item_plank', 'item_ingot'];
 export const TOOLS = ['item_axe', 'item_pickaxe', 'item_rod', 'item_sickle', 'item_bow'];
 // the general store (v3) sells cans and tools; (v4.2.1) meat cans last (its 7th shelf tower; the order of the old six
