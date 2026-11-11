@@ -16,6 +16,8 @@ import { TitleAssets } from './TitleAssets.js';
 import { tod3 } from './TitleFx.js';
 import { FONT, STRINGS, getLang } from '../data/strings.js';
 import { signTexture } from '../entities/Seller.js';
+// ---- (v4.3 마을 깃발) the hero flag pole flies the player's flag (src/flag/title.js)
+import { dressTitlePole, waveTitle } from '../flag/title.js';
 
 const ADD = () => Phaser.BlendModes.ADD;
 // window / lamp / headlight glows are many and sit between the buildings in depth order: they use NORMAL
@@ -212,6 +214,7 @@ export class TitleDiorama {
     // (v4.3) what rides on the picture: the deck's rods, lines, floats and front rails (+ its lantern), the stall's name
     if (o.deck) this.addDeckParts(r);
     if (o.sign) this.addSign(r, o.sign);
+    if (r.key === 'flag_pole' && r.live) dressTitlePole(this, r);       // (v4.3 마을 깃발)
     if (o.lamp) this.addLamp(r, r.x + o.lamp[0] * fxs, r.y + o.lamp[1], 0.42, false);
     if (r.extras.length) this.syncExtras(r);
     // chimney smoke / steam
@@ -993,6 +996,7 @@ export class TitleDiorama {
     this.updateShips(dt);
     this.updateGulls(dt);
     if (!this.reduced) this.updateBob();
+    if (this.flagPoles) waveTitle(this, dt);        // (v4.3 마을 깃발)
   }
 
   /** remove every moving thing (people, vehicles, train, ships, gulls) - for a replay of the intro */

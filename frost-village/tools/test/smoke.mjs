@@ -23,7 +23,9 @@ const step = (name, ok, info = '') => { results.push({ name, ok, info }); consol
 
 const srv = await start(0, { prefix: '/game/frost-village/' });   // sub-path on purpose
 const browser = await launch();
-const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 } });
+// ((v4.3 마을 깃발) this test asks for the new-game flag maker (automated browsers never get it otherwise) and passes it
+//  with one real tap on 「이대로 시작」 — right after the title and again after 처음부터 하기)
+const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, init: 'window.__FV_FLAGMAKER = true;' });
 // game-time versions of sleep / waitFor / walkTo once the stepper is installed (real time before)
 let stepping = false;
 // (one drawn frame at the end: Phaser sorts input hits by the cameras' render lists, so new UI
@@ -34,6 +36,17 @@ const walkTo = (pg, target, opts) => walkStep(pg, target, opts);
 const startStepping = async () => { await installStepper(page); stepping = true; };
 const shot = async (n) => { if (stepping) await render(page, 2); await page.screenshot({ path: path.join(OUT, n + '.jpg'), type: 'jpeg', quality: 82 }); };
 const st = () => page.evaluate(() => window.__FV.state());
+/** (v4.3) the flag maker's state (null when the hook is not there) */
+const flagSt = () => page.evaluate(() => (window.__FV.flag ? window.__FV.flag() : null));
+/** (v4.3) one real tap on the maker's 「이대로 시작」 (logical UI px -> page px) */
+const passFlagMaker = async () => {
+  const f = await flagSt();
+  if (!f || !f.maker || !f.maker.open) return null;
+  const at = f.maker.hit.start, c = await page.$('canvas'), b = await c.boundingBox(), k = b.width / 720;
+  await page.touchscreen.tap(b.x + at.x * k, b.y + at.y * k);
+  await sleep(300);
+  return f.maker.spec;
+};
 const where = (n) => page.evaluate((k) => window.__FV.where(k), n);
 const count = (s, type) => s.player.stack.filter((x) => x === type).length;
 // (v3.5) a pad that appears under the chief (the next hire of a line shares the spot) waits until he
@@ -60,6 +73,18 @@ try {
   await sleep(1200);
   const fps = await page.evaluate(async () => { await new Promise((r) => setTimeout(r, 1500)); return window.__FV.state().fps; });
   await startStepping();
+  // ---------------- (v4.3 마을 깃발) a new game: 「우리 마을 깃발」 first (the village paused under it), then the game
+  {
+    const f0 = await flagSt();
+    const paused0 = await page.evaluate(() => window.__FV.game.scene.isPaused('Game'));
+    step('(v4.3) a new game opens the flag maker (village paused under it)', !!(f0 && f0.maker && f0.maker.open && f0.maker.mode === 'new' && paused0), JSON.stringify(f0 && f0.maker && { open: f0.maker.open, mode: f0.maker.mode }) + ' paused=' + paused0);
+    await shot('02a_flag_maker');
+    const spec = await passFlagMaker();
+    const f1 = await flagSt();
+    const paused1 = await page.evaluate(() => window.__FV.game.scene.isPaused('Game'));
+    step('(v4.3) 「이대로 시작」 starts the game with that flag on every pole', !!(spec && f1 && !f1.maker.open && !paused1 && JSON.stringify(f1.spec) === JSON.stringify(spec) && !f1.mk && f1.poles.filter((q) => q.kind === 'decor').length >= 4), JSON.stringify(f1 && { spec: f1.spec, mk: f1.mk, poles: f1.poles.length }));
+    await sleep(2700);          // (the customers the paused minutes did not bring)
+  }
   await shot('02_start');
   let s = await st();
   step('game started', s.coins === 0 && s.market.queue > 0, `coins=${s.coins} queue=${s.market.queue}`);
@@ -502,6 +527,11 @@ try {
     await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 15000).catch(() => {});
     s = await st();
     step('reset progress (in-game confirm)', s.coins === 0 && s.done.length === 0 && s.workers.length === 0 && s.porters.length === 0, `coins=${s.coins} done=${s.done.length}`);
+    // (v4.3) 처음부터 하기 is a new game too: the flag maker again
+    await waitFor(page, () => { const f = window.__FV.flag && window.__FV.flag(); return !!(f && f.maker && f.maker.open); }, 10000).catch(() => {});
+    const fr = await flagSt();
+    step('(v4.3) 처음부터 하기 opens the flag maker again', !!(fr && fr.maker && fr.maker.open && fr.maker.mode === 'new'), JSON.stringify(fr && fr.maker && fr.maker.mode));
+    await passFlagMaker();
     await shot('25_after_reset');
   }
   step('fps sample at the start (headless software GL, real time, informational)', true, String(fps));

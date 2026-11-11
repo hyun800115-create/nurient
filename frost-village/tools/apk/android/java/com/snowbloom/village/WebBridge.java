@@ -14,6 +14,9 @@
 // background, under the exit dialog, on the lock screen, audio focus lost; read by the page as it boots, the app then
 // tells it each change through window.__fvApp) · gameMusic(on) -> the game's music setting (the app takes audio focus
 // only while it is on).
+//
+// (4.3) backOpen(open) -> the game has a window open that the back key should close first (src/core/Back.js); while it
+// is, MainActivity asks the page (window.__fvApp.back()) before the 「게임을 끝낼까요?」 dialog.
 package com.snowbloom.village;
 
 import android.app.Activity;
@@ -45,6 +48,7 @@ final class WebBridge {
     private volatile String pageUrl = "";
     /** (4.2.0.1) MainActivity.audioAllowed(), kept here for the bridge thread */
     private volatile boolean audioAllowed = true;
+    private volatile boolean backOpen;                // (4.3) a game panel the back key closes first
 
     WebBridge(Activity activity) {
         this.activity = activity;
@@ -114,6 +118,17 @@ final class WebBridge {
         ui.post(new Runnable() {
             @Override public void run() { ((MainActivity) activity).setGameMusic(on); }
         });
+    }
+
+    /** (4.3) the game has something open that the back key should close first (src/core/Back.js tells each change) */
+    @JavascriptInterface
+    public void backOpen(final boolean open) {
+        backOpen = open && trusted();
+    }
+
+    /** MainActivity: ask the page before the exit dialog? */
+    boolean backOpen() {
+        return backOpen && trusted();
     }
 
     @JavascriptInterface

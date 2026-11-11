@@ -85,7 +85,20 @@ async function boot(opts) {
   await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player && window.__FV.game.scene.getScene('UI').ready, 120000);
   await sleep(1200);
   await installStepper(page);
+  // ((v4.3 마을 깃발) a new game opens 「우리 마을 깃발」 first (the Game paused under it): one REAL tap on 「이대로 시작」 and
+  //  the village starts as before — the tutorial runs from there)
+  await passFlagMaker(page);
   return { page, ctx, log };
+}
+/** (v4.3) the new-game flag maker: tap 「이대로 시작」 when it is up (true when it was) */
+async function passFlagMaker(page) {
+  const at = await page.evaluate(() => { const f = window.__FV.flag && window.__FV.flag(); return f && f.maker && f.maker.open ? f.maker.hit.start : null; });
+  if (!at) return false;
+  await render(page, 1);
+  const p = await css(page, at.x, at.y);
+  await page.touchscreen.tap(p.x, p.y);
+  await page.evaluate(() => window.__step.run(2 / 60));
+  return true;
 }
 /** logical UI px -> page CSS px */
 const css = (page, lx, ly) => page.evaluate(([x, y]) => { const c = document.querySelector('canvas').getBoundingClientRect(), ui = window.__FV.game.scene.getScene('UI'); return { x: c.left + x * c.width / ui.W, y: c.top + y * c.height / ui.H }; }, [lx, ly]);
