@@ -669,7 +669,9 @@ export const BALANCE = {
     //    cutHold = 볼거리를 보여 주는 시간(초), cutRange = 이만큼(px) 안의 볼거리만, stuckSide / stuckDrop = 막혔을 때 비키기 / 포기(초)
     //    breakAfter = 급한 일·업무·수금을 이만큼(초) 하면 breakFor 초 동안 쉬어 가요(수다, 사무실, 쉬기, 누리)
     //    agenda = 시간대별 하고 싶은 일 배율 [시작 시, 끝 시, 일, 배율]
-    pilot: { decideEvery: 0.5, jitter: 0.1, hysteresis: 0.2, minZoom: 0.7, camLerp: 0.08, cutEvery: [45, 90], cutHold: [6, 8],
+    //    (4.3) 관망 중 둘러보기: camLerp = 「촌장님 보기」·관망 끄기 때 카메라가 촌장님께 돌아가는 부드러움,
+    //    panKeys = 방향키·WASD 로 둘러볼 때 화면이 움직이는 빠르기(화면 px/초)
+    pilot: { decideEvery: 0.5, jitter: 0.1, hysteresis: 0.2, minZoom: 0.7, camLerp: 0.08, panKeys: 900, cutEvery: [45, 90], cutHold: [6, 8],
              cutRange: 2500, stuckSide: 3, stuckDrop: 8, breakAfter: 150, breakFor: 20,
              agenda: [[7, 9, 'office', 1.5], [9, 12, 'work', 1.3], [13, 17, 'work', 1.15], [17, 20, 'chat', 1.5], [17, 20, 'rest', 1.2]] },
     // ── 새 기차: speed = 곧은 길 속도(m/초), curve = 고리를 돌 때 속도, accel / brake = 출발·멈출 때, dwellOurs / dwellTown = 서 있는 시간(초)

@@ -632,6 +632,29 @@ today's income by source as bars (판매대 · 교역소 · 잡화점 · 식당 
 - **While on**: top caption `관망 중 · 촌장님은 지금: 광장 판매대에 생선을 채우는 중`, small line `화면을 만지면 다시
   조종해요`; tutorial arrow and objective text hidden; navigation off; the halo shows its 관망 state.
 - Not saved; always off after a reload.
+- **(v4.3) 둘러보기** — the designer: 「관망모드시 내가 도시를 자유롭게 움직이게 해줘 관망모드 아이콘누르면 해제되고」. While 관망 is
+  on a one-finger drag (or a mouse drag, or the arrow keys / WASD at `pilot.panKeys` px/s) moves the camera over the whole
+  village (`Input.watch` / `Input.pan` → `CameraDirector.free`, mirrored as `gs.camPan`, clamped to `Territory.camRect`:
+  the open land, the fog peek, 150 px over the sea's top edge; a flick glides on a little); pinch / wheel / buttons zoom
+  as before; a tap on a resident still reaches them; **no touch or key ends 관망 any more — only the 관망 button**, which
+  shows the on state (lit, a soft pulsing ring, a 「관망 끄기」 pill to its left — 23 px, tappable too). The joystick never
+  shows during 관망. A flick glides on only after the panning finger is lifted (a pinch's second finger stops it where it
+  is); the pan starts past 16 px (the UI's tap slop). After a look-around the director makes no cut and no other
+  `focusCamera` moves the camera (a jump the player asks for — the office panel's 「보러 가기」 — glides there and stays; a
+  rank ceremony takes the camera back to show its square); a 「촌장님 보기」 chip (bottom centre) glides it back
+  (`pilot.camLerp`), and so does the end of 관망. The caption's small line is now `쌍안경을 누르면 관망이 끝나요` (below a
+  banner while one shows); the first 관망 on a device shows `손가락으로 마을을 둘러보세요 · 쌍안경을 누르면 끝나요` at the bottom
+  for 10 s (`Settings.data.obsPanHint`). Residency, the ground baking and the view culling read `gs.camTarget` / the
+  camera, so they follow the free camera; the ambience (sea, fire, office) is heard from it. While the view moves fast
+  (> 500 px/s) the ground checks every 0.05 s, bakes up to 3 – 4 tiles and reaches ahead along the way it moves
+  (`Ground.aheadRect`, fitted to the slot pool). The chief's chief2 sheet is let go while the camera is > 900 px from him
+  (even while he sits in it: `Residency.evict(k, true)`) and asked for again within 600 px; likewise the office nobody
+  sees (the camera > 900 px from its door) closes, stops asking for its inside pages and, once the shell has faded,
+  drops `office_bld@inside`, the panel plates and the staff pages it asked for (officefolk; the heads' @soc pages unless
+  the view is in the town) — with him seated at his desk the heads' 12 MiB rode along to the station, GL 457 – 461; and
+  while looking around a far area's pictures go after 3 s instead of `townTtl` 10 s (tested by `watchpan.mjs`;
+  `texbudget.mjs` adds a long 관망 look-around tour and the seated chief with the camera at the station / town). The
+  auto-start countdown still stops at any touch. The hand-back lines above describe v4.2.
 
 ### 7.2 What he does (chooser every 0.5 s, `pilot/ChiefPilot.js`, `agenda.js`, `work.js`)
 

@@ -4,7 +4,9 @@
 // twice and in a replayed sequence; the pilot never walks to a pay / hire / upgrade pad or a plot (urgentTarget and
 // begin() drop them; blocksPay() while on, '고용만' lets only hires through); a 10-minute run on a mock village where
 // a chore is always waiting still changes activity ≥ 6 times with ≥ 4 different ones (the chore break + AGAIN
-// cool-downs); a human touch hands control back in the same call; never Math.random.
+// cool-downs); ((v4.3) 둘러보기) a touch / key on the village no longer ends 관망 — a finger past the slop and the keys
+// look around (Input.pan / panKeys → CameraDirector: detached, clamped to the camera bounds incl. 150 px over the sea's top,
+// no cut while detached, attach() glides back), only the button (toggle) hands control back; never Math.random.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -150,13 +152,120 @@ console.log('a 10-minute day with a chore always waiting');
     l2 = a;
   }
   ok(JSON.stringify(s2) === JSON.stringify(starts), 'replayed with the same seed: the same day');
-  // hand-back: a human touch ends 관망 in the same call
-  ok(Q.on, 'on before the touch');
-  Input.onHuman();
-  ok(!Q.on && Q.stats.yields === 1 && Input.pilot() === null, 'a human touch hands control back at once (no pilot vector left)');
+  // ((v4.3) a human on the village does not end 관망 any more; the button does)
+  ok(Q.on && Input.watch && Input.watch() === true, 'on before the touch; Input.watch() says so');
+  Input.onHuman('touch'); Input.onHuman('move');
+  ok(Q.on && Q.stats.yields === 0, 'a touch / move on the village does not end 관망 (only the button does)');
+  Q.toggle();
+  ok(!Q.on && Q.stats.yields === 1 && Input.pilot() === null && Input.watch() === false, 'the 관망 button hands control back at once (no pilot vector left)');
+  Q.countdown = 2.5; Input.onHuman('touch');
+  ok(Q.countdown === 0, 'off: a touch still stops the auto-start countdown');
   ok(randomCalls === 0, 'never Math.random (' + randomCalls + ')');
   P.destroy(); Q.destroy();
 }
+
+// ((v4.3) 둘러보기: Input routes a finger / the keys to the camera while 관망 is on; CameraDirector moves it)
+console.log('둘러보기: a finger and the keys look around, the camera stays the player\'s until 「촌장님 보기」');
+{
+  const { gs } = village();
+  // a camera 720 x 1280 logical at zoom 1 over the open land (camRect: 150 px over the sea's top edge)
+  gs.cameras = { main: { zoom: 1, width: 720, height: 1280 } };
+  gs.zoomCur = 1;
+  gs.camTarget = { x: 1500, y: 900 };
+  gs.territory = { camRect: { x: -800, y: -150, w: 5000, h: 3600 } };
+  gs.player.x = 1500; gs.player.y = 930;
+  const P = new ChiefPilot(gs, gs.v42, { cid: 7 });
+  P.start('test');
+  ok(P.hinting === true || Settings.data.obsPanHint === true, 'the first 관망: the look-around hint (once per device)');
+  // a joystick finger: a tap stays a tap, a drag pans (no joystick)
+  Input.pointerDown({ id: 1, x: 300, y: 600 });
+  ok(Input.pan.active && !Input.joy.active, 'a finger on the village during 관망 looks around: no joystick');
+  Input.pointerMove({ id: 1, x: 306, y: 604 });
+  ok(Input.pan.dx === 0 && Input.pan.dy === 0 && !Input.pan.moved, 'inside the slop (a tap) nothing moves');
+  Input.pointerMove({ id: 1, x: 200, y: 560 });
+  ok(Input.pan.moved && Input.pan.dx === -100 && Input.pan.dy === -40, 'past the slop the whole drag counts (' + Input.pan.dx + ', ' + Input.pan.dy + ')');
+  const v = Input.update(1000);
+  ok(Q_on(P) && Input.joy.active === false && v === Input.vec, 'Input.update during a drag: still 관망, the pilot\'s vector');
+  P.update(1 / 60);
+  ok(P.cam.free && Math.round(P.cam.free.x) === 1600 && Math.round(P.cam.free.y) === 940 && gs.camPan === P.cam.free, 'the village moves with the finger: the camera detached by (+100, +40) world px at zoom 1', P.cam.free);
+  Input.pointerUp({ id: 1 });
+  ok(!Input.pan.active && P.on, 'the finger lifts: 관망 goes on');
+  // clamp: far up-left stops at the bounds (view centre ≥ camRect.x + 360, ≥ camRect.y + 640)
+  P.cam.panBy(-9000, -9000);
+  ok(P.cam.free.x === -800 + 360 && P.cam.free.y === -150 + 640, 'clamped to the camera bounds, 150 px over the top included (' + P.cam.free.x + ', ' + P.cam.free.y + ')');
+  P.cam.panBy(50, 0);
+  ok(P.cam.free.x === -800 + 360 + 50, 'and back at once (no dead zone past the edge)');
+  P.cam.panBy(1e5, 1e5);
+  ok(P.cam.free.x === -800 + 5000 - 360 && P.cam.free.y === -150 + 3600 - 640, 'the far corner too');
+  // zoom 2: half the view, a wider range; a logical px is half a world px
+  gs.cameras.main.zoom = 2; gs.zoomCur = 2;
+  P.cam.panBy(1e5, 1e5);
+  ok(P.cam.free.x === -800 + 5000 - 180, 'at zoom 2 the range follows the smaller view (' + P.cam.free.x + ')');
+  const x0 = P.cam.free.x;
+  Input.pointerDown({ id: 2, x: 100, y: 100 }); Input.pointerMove({ id: 2, x: 140, y: 100 });
+  P.update(1 / 60); Input.pointerUp({ id: 2 });
+  ok(Math.abs(P.cam.free.x - (x0 - 20)) < 0.01, 'a 40 px drag at zoom 2 moves 20 world px (' + (P.cam.free.x - x0).toFixed(2) + ')');
+  gs.cameras.main.zoom = 1; gs.zoomCur = 1;
+  // a flick glides on, then stops
+  P.cam.panBy(-2000, -1000);
+  Input.pointerDown({ id: 3, x: 400, y: 600 });
+  for (let i = 1; i <= 6; i++) { Input.pointerMove({ id: 3, x: 400 - 30 * i, y: 600 }); P.update(1 / 60); }
+  Input.pointerUp({ id: 3 });
+  const f0 = P.cam.free.x;
+  for (let i = 0; i < 120; i++) P.update(1 / 60);
+  const f1 = P.cam.free.x;
+  ok(f1 > f0 + 40 && P.cam.vel.x === 0, 'a flick glides on a little and stops (' + Math.round(f1 - f0) + ' px)');
+  // ((review F1) a pinch's second finger (UI → Input.release) stops the look-around where it is: no glide with the
+  //  first finger's speed while both fingers are held still)
+  Input.pointerDown({ id: 6, x: 400, y: 600 });
+  for (let i = 1; i <= 3; i++) { Input.pointerMove({ id: 6, x: 400 - 25 * i, y: 600 }); P.update(1 / 60); }
+  const pv = Math.abs(P.cam.vel.x);
+  Input.release();
+  const r0 = P.cam.free.x;
+  for (let i = 0; i < 40; i++) P.update(1 / 60);
+  ok(pv > 100 && Math.abs(P.cam.free.x - r0) < 0.01 && P.cam.vel.x === 0 && !Input.pan.flick, 'a second finger (a pinch) stops the look-around: no glide (speed was ' + Math.round(pv) + ' px/s, moved ' + (P.cam.free.x - r0).toFixed(2) + ' px)');
+  // ((review F10) the slop is the UI's tap slop: a 15 px move is still a tap (it may chat with a resident), no pan
+  Input.pointerDown({ id: 7, x: 300, y: 600 }); Input.pointerMove({ id: 7, x: 315, y: 600 });
+  ok(!Input.pan.moved && Input.pan.dx === 0, 'a 15 px move is still a tap: no pan (PAN_SLOP 16)');
+  Input.pointerUp({ id: 7 });
+  P.update(1 / 60);
+  ok(!Input.pan.flick && P.cam.vel.x === 0, 'a tap lifted: no glide');
+  // keys in 관망: they pan, the chief is not steered by them, 관망 goes on
+  Input.keys = { left: { isDown: false }, left2: { isDown: false }, right: { isDown: true }, right2: { isDown: false }, up: { isDown: false }, up2: { isDown: false }, down: { isDown: false }, down2: { isDown: false } };
+  const k0 = P.cam.free.x;
+  Input.update(2000);
+  ok(Input.panKeys.x === 1 && P.on, 'a key during 관망: panKeys, 관망 goes on');
+  P.update(0.5);
+  ok(Math.abs(P.cam.free.x - (k0 + 450)) < 1, 'the keys look around at pilot.panKeys px/s (' + Math.round(P.cam.free.x - k0) + ' px in 0.5 s)');
+  Input.keys.right.isDown = false; Input.update(2100);
+  // no cut while detached
+  P.cam.nextCut = 0;
+  gs.events.emit('built', 'x', { x: 1500, y: 900 });
+  const cuts0 = P.cam.cuts;
+  P.update(0.1);
+  ok(P.cam.cuts === cuts0 && P.cam.blocked >= 1 && P.cam.free, 'an event while looking around: no cut (held back ' + P.cam.blocked + ')');
+  // a jump the player asked for (the office panel's 「보러 가기」) glides the free point there; a finger takes over
+  ok(P.cam.glideTo(1200, 1400) === true, 'a jump the player asked for while looking around: a glide of the free point');
+  for (let i = 0; i < 90; i++) P.update(1 / 60);
+  ok(Math.hypot(P.cam.free.x - 1200, P.cam.free.y - 1400) < 2 && !P.cam.goal, 'it arrives (' + Math.round(P.cam.free.x) + ', ' + Math.round(P.cam.free.y) + ')');
+  P.cam.glideTo(3000, 2000); P.update(1 / 60);
+  Input.pointerDown({ id: 5, x: 300, y: 600 }); Input.pointerMove({ id: 5, x: 260, y: 600 }); P.update(1 / 60); Input.pointerUp({ id: 5 });
+  ok(!P.cam.goal, 'a finger takes over from the glide');
+  // 「촌장님 보기」: attached, a glide back, the cuts again later
+  ok(P.cam.attach() === true && !P.cam.free && gs.camPan === null && gs.camGlide === true && P.cam.nextCut >= 8, '「촌장님 보기」: attached, the camera glides back, no cut in the next 8 s');
+  // the button while looking around: off, the camera glides back
+  P.cam.panBy(300, 0);
+  ok(!!P.cam.free, 'looking around again');
+  P.toggle();
+  ok(!P.on && !P.cam.free && gs.camPan === null && gs.camGlide === true && !Input.pan.active, 'the 관망 button: off, the camera glides back to the chief');
+  // off: the same finger steers the chief again (a joystick)
+  Input.pointerDown({ id: 4, x: 300, y: 600 });
+  ok(Input.joy.active && !Input.pan.active, 'after 관망 a finger is the joystick again');
+  Input.release();
+  Input.keys = null;
+  P.destroy();
+}
+function Q_on(P) { return P.on; }
 
 // ((v4.2 CODE-2 review fixes) the night, the day's train, 누리, a load first
 console.log('the day: night rest, one train a day, 누리, the bag first');

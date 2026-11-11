@@ -48,6 +48,12 @@ const LEVEL_ZOOM = [0.85, 0.42];
 const LEVEL_MARGIN = [200, 320, 480];   // world px around the view that should already be baked
 const POOL = 28;                         // slots (1 MiB each); about 24 cover a phone view at zoom 0.85
 const TRIM_AFTER = 15;                   // s a slot may keep a tile nobody needed before it is given back
+// ((v4.3 review F2) a fast-moving view (관망's look-around): above FAST_SPEED world px / s the check runs every frame
+//  (still at most 2 tiles in one frame — the walking check's own ceiling, so no frame costs more than before; up to
+//  120 tiles / s at 60 fps where a 4,500 px / s pan needs ~45), and the baked rect reaches FAST_AHEAD s ahead along the
+//  way it moves)
+const FAST_SPEED = 500;
+const FAST_AHEAD = 0.4;
 /** tile id (level, column, row); (v4-C) columns may be negative (the west strip): offset so ids never collide */
 const tileId = (lv, tx, ty) => lv * 1e7 + ty * 2000 + (tx + 500);
 export function levelFor(z) { return z >= LEVEL_ZOOM[0] ? 0 : z >= LEVEL_ZOOM[1] ? 1 : 2; }
@@ -113,6 +119,9 @@ export class Ground {
     this.trimmed = 0;
     this.trimT = 0;
     this.checkT = 0;
+    // ((v4.3 review F2) the view's speed (trackSpeed) and how often it was fast (state / tests)
+    this.vx = 0; this.vy = 0;
+    this.fastChecks = 0; this.fastBaked = 0;
     // (v4-A, plan §10.2) extra layers baked into the tiles (rails, v4 streets: fn(ctx, x0, y0, w, h)) and
     // tiles to re-bake in place (one per check) when such a layer changes
     this.hooks = [];
@@ -270,17 +279,20 @@ export class Ground {
   /** the camera zoom the tiles are made for */
   zoomNow() { const gs = this.gs; return gs.zoomCur || (gs.cameras && gs.cameras.main ? gs.cameras.main.zoom : 1) || 1; }
 
-  /** bake the tiles around the camera view (`max` per call; Infinity = all that are needed now) */
-  ensure(view, max = 1, margin) {
+  /** bake the tiles around the camera view (`max` per call; Infinity = all that are needed now); ((v4.3 review F2)
+   *  `reach`: the rect to cover instead of view + margin (a fast-moving view: Ground.aheadRect) — the tiles in view
+   *  still come first, then those nearest the middle of `reach`, i.e. ahead along the way the view moves) */
+  ensure(view, max = 1, margin, reach) {
     this.settleLayers();
     const lv = Math.min(2, Math.max(this.minLevel, levelFor(this.zoomNow())));
     const T = TW << lv;
     const m = margin !== undefined ? margin : LEVEL_MARGIN[lv];
     const cols = Math.ceil(this.W / T), rows = Math.ceil(this.H / T);
     const tx0 = Math.floor(this.X0 / T);      // (v4-C) tiles left of x = 0 (the west strip)
-    const x0 = Math.max(tx0, Math.floor((view.x - m) / T)), x1 = Math.min(cols - 1, Math.floor((view.right + m) / T));
-    const y0 = Math.max(0, Math.floor((view.y - m) / T)), y1 = Math.min(rows - 1, Math.floor((view.bottom + m) / T));
-    const cx = (view.x + view.right) / 2, cy = (view.y + view.bottom) / 2;
+    const R = reach || null;
+    const x0 = Math.max(tx0, Math.floor((R ? R.x : view.x - m) / T)), x1 = Math.min(cols - 1, Math.floor((R ? R.right : view.right + m) / T));
+    const y0 = Math.max(0, Math.floor((R ? R.y : view.y - m) / T)), y1 = Math.min(rows - 1, Math.floor((R ? R.bottom : view.bottom + m) / T));
+    const cx = R ? (R.x + R.right) / 2 : (view.x + view.right) / 2, cy = R ? (R.y + R.bottom) / 2 : (view.y + view.bottom) / 2;
     const need = this._need || (this._need = new Set());
     need.clear();
     const list = this._list || (this._list = []);
@@ -801,17 +813,62 @@ export class Ground {
     ctx.strokeStyle = 'rgba(244,247,251,0.9)'; ctx.lineWidth = 5; poly(); ctx.stroke();
   }
 
+  /**
+   * ((v4.3 review F2) how fast the view moves (world px / s, smoothed), from where the camera is going (camTarget). A
+   * jump (a teleport, a ceremony's cut) is not a speed. 관망's look-around moves the camera at a swipe's speed (1,800 –
+   * 4,500 px / s) where the chief walks at ~250: the land then has to be baked sooner and faster (update / ahead))
+   */
+  trackSpeed(dt) {
+    const ct = this.gs.camTarget;
+    if (!ct || !(dt > 0)) return 0;
+    if (this.lx !== undefined) {
+      const dx = ct.x - this.lx, dy = ct.y - this.ly;
+      const jump = Math.abs(dx) > 700 || Math.abs(dy) > 700;
+      const ix = jump ? 0 : dx / dt, iy = jump ? 0 : dy / dt;
+      const a = Math.min(1, dt * 14);
+      this.vx += (ix - this.vx) * a; this.vy += (iy - this.vy) * a;
+    }
+    this.lx = ct.x; this.ly = ct.y;
+    return Math.hypot(this.vx, this.vy);
+  }
+
+  /**
+   * (F2) the rect to have baked while the view moves fast: the usual margin to the sides, none behind, and ahead the
+   * margin plus about FAST_AHEAD s of the way (at most a tile and a half) — shortened until it fits the slot pool
+   * (with two spare), so the tiles in view always find a slot
+   */
+  aheadRect(view, sp) {
+    const lv = Math.min(2, Math.max(this.minLevel, levelFor(this.zoomNow())));
+    const T = TW << lv, m = LEVEL_MARGIN[lv];
+    const ux = this.vx / sp, uy = this.vy / sp;
+    const r = this._ahead || (this._ahead = { x: 0, y: 0, right: 0, bottom: 0 });
+    for (let L = Math.min(T * 1.5, sp * FAST_AHEAD); ; L = Math.max(0, L - T / 2)) {
+      const side = (u, lead) => (u > 0.25 ? (lead ? m + L * u : 0) : u < -0.25 ? (lead ? 0 : m - L * u) : m);
+      r.x = view.x - side(ux, false); r.right = view.right + side(ux, true);
+      r.y = view.y - side(uy, false); r.bottom = view.bottom + side(uy, true);
+      const n = (Math.floor(r.right / T) - Math.floor(r.x / T) + 1) * (Math.floor(r.bottom / T) - Math.floor(r.y / T) + 1);
+      if (n <= this.pool - 2 || L <= 0) return r;
+    }
+  }
+
   update(dt) {
     this.t += dt;
     // bake the land the camera is about to see (one tile per check, so a walk never hitches for long)
     // (v4-B) 512 px tiles: up to two per check (a quarter of the old tile each)
+    // ((v4.3 review F2) while the view moves fast (관망's look-around: a swipe, a flick, a glide back) every frame, up
+    //  to 2 tiles, reaching ahead along the way it moves: at 3,000 px / s the old 2 tiles / 0.12 s left two thirds of
+    //  the screen flat snow colour)
     this.settleLayers();
+    const sp = this.trackSpeed(dt);
+    const fast = sp > FAST_SPEED;
     this.checkT -= dt;
-    if (this.checkT <= 0) {
+    this.trimT -= dt;
+    if (fast || this.checkT <= 0) {
       this.checkT = 0.12;
       const view = this.gs.viewRect ? this.gs.viewRect() : this.gs.cameras.main.worldView;
-      if (!this.ensure(view, 2) && this.dirty.size) this.rebakeOne(view);
-      this.trimT -= 0.12;
+      const n = fast ? this.ensure(view, 2, undefined, this.aheadRect(view, sp)) : this.ensure(view, 2);
+      if (fast) { this.fastChecks++; this.fastBaked += n; }
+      if (!n && this.dirty.size) this.rebakeOne(view);
       if (this.trimT <= 0) { this.trimT = 2; this.trim(view); }
     }
     // (v4-C2) the living water's clock

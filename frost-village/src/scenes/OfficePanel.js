@@ -153,7 +153,7 @@ export class OfficePanel {
   text(x, y, s, size, color, ox, extra) { const tx = this.ui.add.text(x, y, s, TXT(size || 22, color || '#2b2f3a', '800', extra)).setOrigin(ox === undefined ? 0 : ox, 0.5); this.body.add(tx); return tx; }
   icon(x, y, key, size) { const im = fit(Assets.image(this.ui, x, y, Assets.pick(key, 'ui_icon_lock')).setOrigin(0.5), size); this.body.add(im); return im; }
   button(x, y, w, label, fn, style) { const b = this.ui.makeButton(x, y, w, 56, style || 'blue', label, fn, 20); this.body.add(b); return b; }
-  hop(x, y) { this.close(); this.gs.focusCamera(x, y, 2600); }
+  hop(x, y) { this.close(); this.gs.focusCamera(x, y, 2600, true); }
 
   // ------------------------------------------------------------------ 재고
   tab_stock() {

@@ -1,10 +1,12 @@
 // (v4.2, docs/v42_plan.md §7 + §15) 관망 soak, fixed-step clock:
-//   node tools/test/pilot.mjs [--minutes 30] [--ref-minutes 30] [--no-ref] [--out DIR]
+//   node tools/test/pilot.mjs [--minutes 30] [--ref-minutes 30] [--ref-runs 2] [--no-ref] [--out DIR]
 // From the v4.1 46-min save (village complete) the chief lives his day in 관망 for `minutes` game minutes:
 //   0 page errors · no stretch > 20 s with a route and no progress · 0 coins spent and no pay-pad payment while
-//   piloted · ≥ 6 activity starts in every 10 minutes (and ≥ 4 different ones overall) · a human key hands back in
-//   the same frame (the human's vector moves him that frame) · income ≥ 80 % of the arrow-only bot's on the same save
-//   and the same minutes (--no-ref skips that reference run).
+//   piloted · ≥ 6 activity starts in every 10 minutes (and ≥ 4 different ones overall) · ((v4.3) a human key during
+//   관망 looks around (the camera detaches, 관망 stays on, the pilot still steers him); the 관망 button hands back in the
+//   same frame (the human's key moves him the next frame) · income ≥ 80 % of the arrow-only bot's on the same save
+//   and the same minutes (--no-ref skips that reference run). ((v4.3 review) the reference is the mean of --ref-runs
+//   arrow-only runs side by side (default 2): one run alone varied 78.8k – 83.8k, enough to move the ratio 79 – 85 %)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +18,7 @@ const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const MIN = Number(opt('--minutes', '30'));
 const REF_MIN = Number(opt('--ref-minutes', String(MIN)));
+const REF_RUNS = Math.max(1, Number(opt('--ref-runs', '2')) || 1);
 const OUT = opt('--out', '');
 const SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8');
 let pass = 0, fail = 0;
@@ -93,40 +96,51 @@ try {
   console.log('  starts per 10 min: ' + windows.join(', ') + ' · kinds: ' + kinds.join(', ') + ' · acts ' + JSON.stringify(res.st.stats.acts) + ' · cuts ' + res.st.cuts);
   ok(windows.every((n) => n >= 6), '≥ 6 activities in every 10 minutes', windows);
   ok(kinds.length >= 4, '≥ 4 different activities (' + kinds.length + ')');
-  // hand-back: a human key in one frame
+  // ((v4.3) a human key during 관망 looks around; the 관망 button hands back in one frame)
   const hb = await page.evaluate(() => {
     const I = window.__Input, gs = window.__FV.scene, P = gs.v42.pilot, p = gs.player;
     if (!P.on) P.start('test');
-    const x0 = p.x;
+    const c0 = gs.camTarget.x;
     I.keys.right.isDown = true;
+    window.__sim.run(0.5);
+    const look = { on: P.on, free: !!P.cam.free, cam: gs.camTarget.x - c0, keys: I.panKeys.x, vec: [I.vec.x, I.vec.y], pilot: [P.vec.x, P.vec.y] };
+    P.toggle();
+    const x0 = p.x;
     window.__sim.run(1 / 60);
-    const r = { on: P.on, vx: I.vec.x, moved: p.x - x0 };
+    const r = { look, on: P.on, vx: I.vec.x, moved: p.x - x0 };
     I.keys.right.isDown = false;
     window.__sim.run(0.2);
     return r;
   });
-  ok(!hb.on && hb.vx > 0.9, 'a human key hands control back in the same frame (vec.x ' + hb.vx + ', moved ' + hb.moved.toFixed(1) + ' px)', hb);
+  // (Input.vec is the pilot's vector of the frame before: within a frame's turn of his)
+  ok(hb.look.on && hb.look.free && hb.look.cam > 100 && hb.look.keys === 1 && Math.abs(hb.look.vec[0] - hb.look.pilot[0]) < 0.15 && Math.abs(hb.look.vec[1] - hb.look.pilot[1]) < 0.15, 'a human key during 관망 looks around (the camera ' + Math.round(hb.look.cam) + ' px right), 관망 stays on, the pilot still steers', hb.look);
+  ok(!hb.on && hb.vx > 0.9, 'the 관망 button hands control back in the same frame (vec.x ' + hb.vx + ', moved ' + hb.moved.toFixed(1) + ' px)', hb);
   console.log(`  pilot income: ${pilotEarned} in ${MIN} min`);
   await page.close();
   if (OUT) fs.writeFileSync(path.join(OUT, 'pilot_soak.json'), JSON.stringify({ marks, res, start0 }, null, 0));
 
   // ── reference: the arrow-only bot on the same save and minutes ──
   if (!args.includes('--no-ref')) {
-    console.log(`arrow-only bot: ${REF_MIN} game minutes from the same save`);
-    const { page: rp } = await boot();
-    await rp.addScriptTag({ path: path.join(HERE, 'review_gameplay_bot.js') });
-    await rp.evaluate(() => Object.assign(window.__bot.opts, { policy: 'arrowonly', upg: 'none', minBatch: 3, think: 0, mag: 1 }));
-    const e0 = await rp.evaluate(() => window.__FV.scene.economy.earned);
-    for (let sec = 0; sec < REF_MIN * 60; sec += 10) await rp.evaluate(() => window.__sim.run(10, window.__bot.tick));
-    refEarned = (await rp.evaluate(() => window.__FV.scene.economy.earned)) - e0;
-    console.log(`  arrow-only income: ${refEarned} in ${REF_MIN} min`);
+    console.log(`arrow-only bot: ${REF_MIN} game minutes from the same save, ${REF_RUNS} run(s) side by side`);
+    const refRun = async () => {
+      const { page: rp } = await boot();
+      await rp.addScriptTag({ path: path.join(HERE, 'review_gameplay_bot.js') });
+      await rp.evaluate(() => Object.assign(window.__bot.opts, { policy: 'arrowonly', upg: 'none', minBatch: 3, think: 0, mag: 1 }));
+      const e0 = await rp.evaluate(() => window.__FV.scene.economy.earned);
+      for (let sec = 0; sec < REF_MIN * 60; sec += 10) await rp.evaluate(() => window.__sim.run(10, window.__bot.tick));
+      const got = (await rp.evaluate(() => window.__FV.scene.economy.earned)) - e0;
+      await rp.close();
+      return got;
+    };
+    const refs = await Promise.all(Array.from({ length: REF_RUNS }, () => refRun()));
+    refEarned = Math.round(refs.reduce((a, b) => a + b, 0) / refs.length);
+    console.log(`  arrow-only income: ${refs.join(' / ')} → mean ${refEarned} in ${REF_MIN} min`);
     // (the same window: the first REF_MIN minutes of both runs — the save's full tills are picked up early by both)
     const mk = marks.find((m) => m.t >= REF_MIN * 60) || marks[marks.length - 1];
     const pilotSame = mk ? mk.earned - start0.earned : pilotEarned;
     const k = (pilotSame / Math.max(1, Math.min(REF_MIN, MIN))) / Math.max(1, refEarned / Math.max(1, REF_MIN));
     console.log(`  관망 income in the same ${REF_MIN} minutes: ${pilotSame}`);
-    ok(k >= 0.8, '관망 income ≥ 80 % of the arrow-only bot (' + Math.round(k * 100) + ' %)');
-    await rp.close();
+    ok(k >= 0.8, '관망 income ≥ 80 % of the arrow-only bot (' + Math.round(k * 100) + ' %, the mean of ' + refs.length + ')');
   }
 } catch (e) { fail++; console.log('FATAL', (e && e.stack) || e); }
 console.log(`\n${pass} passed, ${fail} failed  (wall ${((Date.now() - t0) / 1000) | 0}s)`);

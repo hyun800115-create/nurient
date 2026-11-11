@@ -620,7 +620,9 @@ export const Settings = {
   // (v4-C2) water: '물결 품질' 'high' | 'low' | null (automatic); voice: '주민 목소리' volume 0..1 (0 = off)
   data: { sound: true, music: true, lang: null, zoom: null, daynight: true, gfx: 'auto', water: null, voice: 1,
     // (v4.2) 놀이 tab: 자동 줍기 / 길 안내 / 촌장 후광 / 관망 자동 (s) / 관망 볼거리 / 관망 중 돈 쓰기
-    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none' },
+    pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none',
+    // (v4.3) the one-time 관망 look-around hint has been shown on this device
+    obsPanHint: false },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -640,6 +642,7 @@ export const Settings = {
       this.data.observeAfter = [0, 30, 60, 120].indexOf(s.observeAfter) >= 0 ? s.observeAfter : 60;
       this.data.observeEvents = s.observeEvents !== false;
       this.data.observeSpend = s.observeSpend === 'hire' ? 'hire' : 'none';
+      this.data.obsPanHint = s.obsPanHint === true;     // (v4.3)
     }
     return this.data;
   },

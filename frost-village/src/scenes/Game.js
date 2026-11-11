@@ -336,6 +336,8 @@ export class Game extends Phaser.Scene {
     const tv = this.tutorial.inTutorial && WORLD.tutorialView && gdist(p0.x, p0.y, WORLD.tutorialView[0], WORLD.tutorialView[1]) < 500 ? WORLD.tutorialView : null;
     this.camTarget = tv ? { x: tv[0], y: tv[1] } : { x: p0.x, y: p0.y - 20 };
     this.camFocus = null;     // { x, y, until } temporary pan target
+    this.camPan = null;       // (v4.3) { x, y } the 관망 look-around point (CameraDirector.free), null = the usual follow
+    this.camGlide = false;    // (v4.3) gliding back to the chief after a look-around
     cam.startFollow(this.camTarget, false, 1, 1);
     cam.centerOn(this.camTarget.x, this.camTarget.y);
     // (v3) bake the ground the first view needs right away (the rest is baked as the camera moves)
@@ -1582,7 +1584,20 @@ export class Game extends Phaser.Scene {
     return low;
   }
 
-  focusCamera(x, y, ms) { this.camFocus = { x, y, until: this.time.now + ms }; }
+  // ((v4.3) not while the player looks around in 관망 (CameraDirector.free → camPan): the camera is theirs — a jump the
+  //  player asked for (`mine`: the office panel's 「보러 가기」) glides their look-around point there instead.
+  //  (review F11) during 관망 such a jump always does that (the camera with the chief first lets go of him): it stays
+  //  there, and 「촌장님 보기」 brings it back — the same either way. (review F5) a rank ceremony shows its square: the
+  //  camera comes back from looking around first (before, its focus was dropped and the camera glided to the chief))
+  focusCamera(x, y, ms, mine) {
+    const P = this.v42 && this.v42.pilot, C = P && P.cam;
+    if (this.camPan || (mine && C && P.on)) {
+      const R = this.v4 && this.v4.rank;
+      if (R && R.ceremonyOn && C) C.attach();
+      else { if (mine && C && (C.free || C.detach())) C.glideTo(x, y); return; }
+    }
+    this.camFocus = { x, y, until: this.time.now + ms };
+  }
 
   /** the part of the world the camera shows (or is about to: it follows camTarget) */
   viewRect() {
@@ -2083,7 +2098,16 @@ export class Game extends Phaser.Scene {
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
-    const k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
+    let k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
+    // ((v4.3) 관망 둘러보기: the camera stays where the player's finger put it (CameraDirector.free, 1:1); back with the
+    //  chief it glides there (pilot.camLerp) instead of jumping)
+    if (this.camPan && !this.overview) { fx = this.camPan.x; fy = this.camPan.y; k = 1; this.camGlide = false; }
+    else if (this.camGlide && !this.camFocus && !this.overview) {
+      // (the long way back; near him the usual follow takes over — it keeps up with a walking chief)
+      const gl = (BALANCE.v42 && BALANCE.v42.pilot && Number(BALANCE.v42.pilot.camLerp)) || 0.08;
+      k = 1 - Math.pow(1 - gl, delta / 16.67);
+      if (Math.abs(fx - ct.x) < 120 && Math.abs(fy - ct.y) < 120) this.camGlide = false;
+    } else this.camGlide = false;
     ct.x += (fx - ct.x) * k; ct.y += (fy - ct.y) * k;
 
     // ambient snow
@@ -2098,11 +2122,13 @@ export class Game extends Phaser.Scene {
     this.ambT -= dt;
     if (this.ambT <= 0) {
       this.ambT = 0.25;
-      const sea = Math.max(0, Math.min(1, 1 - (p.y - 400) / 900));
+      // ((v4.3 review F6) where the ears are: the chief, or the camera while the player looks around in 관망)
+      const L = this.camPan || p;
+      const sea = Math.max(0, Math.min(1, 1 - (L.y - 400) / 900));
       this.seaAmbience(0.15 + sea * 0.6);
       let fire = 0;
-      for (const s of this.stationList) if (s.working && s.enabled) { const d = Math.hypot(s.x - p.x, s.y - p.y); fire = Math.max(fire, 1 - d / 420); }
-      for (const c of this.campfires || []) { const d = Math.hypot(c.x - p.x, c.y - p.y); fire = Math.max(fire, (1 - d / 350) * 0.7); }
+      for (const s of this.stationList) if (s.working && s.enabled) { const d = Math.hypot(s.x - L.x, s.y - L.y); fire = Math.max(fire, 1 - d / 420); }
+      for (const c of this.campfires || []) { const d = Math.hypot(c.x - L.x, c.y - L.y); fire = Math.max(fire, (1 - d / 350) * 0.7); }
       Audio.setAmbience('amb_fire', Math.max(0, fire) * 0.8);
     }
     Audio.updateAmbience(dt);

@@ -536,7 +536,7 @@ export const V42_SPEC = {
   ledger: { window: R(10, 3600, 300), emptyS: R(1, 3600, 30), fullS: R(1, 3600, 60) },
   news: { hour: R(0, 23, 6), keep: R(1, 10, 3, true) },
   letters: { minH: R(0.1, 48, 2), maxH: R(0.1, 96, 4), maxUnread: R(1, 20, 6, true), archiveDays: R(1, 30, 2, true) },
-  pilot: { decideEvery: R(0.1, 10, 0.5), jitter: R(0, 1, 0.1), hysteresis: R(0, 2, 0.2), minZoom: R(0.3, 2, 0.7), camLerp: R(0.005, 1, 0.08),
+  pilot: { decideEvery: R(0.1, 10, 0.5), jitter: R(0, 1, 0.1), hysteresis: R(0, 2, 0.2), minZoom: R(0.3, 2, 0.7), camLerp: R(0.005, 1, 0.08), panKeys: R(100, 5000, 900),
     cutEvery: [R(5, 3600, 45), R(5, 3600, 90)], cutHold: [R(1, 60, 6), R(1, 60, 8)], cutRange: R(100, 20000, 2500), stuckSide: R(0.5, 60, 3), stuckDrop: R(1, 600, 8), breakAfter: R(5, 3600, 150), breakFor: R(1, 600, 20), agenda: 'agenda' },
   train: { speed: R(0.5, 20, 3.4), curve: R(0.3, 20, 2.2), accel: R(0.05, 10, 0.7), brake: R(0.05, 10, 0.8), dwellOurs: R(2, 600, 12), dwellTown: R(2, 600, 8), coachSeats: R(1, 99, 16, true), labels: R(0, 99, 3, true) },
 };
