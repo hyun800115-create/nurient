@@ -1,6 +1,6 @@
 // (v4.3) 목표 창 · 자동 이동, Node only (a Phaser stub, a mock village):
 //   node tools/test/goals.test.mjs
-// The words: ko / en have the same keys and the same {slots}. The main road: the 15 first-loop / zone steps in order,
+// The words: ko / en have the same keys and the same {slots}. The main road: the 17 first-loop / zone steps in order,
 // every main goal has a name of its own. The walk (goals/GoalWalk): drives through Input.pilot only while walking (the
 // pilot's vector otherwise), arrives within 8 px of the exact spot on the mock village, blocks paying on the way only;
 // a joystick (a test's setInput), a finger held ≥ 0.12 s and a key cancel it at once with a toast; locked / passive /
@@ -42,8 +42,8 @@ console.log('the words');
 console.log('the main road');
 {
   const ids = MAIN_STEPS.map((s) => s.id);
-  const want = ['hire_clerk_market', 'op_grill', 'hire_fisherman', 'zone_forest', 'op_sawmill', 'hire_lumberjack', 'zone_farm', 'op_bakery', 'hire_farmer', 'zone_mine', 'op_smelter', 'hire_miner', 'zone_hunt', 'op_smokehouse', 'hire_hunter'];
-  ok(JSON.stringify(ids) === JSON.stringify(want), '15 first-loop / zone steps in order', ids);
+  const want = ['hire_clerk_market', 'op_grill', 'hire_fisherman', 'zone_forest', 'op_sawmill', 'hire_lumberjack', 'zone_farm', 'bld_bakery', 'hire_clerk_bakery', 'op_bakery', 'hire_farmer', 'zone_mine', 'op_smelter', 'hire_miner', 'zone_hunt', 'op_smokehouse', 'hire_hunter'];
+  ok(JSON.stringify(ids) === JSON.stringify(want), '17 first-loop / zone steps in order (with the bakery split: 빵집 짓기, 빵집 판매원)', ids);
   ok(MAIN_STEPS.every((s) => t(s.id) !== s.id), 'each has its pad words');
   const named = GOALS.every((g) => {
     if (g.kind === 'build') return t('b_' + g.id) !== 'b_' + g.id;

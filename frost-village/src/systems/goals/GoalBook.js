@@ -17,7 +17,7 @@ import { buildCost } from '../../entities/Site.js';
 import { gt } from './strings.js';
 
 const WITH = new Set([].concat(...Object.values(COMES_WITH)));
-/** the main road before village complete (15 steps) */
+/** the main road before village complete (17 steps: the bakery split added 빵집 짓기 and 빵집 판매원) */
 export const MAIN_STEPS = STEPS.filter((s) => !s.side && !s.v3 && !s.v4 && !s.c1 && !WITH.has(s.id));
 /** (v4.2) the three buildings after 읍 (Tutorial.v42Goal's plots) */
 export const V42_BUILDS = [['v42_office', 'chief_office'], ['v42_bank', 'bank42'], ['v42_depot', 'depot42']];
