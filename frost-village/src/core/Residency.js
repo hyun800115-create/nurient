@@ -52,6 +52,8 @@ const REGIONS = [
   { id: 'sleigh', rect: [2950, 1500, 4900, 3420], pages: ['veh_cargo_sleigh'] },
 ];
 const ACQUIRE = 800, RELEASE = 1200;      // px between the view and the area
+const VIEW_FAR = 400;                     // ((v4.3) px outside the view beyond which a picture is not 'displayed' (offView)
+const LOOK_TTL = 3;                       // ((v4.3) s a far area's pictures stay while the player looks around in 관망
 
 export const Residency = {
   gs: null,
@@ -176,7 +178,8 @@ export const Residency = {
     for (const p of P) this.use[p] = this.now();
     if (P.every((p) => Assets.tfReady.has(p))) return true;
     if ((gs.zoomCur || 1) < 0.9) return false;
-    const T = gs.territory, px = gs.player ? gs.player.x : 0;
+    // ((v4.3) where the view is: the chief, or the camera while the player looks around in 관망)
+    const T = gs.territory, px = gs.camPan ? gs.camPan.x : gs.player ? gs.player.x : 0;
     if (T && T.areaOf && T.areaOf(px) !== 'town' && !(gs.v4 && gs.v4.inTown && gs.v4.inTown())) return false;
     const need = P.reduce((n, p) => n + ((Assets.m.atlases[p] && Assets.m.atlases[p].bytes) || 0), 0) / 1048576;
     if (this.total + need > this.budget().must - 30 && !this.makeRoom(need, P)) { this.refused++; return false; }
@@ -187,6 +190,8 @@ export const Residency = {
   /** keep page `key` in memory for `sec` s more (no TTL / LRU eviction): 관망's chief2 sheet, a view's must-have */
   pin(key, sec) { if (!key) return; const t = this.now() + (sec || 5) * 1000; if (!(this.pins[key] > t)) this.pins[key] = t; this.use[key] = this.now(); },
   pinned(key) { return this.pins[key] > this.now(); },
+  /** ((v4.3) the pin goes now: 관망's chief2 sheet while the player looks around far from him) */
+  unpin(key) { delete this.pins[key]; },
 
   /**
    * ((v4.2 fix, robust H1) make `need` MiB of room under the refusal line (must − 30) for `keep` (the pages asked for):
@@ -241,10 +246,13 @@ export const Residency = {
   },
 
   // ---------------------------------------------------------------- eviction
-  /** is something visible on screen showing page `key`? */
-  displayed(key) {
+  /** is something visible on screen showing page `key`? ((v4.3 review F3) `offView`: a picture of the village that
+   *  scrolls with it and stands far outside the view (VIEW_FAR px) does not count — the chief seated at his desk
+   *  3,000 px from where the player looks around in 관망 is not on screen, though his sprite is `visible`) */
+  displayed(key, offView) {
     let on = false;
-    for (const L of this.lists()) eachObj(L, (o) => { if (!on && o.visible && o.texture && o.texture.key === key) on = true; });
+    const gs = this.gs, far = offView && gs.isNearView ? (o) => !o.parentContainer && o.scrollFactorX === 1 && o.scrollFactorY === 1 && !gs.isNearView(o.x, o.y, VIEW_FAR) : null;
+    for (const L of this.lists()) eachObj(L, (o) => { if (!on && o.visible && o.texture && o.texture.key === key && !(far && L === gs.children.list && far(o))) on = true; });
     return on;
   },
 
@@ -268,12 +276,18 @@ export const Residency = {
     return false;
   },
 
-  /** remove an on-demand page (its anims and frames first); false while it is on screen */
-  evict(key) {
+  /** remove an on-demand page (its anims and frames first); false while it is on screen ((v4.3) `offView`: see
+   *  displayed — what shows it far outside the view plays its fallback. A townsfolk page (tfatlas) let go this way: the
+   *  dolls in a social anim go back to idle first (as below), and a doll's rig re-reads its frames at every build and
+   *  skips the ones that went — no rig blocks it) */
+  evict(key, offView) {
     const gs = this.gs, g = gs.game;
     const a = Assets.m.atlases[key];
     if (!a || !a.onDemand || !g.textures.exists(key)) return false;
-    if (this.displayed(key)) { this.use[key] = this.now(); return false; }
+    if (offView && a.format === 'tfatlas') {
+      const pool = gs.dollPool;
+      if (pool) for (const d of pool.dolls) if (TF_SOC_ANIMS.has(d.anim)) d.setAnim('idle', d.baseDir, 0);
+    } else if (this.displayed(key, offView)) { this.use[key] = this.now(); return false; }
     const own = Assets.pageOwner[key];
     // ((v4.2 CODE-2) every anim made from this page goes (character anims below, and the sprite anims: the office's
     //  inside props, a late page's loops); whatever plays one stops first — a sprite starting one after the page went
@@ -360,7 +374,9 @@ export const Residency = {
     const T = this.cfg();
     // ((v4 review M1) under the soft budget a far area's pictures stay a while longer (6x): a short trip away and back
     //  no longer fetches and uploads the whole area again; over it they go after `townTtl` as before)
-    const ttl = (T.townTtl || 10) * (this.total < this.budget().soft ? 6 : 1);
+    // ((v4.3) 관망 둘러보기: the free camera crosses the map in a second or two — the area it left goes after LOOK_TTL s
+    //  (the seated chief's office closed at the station still held its 2.4 MiB over the GL must for 10 s)
+    const ttl = gs.camPan ? Math.min(LOOK_TTL, T.townTtl || 10) : (T.townTtl || 10) * (this.total < this.budget().soft ? 6 : 1);
     this.areas = this.areas || {};
     // (v4-C) a page may belong to more than one area (the village's town hall and park props are town art too):
     // it goes only once every area that lists it has been far for `ttl` s, and comes back when any is near
@@ -488,7 +504,7 @@ export const Residency = {
       social: this.residentSocial().length, demanded: Assets.demanded.size, held: Assets.held.size,
       areas: this.areas ? Object.fromEntries(Object.entries(this.areas).map(([k, v]) => [k, (v.out ? 'out' : 'in') + ' gap ' + Math.round(v.gap || 0) + ' far ' + (v.farT || 0)])) : null,
       loads: this.loads, evictions: this.evictions, refused: this.refused, roomMade: this.roomMade, budgetEvents: this.budgetEvents,
-      ground: this.gs && this.gs.ground ? { slots: this.gs.ground.slots.length, level: this.gs.ground.level, baked: this.gs.ground.baked, evictions: this.gs.ground.evictions } : null,
+      ground: this.gs && this.gs.ground ? { slots: this.gs.ground.slots.length, level: this.gs.ground.level, baked: this.gs.ground.baked, evictions: this.gs.ground.evictions, fastChecks: this.gs.ground.fastChecks, fastBaked: this.gs.ground.fastBaked } : null,
     };
   },
 };

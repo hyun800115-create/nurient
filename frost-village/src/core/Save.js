@@ -631,7 +631,9 @@ export const Settings = {
     // (v4.2) 놀이 tab: 자동 줍기 / 길 안내 / 촌장 후광 / 관망 자동 (s) / 관망 볼거리 / 관망 중 돈 쓰기
     pickup: 'auto', nav: true, halo: true, observeAfter: 60, observeEvents: true, observeSpend: 'none',
     // ((v4.3 hotfix) 소리 세부 조절: 전체 · 배경 음악 · 효과음 · 주변 소리, each 0..1 (주민 목소리 stays `voice`)
-    vol: { master: 1, music: 1, sfx: 1, amb: 1 } },
+    vol: { master: 1, music: 1, sfx: 1, amb: 1 },
+    // (v4.3) the one-time 관망 look-around hint has been shown on this device
+    obsPanHint: false },
   load() {
     const s = readJSON(SETTINGS_KEY);
     if (s && typeof s === 'object' && !Array.isArray(s)) {
@@ -655,6 +657,7 @@ export const Settings = {
       const V = s.vol && typeof s.vol === 'object' ? s.vol : {};
       const vv = (x) => (typeof x === 'number' && x >= 0 && x <= 1 ? Math.round(x * 100) / 100 : 1);
       this.data.vol = { master: vv(V.master), music: vv(V.music), sfx: vv(V.sfx), amb: vv(V.amb) };
+      this.data.obsPanHint = s.obsPanHint === true;     // (v4.3)
     }
     return this.data;
   },

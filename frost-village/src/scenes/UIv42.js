@@ -1,9 +1,14 @@
 // (v4.2, docs/v42_plan.md §8.1) the v4.2 HUD of the UI scene (logical 720-wide space, phone 390 x 844 CSS):
-//   관망 button      right column above the zoom buttons (after village complete; lit while on)
+//   관망 button      right column above the zoom buttons (after village complete; lit while on, (v4.3) a soft pulsing
+//                    ring and a 「관망 끄기」 pill to its left (tappable too): the one way out of 관망)
 //   줍기 button      left of the zoom-out button (자동 줍기 = 끔 and something takeable)
 //   nav chip         bottom centre '[icon] 구운 생선 8 → 광장 판매대 · 12m' (tap: the next place, hold: hide for this load)
 //   nav edge badge   the place off screen: item icon + metres, the notch toward it
-//   관망 caption     top centre '관망 중 · 촌장님은 지금: …' + '화면을 만지면 다시 조종해요'; the 3 s countdown chip
+//   관망 caption     top centre '관망 중 · 촌장님은 지금: …' + '쌍안경을 누르면 관망이 끝나요' ((v4.3) below a banner while
+//                    one shows); the 3 s countdown chip
+//   촌장님 보기      (v4.3) bottom centre while the player looks around in 관망: the camera back to the chief
+//   둘러보기 안내    (v4.3) the same place, the first 관망 on a device (10 s, until the first look-around):
+//                    '손가락으로 마을을 둘러보세요 / 쌍안경을 누르면 끝나요'
 //   업무 chip        under the order chip (after 총총이: the office panel anywhere)
 //   새로워진 것      a card once per save that came from v4.1
 //   열차 카드        tap the train: consist, riders, crates, next stop
@@ -24,6 +29,9 @@ const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900'
 /** the first key with art (ui5 first), else the generated stand-in */
 const pickIcon = (...keys) => { for (const k of keys) { if (!k) continue; try { if (Assets.has(k)) return k; } catch (e) { /* */ } } return keys[keys.length - 1]; };
 const fit = (im, size) => { im.setScale(size / Math.max(1, im.frame.realWidth, im.frame.realHeight)); return im; };
+// ((v4.3) the 「관망 끄기」 pill: its height, its gap from the button's centre (the ring is 44 px); the caption's place
+//  under a banner (the banner's title ±52 and its subtitle to +105 around H * 0.27, the caption ±38, a 37 px gap))
+const OBS_LAB_H = 40, OBS_LAB_GAP = 52, CAP_UNDER_BANNER = 180;
 
 export class HudV42 {
   constructor(ui) {
@@ -33,6 +41,21 @@ export class HudV42 {
     // ---- 관망 button (a round button like the zoom ones)
     this.obsBtn = this.roundButton(pickIcon('ui_icon_binoculars', 'fv_icon_binoculars'), 64, () => { const P = this.pilot; if (P) P.toggle(); });
     this.obsBtn.setVisible(false);
+    // ((v4.3) on: a soft golden ring breathing around it and a 「관망 끄기」 pill to its left — the button is how 관망 ends)
+    // ((review F7) the pill: 23 px on a 40 px pill (was 17 / 28: ~8 CSS px on a 360 px phone), left of the button so it
+    //  keeps clear of the zoom-in button under it; a tap on it stops 관망 like the button)
+    this.obsRing = ui.add.graphics().setVisible(false);
+    this.obsRing.lineStyle(5, 0xffc83d, 1); this.obsRing.strokeCircle(0, 0, 40);
+    this.obsRing.lineStyle(2, 0xffffff, 0.9); this.obsRing.strokeCircle(0, 0, 44);
+    this.obsBtn.addAt(this.obsRing, 0);
+    const ol = this.obsLab = ui.add.container(-OBS_LAB_GAP, 0).setVisible(false);
+    this.obsLabBg = ui.add.graphics();
+    this.obsLabText = ui.add.text(0, -1, t('obs_stop'), TXT(23, '#ffffff', '#1f3354', 0, '900')).setOrigin(0.5);
+    ol.add([this.obsLabBg, this.obsLabText]);
+    this.obsBtn.add(ol);
+    ol.setSize(120, OBS_LAB_H);
+    ol.setInteractive({ useHandCursor: true });
+    ol.on('pointerdown', () => { ui.tweens.add({ targets: ol, scale: 0.92, duration: 70, yoyo: true }); Audio.play('sfx_click'); const P = this.pilot; if (P && P.on) P.toggle(); });
     // ---- 줍기 button: hand + the item it would take + how many
     const pb = this.pickBtn = ui.add.container(0, 0).setDepth(22).setVisible(false);
     const g = ui.add.graphics();
@@ -80,6 +103,31 @@ export class HudV42 {
     this.obsText = ui.add.text(0, -12, '', TXT(21, '#1f3354', '#ffffff', 0, '800')).setOrigin(0.5);
     this.obsHint = ui.add.text(0, 18, t('obs_hint'), TXT(17, '#5b6676', '#ffffff', 0, '700')).setOrigin(0.5);
     oc.add([this.obsBg, this.obsText, this.obsHint]);
+    // ---- (v4.3) 「촌장님 보기」: the camera back to the chief after looking around in 관망
+    const bc = this.backChip = ui.add.container(0, 0).setDepth(23).setVisible(false);
+    this.backBg = panel(ui, 0, 0, 'ui_panel', 280, 64).setOrigin(0.5).setAlpha(0.97).setTint(0xfff3cf);
+    const face = ui.textures.exists('portrait_player') ? 'portrait_player' : pickIcon('ui_icon_binoculars', 'fv_icon_binoculars');
+    this.backIcon = fit(Assets.image(ui, 0, 0, face).setOrigin(0.5), 50);
+    this.backText = ui.add.text(0, 0, t('obs_follow'), TXT(26, '#7a4a0c', '#ffffff', 0, '900')).setOrigin(0, 0.5);
+    bc.add([this.backBg, this.backIcon, this.backText]);
+    bc.setSize(280, 64);
+    bc.setInteractive({ useHandCursor: true });
+    bc.on('pointerdown', () => { this.backDown = true; ui.tweens.add({ targets: bc, scale: 0.92, duration: 70, yoyo: true }); });
+    bc.on('pointerup', () => {
+      if (!this.backDown) return;
+      this.backDown = false;
+      const P = this.pilot;
+      if (P && P.cam && P.cam.attach()) Audio.play('sfx_click', { volume: 0.5 });
+    });
+    bc.on('pointerout', () => { this.backDown = false; });
+    this.backKey = '';
+    // ---- (v4.3) the one-time look-around hint (two lines, a hand)
+    const hc = this.hintChip = ui.add.container(0, 0).setDepth(23).setVisible(false);
+    this.hintBg = panel(ui, 0, 0, 'ui_panel', 520, 84).setOrigin(0.5).setAlpha(0.96).setTint(0xdff7f3);
+    this.hintIcon = fit(Assets.image(ui, 0, 0, pickIcon('ui_icon_hand', 'fv_icon_hand')).setOrigin(0.5), 46);
+    this.hintText = ui.add.text(0, 0, '', Object.assign(TXT(21, '#1f5f66', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 2 })).setOrigin(0.5);
+    hc.add([this.hintBg, this.hintIcon, this.hintText]);
+    this.hintKey = '';
     const cd = this.countChip = ui.add.container(0, 0).setDepth(23).setVisible(false);
     this.countBg = panel(ui, 0, 0, 'ui_panel', 360, 56).setOrigin(0.5).setAlpha(0.95).setTint(0xdff7f3);
     this.countText = ui.add.text(0, 0, '', TXT(22, '#1f5f66', '#ffffff', 0, '800')).setOrigin(0.5);
@@ -122,6 +170,10 @@ export class HudV42 {
       };
       this.navBg = chip(this.navBg, 54, 0.5);
       this.obsBg = chip(this.obsBg, 76, 0.5);
+      this.backBg = chip(this.backBg, 64, 0.5);
+      this.backKey = '';
+      this.hintBg = chip(this.hintBg, 84, 0.5);
+      this.hintKey = '';
       this.countBg = chip(this.countBg, 56, 0.5);
       this.workBg = chip(this.workBg, 50, 0);
       this.navKey = null;
@@ -165,7 +217,11 @@ export class HudV42 {
     this.obsBtn.setPosition(W - 57, zb - 264);
     this.pickBtn.setPosition(W - 174, zb - 87);
     this.navChip.setPosition(W / 2, H - 92 - View.safeBottom);
-    this.obsCap.setPosition(W / 2, 62 + View.safeTop + 300);
+    this.obsCap.setPosition(W / 2, this.capY0 = 62 + View.safeTop + 300);
+    this.capAt = null;
+    // ((v4.3) the nav chip's band (off while 관망 drives), clear of the toasts above it and the whistle / map buttons)
+    this.backChip.setPosition(W / 2, H - 128 - View.safeBottom);
+    this.hintChip.setPosition(W / 2, H - 140 - View.safeBottom);
     this.countChip.setPosition(W / 2, H * 0.62);
     this.workChip.setPosition(28, 62 + View.safeTop + 348);
     if (this.card) this.closeCard(true);
@@ -182,7 +238,19 @@ export class HudV42 {
     // ((v4.2.0.1) not during the first-run tutorial's replay tour either)
     const showObs = !!(P && v.complete && !busy && !(gs.tutorial && gs.tutorial.inTutorial) && !(gs.onboard && gs.onboard.blocksPilot));
     if (this.obsBtn.visible !== showObs) this.obsBtn.setVisible(showObs);
-    if (showObs && this.obsLit !== P.on) { this.obsLit = P.on; this.obsBtn.drawBg(P.on); }
+    if (showObs && this.obsLit !== P.on) {
+      this.obsLit = P.on;
+      this.obsBtn.drawBg(P.on);
+      // ((v4.3) on: the ring and 「관망 끄기」)
+      this.obsRing.setVisible(P.on);
+      this.obsLab.setVisible(P.on);
+      if (P.on) this.sizeObsLab();
+    }
+    if (showObs && P.on) {
+      const k = 0.5 + 0.5 * Math.sin(this.t * 3.4);
+      this.obsRing.setAlpha(0.45 + 0.55 * k).setScale(0.97 + 0.07 * k);
+      if (this.obsLabText.text !== t('obs_stop')) this.sizeObsLab();
+    }
     // 줍기 button
     const PP = this.pickup;
     const off = PP && PP.mode === 'off' && !busy && !(P && P.on);
@@ -220,7 +288,49 @@ export class HudV42 {
     if (this.obsCap.visible !== capOn) this.obsCap.setVisible(capOn);
     if (capOn) {
       const s = t('obs_caption', { act: P.caption() });
-      if (this.obsText.text !== s) { this.obsText.setText(s); this.chipSize(this.obsBg, Math.min(ui.W - 30, Math.max(this.obsText.width, this.obsHint.width) + 56), 76); }
+      // ((v4.3) the second line: how 관망 ends now (re-read on a language change))
+      const h = t('obs_hint');
+      let grow = false;
+      if (this.obsHint.text !== h) { this.obsHint.setText(h); grow = true; }
+      if (this.obsText.text !== s) { this.obsText.setText(s); grow = true; }
+      if (grow) this.chipSize(this.obsBg, Math.min(ui.W - 30, Math.max(this.obsText.width, this.obsHint.width) + 56), 76);
+      // ((v4.3 review F13) a banner (H * 0.27, its title and subtitle) used to cover the caption's second line — now the
+      //  line that says how 관망 ends: the caption moves below it while one shows. It does not glide through the banner
+      //  as it pops in: it reappears at its new place with a short fade (also when it first shows))
+      const cy = ui.bannerBox && ui.bannerBox.visible ? ui.H * 0.27 + CAP_UNDER_BANNER : this.capY0;
+      if (this.capAt !== cy) { this.capAt = cy; this.obsCap.setY(cy).setAlpha(0); }
+      if (this.obsCap.alpha < 1) this.obsCap.setAlpha(Math.min(1, this.obsCap.alpha + dt * 5));
+    } else if (this.capAt !== null) { this.capAt = null; this.obsCap.setY(this.capY0); }
+    // ((v4.3) the one-time look-around hint, until the player looks around)
+    const hintOn = !!(capOn && P.hinting && !(P.cam && P.cam.free));
+    if (this.hintChip.visible !== hintOn) this.hintChip.setVisible(hintOn);
+    if (hintOn) {
+      // ((review F9) the two-line text is made again only when the language changes, not every frame)
+      const raw = t('obs_pan_hint');
+      if (this.hintKey !== raw) {
+        this.hintKey = raw;
+        this.hintText.setText(raw.replace(' · ', '\n'));
+        const w = Math.min(ui.W - 30, this.hintText.width + 46 + 70), h = Math.max(84, this.hintText.height + 26);
+        this.chipSize(this.hintBg, w, h);
+        this.hintIcon.setX(-w / 2 + 38);
+        this.hintText.setX(23);
+      }
+    }
+    // ((v4.3) 「촌장님 보기」 while the player looks around)
+    const backOn = !!(capOn && P.cam && P.cam.free);
+    if (this.backChip.visible !== backOn) this.backChip.setVisible(backOn);
+    if (backOn) {
+      const s = t('obs_follow');
+      if (this.backKey !== s) {
+        this.backKey = s;
+        this.backText.setText(s);
+        const w = this.backText.width + 48 + 68;
+        this.chipSize(this.backBg, w, 64);
+        this.backIcon.setX(-w / 2 + 38);
+        this.backText.setX(-w / 2 + 68);
+        this.backChip.setSize(w, 64);
+        if (this.backChip.input && this.backChip.input.hitArea) this.backChip.input.hitArea.setSize(w, 64);
+      }
     }
     const cd = P && P.countdown > 0 && !P.on ? Math.ceil(P.countdown) : 0;
     if (this.countChip.visible !== !!cd) this.countChip.setVisible(!!cd);
@@ -232,6 +342,20 @@ export class HudV42 {
     if (showWork) { const n = O.badgeCount ? O.badgeCount() : 0; const s = n > 0 ? String(n) : ''; if (this.workBadge.text !== s) this.workBadge.setText(s); }
     // 새로워진 것
     if (!this.card && v.whatsNewDue && v.whatsNewDue() && !busy) this.openCard();
+  }
+
+  /** (v4.3) the 「관망 끄기」 pill left of the lit 관망 button (re-sized on a language change) */
+  sizeObsLab() {
+    const s = t('obs_stop');
+    if (this.obsLabText.text !== s) this.obsLabText.setText(s);
+    const w = Math.round(this.obsLabText.width + 30), h = OBS_LAB_H, g = this.obsLabBg, ol = this.obsLab;
+    g.clear();
+    g.fillStyle(0x1f3354, 0.9); g.fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    g.lineStyle(3, 0xffc83d, 1); g.strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+    // (its right end just left of the ring)
+    ol.setX(-OBS_LAB_GAP - w / 2);
+    ol.setSize(w, h);
+    if (ol.input && ol.input.hitArea) ol.input.hitArea.setSize(w, h);
   }
 
   updateEdge(N, busy) {
@@ -372,7 +496,9 @@ export class HudV42 {
   }
 
   state() {
-    return { trainCard: !!this.trainCard, obs: this.obsBtn.visible, pick: this.pickBtn.visible, chip: this.navChip.visible ? this.navText.text : null, edge: this.edge.visible, caption: this.obsCap.visible ? this.obsText.text : null, count: this.countChip.visible ? this.countText.text : null, work: this.workChip.visible, card: !!this.card };
+    return { trainCard: !!this.trainCard, obs: this.obsBtn.visible, pick: this.pickBtn.visible, chip: this.navChip.visible ? this.navText.text : null, edge: this.edge.visible, caption: this.obsCap.visible ? this.obsText.text : null, count: this.countChip.visible ? this.countText.text : null, work: this.workChip.visible, card: !!this.card,
+      // (v4.3) the 관망 button's on look, the caption's second line, 「촌장님 보기」
+      obsOn: !!(this.obsBtn.visible && this.obsLit), obsStop: this.obsLab.visible ? this.obsLabText.text : null, hint: this.obsCap.visible ? this.obsHint.text : null, panHint: this.hintChip.visible ? this.hintText.text.replace('\n', ' · ') : null, back: this.backChip.visible ? this.backText.text : null };
   }
 }
 

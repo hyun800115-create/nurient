@@ -195,6 +195,20 @@ export class OfficeBuilding {
     }
   }
 
+  /**
+   * ((v4.3) 관망 둘러보기: the player looks around far from the office (the free camera beyond 900 px of it; back within
+   * 600) — nobody sees inside: the shell closes, its inside pages are not asked for and the inside page goes as soon as
+   * the shell has faded. With the chief seated at his desk it stayed open and kept ~12 MiB while the camera was at the
+   * station with the town open (GL 460 over the 455 must); a walking chief left long before he got there)
+   */
+  lookingAway() {
+    const gs = this.gs, d = this.spots.door;
+    if (!gs.camPan || !gs.isNearView) return (this.away = false);
+    if (this.away) { if (gs.isNearView(d.x, d.y, 600)) this.away = false; }
+    else if (!gs.isNearView(d.x, d.y, 900)) this.away = true;
+    return this.away;
+  }
+
   /** should the inside show? (the chief at the door / inside, a tap, the panel, the 관망 camera, a held reveal) */
   wantReveal() {
     const gs = this.gs, p = gs.player, V = OB();
@@ -204,7 +218,9 @@ export class OfficeBuilding {
     if (this.cw.inPoly(p.x, p.y) || this.cw.onFloor(p.x, p.y)) want = true;
     if (this.tapOpen || this.revealHold > 0) want = true;
     const tab = this.office.panelTab && this.office.panelTab();
-    if ((tab && tab !== 'bank') || this.office.camReveal === 'office') want = true;
+    if ((tab && tab !== 'bank') || this.office.camReveal === 'office') return true;
+    // ((v4.3) nobody sees it: closed)
+    if (want && this.away) want = false;
     return want;
   }
 
@@ -218,6 +234,7 @@ export class OfficeBuilding {
     if (!this.ready) return;
     const gs = this.gs, cw = this.cw;
     this.revealHold = Math.max(0, this.revealHold - dt);
+    const away = this.lookingAway();
     let want = this.wantReveal();
     // ((v4.2 fix, visual M4) the shell fades only once the inside has its pictures (the inside page and the staff's
     //  desk / head pages, asked for from 680 px out): no empty ghost house with a floating 업무 pad. 6 s at most)
@@ -231,9 +248,21 @@ export class OfficeBuilding {
     this.pageT = (this.pageT || 0) - dt;
     if (this.pageT <= 0) {
       this.pageT = 0.5;
-      this.inside = this.wantsInside();
+      this.inside = !away && this.wantsInside();
       // ((v4.2 fix, visual L5) + the office panel's page, so the 책상 pad opens it with its plates at once)
       if (this.inside) { Residency.want('office_bld@inside'); this.office.wantStaffPages && this.office.wantStaffPages(); Residency.want('ui5_icons@panels'); }
+      // ((v4.3) looked at from afar in 관망: once the shell has closed (the inside layers hidden) the inside page goes
+      //  now, not after its 30 s, and so do the staff pages it asked for (Office.releaseStaffPages; the heads' @soc
+      //  pages stay while the view is in the town); they come back with the view (the reveal waits for them:
+      //  insideReady, Cutaway.refresh)
+      else if (away && cw.alpha === 0) {
+        let n = gs.textures.exists('office_bld@inside') && Residency.evict('office_bld@inside') ? 1 : 0;
+        // (the panel plates it asked for too — kept while a panel shows them: UI pictures count as shown)
+        if (gs.textures.exists('ui5_icons@panels') && Residency.evict('ui5_icons@panels')) n++;
+        const T = gs.territory, c = gs.camPan, town = !!(c && T && T.areaOf && T.areaOf(c.x) === 'town');
+        if (this.office.releaseStaffPages) n += this.office.releaseStaffPages(town);
+        if (n) this.awayDrops = (this.awayDrops || 0) + n;
+      }
     }
     const a = cw.alpha;
     // the sign fades with the shell (hidden over the open inside)
@@ -250,7 +279,8 @@ export class OfficeBuilding {
     const gv = night && a < 0.02;
     if (this.glow.visible !== gv) this.glow.setVisible(gv);
     // the office bed: soft typing, the clock, the kettle — inside / at the door, faint nearby
-    const p = gs.player, d = gdist(p.x, p.y, this.spots.door.x, this.spots.door.y);
+    // ((v4.3 review F6) heard from the camera while the player looks around in 관망)
+    const p = gs.camPan || gs.player, d = gdist(p.x, p.y, this.spots.door.x, this.spots.door.y);
     const amb = a > 0.3 ? 1 : d < 700 ? 0.35 * (1 - d / 700) : 0;
     if (Math.abs(amb - (this.ambV || 0)) > 0.04) { this.ambV = amb; Audio.setAmbience('amb_office', amb); }
   }

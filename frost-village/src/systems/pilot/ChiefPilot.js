@@ -2,8 +2,11 @@
 //   in       the 관망 button (after village complete), or automatically after Settings.data.observeAfter s with no touch
 //            (끔 / 30 / 60 / 120), not during a panel, a ceremony, the tutorial or the first loop; a 3 s countdown chip
 //            (any touch cancels)
-//   input    Input.pilot = this.vector (src/core/Input.js): a test override > a human joystick / key (that hands control
-//            back in the same frame, toast 다시 조종해요) > the pilot. Buttons do not end 관망; a tap on the village does.
+//   input    Input.pilot = this.vector (src/core/Input.js): a test override > the pilot. ((v4.3) while 관망 is on
+//            (Input.watch) a finger / mouse drag / the arrow keys look around the village instead of steering
+//            (CameraDirector 둘러보기, a 「촌장님 보기」 chip brings the camera back), a tap on a resident still chats, and
+//            nothing a human does on the village ends 관망: only the 관망 button does (toast 다시 조종해요, the camera
+//            glides back to the chief). The joystick never shows while 관망 is on.)
 //   chooser  every pilot.decideEvery s: agenda.choose() over the activities (pure, seeded: mulberry32(hash(seed, day,
 //            index))), the current one locked for its minimum time, 20 % hysteresis
 //   moving   Roads.route legs, then the player's own collision steering; stuck 3 s -> a side-step, 8 s -> the task is
@@ -25,6 +28,9 @@ import { Residency } from '../../core/Residency.js';
 import { Assets } from '../../core/Assets.js';
 
 const PB = () => (BALANCE.v42 && BALANCE.v42.pilot) || {};
+// ((v4.3 review F3) chief2's sheet while the player looks around: let go beyond SHEET_FAR px of the view, asked for
+//  again within SHEET_NEAR px)
+const SHEET_FAR = 900, SHEET_NEAR = 600;
 
 export class ChiefPilot {
   constructor(gs, v42, sv) {
@@ -52,7 +58,9 @@ export class ChiefPilot {
     this.stats = { acts: {}, started: 0, yields: 0, spent: 0, stuck: 0, coins0: 0 };
     this.cam = new CameraDirector(gs, this);
     Input.pilot = () => (this.on ? this.vec : null);
-    Input.onHuman = () => { if (this.on) this.yieldBack(); else this.countdown = 0; };
+    // ((v4.3) a human on the village only stops the countdown; while 관망 is on it looks around (Input.watch))
+    Input.onHuman = () => { if (!this.on) this.countdown = 0; };
+    Input.watch = () => this.on;
     this.reason = null;
   }
 
@@ -72,6 +80,7 @@ export class ChiefPilot {
   /** may the piloted chief pay at this pad? never — except 관망 중 돈 쓰기 '고용만' on a staff / porter hire pad */
   blocksPay(kind, pad) { if (!this.on) return false; if (kind === 'hire' && Settings.data.observeSpend === 'hire' && (!pad || isHirePad(pad))) return false; return true; }
 
+  /** the 관망 button: on, or off (the only way out of 관망 for the player) */
   toggle() { if (this.on) this.stop('button'); else this.start('button'); }
 
   start(reason) {
@@ -84,33 +93,42 @@ export class ChiefPilot {
     this.decT = 0;
     this.stats.started++;
     this.stats.coins0 = gs.economy.coins;
+    // ((v4.3) a finger steering the chief lets go: from now on it would look around)
+    Input.release();
     this.cam.start();
+    // ((v4.3) the first 관망 on this device: how to look around and how to stop (a chip at the bottom for 10 s, or until
+    //  the player first looks around — then never again)
+    this.hintUntil = 0;
+    if (!Settings.data.obsPanHint) {
+      this.hintUntil = this.t + 10;
+      Settings.data.obsPanHint = true;
+      try { Settings.save(); } catch (e) { /* storage off */ }
+    }
     // ((gameplay review M3) the halo's 관망 look: the star pin always, a softer ring, slower motes)
     if (this.v42.aura) this.v42.aura.observing = true;
-    if (gs.ui && gs.ui.banner && reason === 'auto') gs.ui.toast(t('obs_caption', { act: t('act_walk') }));
+    if (gs.ui && gs.ui.banner && reason === 'auto' && !this.hintUntil) gs.ui.toast(t('obs_caption', { act: t('act_walk') }));
     return true;
   }
+
+  /** (v4.3) the one-time look-around hint is showing */
+  get hinting() { return this.on && this.hintUntil > this.t; }
 
   stop(reason) {
     if (!this.on) return;
     this.on = false;
     this.act = null;
+    this.hintUntil = 0;
     this.freeSeat();
     const p = this.gs.player;
     if (p && p.seat && p.standUp) p.standUp();
     this.vec.x = this.vec.y = 0;
     this.route.length = 0;
+    // ((v4.3) a look-around finger still down does not turn into a joystick; the camera glides back to the chief)
+    Input.release();
     this.cam.stop();
     if (this.v42.aura) this.v42.aura.observing = false;
-    void reason;
-  }
-
-  /** a human touched the controls: hand back in this frame */
-  yieldBack() {
-    if (!this.on) return;
-    this.stats.yields++;
-    this.stop('human');
-    if (this.gs.ui) this.gs.ui.toast(t('obs_back'));
+    // (the player pressed the 관망 button: control is theirs again)
+    if (reason === 'button') { this.stats.yields++; if (this.gs.ui) this.gs.ui.toast(t('obs_back')); }
   }
 
   /** the snapshot the chooser decides on */
@@ -368,10 +386,25 @@ export class ChiefPilot {
     if (!this.available) { this.stop('gone'); return; }
     // ((v4.2 fix, visual H3) the chief's seated / social anims (chief2's on-demand sheet) stay in memory while 관망 is
     //  on: asked for at once and pinned, so a desk, a lunch table or a chat never shows him standing in the furniture)
-    if ((this.sheetT = (this.sheetT || 0) - dt) <= 0) {
-      this.sheetT = 2;
-      const k = this.sheetKey();
-      if (k) { Residency.pin(k, 6); Residency.want(k); }
+    // ((v4.3) …but not while the player looks around far from him: then it is let go (gone once nothing shows it — at
+    //  the busiest views, the station with the town open, those 3 MiB were over the GL must); near him again, or with
+    //  「촌장님 보기」, it is asked for at once)
+    // ((v4.3 review F3) away / near with a gap between (let go beyond SHEET_FAR px of the view, asked for again within
+    //  SHEET_NEAR: panning along the edge does not load the 3 MiB sheet over and over); the near side is looked at
+    //  every frame (asked for before he is on screen), the far side every second. Let go even while he sits in it:
+    //  Residency.evict(k, true) does not count his sprite far off the view as shown — when the view comes back he
+    //  stands on the floor in front of his seat (Player.update) until the sheet is in again, a moment later)
+    const k = this.sheetKey(), p = gs.player;
+    if (k) {
+      const near = (m) => !!(p && gs.isNearView && gs.isNearView(p.x, p.y, m));
+      if (!this.cam.free || !p) this.sheetAway = false;
+      else if (this.sheetAway && near(SHEET_NEAR)) { this.sheetAway = false; this.sheetT = 0; }
+      else if (!this.sheetAway && !near(SHEET_FAR)) { this.sheetAway = true; this.sheetT = 0; }
+      if ((this.sheetT = (this.sheetT || 0) - dt) <= 0) {
+        this.sheetT = this.sheetAway ? 1 : 2;
+        if (!this.sheetAway) { Residency.pin(k, 6); Residency.want(k); }
+        else if (Residency.gs) { Residency.unpin(k); if (gs.game && gs.game.textures.exists(k) && Residency.evict(k, true)) this.sheetDrops = (this.sheetDrops || 0) + 1; }
+      }
     }
     // decide
     this.decT -= dt;
@@ -448,11 +481,26 @@ export class ChiefPilot {
     if (aide && aide.alive && aide.play) { aide.play('idle', true); }
   }
 
-  state() { return { on: this.on, act: this.act ? this.act.act : null, t: this.act ? +this.act.t.toFixed(1) : 0, countdown: +this.countdown.toFixed(2), caption: this.on ? this.caption() : null, stats: JSON.parse(JSON.stringify(this.stats)), cuts: this.cam.cuts, route: this.route.length, vec: [+this.vec.x.toFixed(2), +this.vec.y.toFixed(2)] }; }
+  state() {
+    const C = this.cam;
+    return { on: this.on, act: this.act ? this.act.act : null, t: this.act ? +this.act.t.toFixed(1) : 0, countdown: +this.countdown.toFixed(2), caption: this.on ? this.caption() : null, stats: JSON.parse(JSON.stringify(this.stats)), cuts: C.cuts, route: this.route.length, vec: [+this.vec.x.toFixed(2), +this.vec.y.toFixed(2)],
+      // (v4.3) 둘러보기: the camera's own point while the player looks around, how far they moved it, cuts held back
+      free: C.free ? { x: Math.round(C.free.x), y: Math.round(C.free.y) } : null, panned: Math.round(C.panned), detaches: C.detaches, blocked: C.blocked, hint: this.hinting,
+      // (review F3) his chief2 sheet let go while the player looks around far from him (and how often it went)
+      sheetAway: !!this.sheetAway, sheetDrops: this.sheetDrops || 0 };
+  }
 
   hooks(H) {
     H.pilot = (on) => { if (on === true) this.start('test'); else if (on === false) this.stop('test'); return this.state(); };
+    // ((v4.3) 둘러보기 for the tests: pan by / to world px (detaches), 'attach' = the 「촌장님 보기」 chip)
+    H.pilotCam = (cmd, x, y) => {
+      const C = this.cam;
+      if (this.on && cmd === 'by') C.panBy(Number(x) || 0, Number(y) || 0);
+      else if (this.on && cmd === 'to') { const f = C.free || C.detach(); if (f) C.panBy((Number(x) || 0) - f.x, (Number(y) || 0) - f.y); }
+      else if (cmd === 'attach') C.attach();
+      return this.state();
+    };
   }
 
-  destroy() { this.stop('end'); this.cam.destroy(); if (Input.pilot) Input.pilot = null; Input.onHuman = null; }
+  destroy() { this.stop('end'); this.cam.destroy(); if (Input.pilot) Input.pilot = null; Input.onHuman = null; Input.watch = null; }
 }

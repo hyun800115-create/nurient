@@ -245,6 +245,23 @@ export class Office {
     for (const p of this.headPages) Residency.want(p);
   }
 
+  /**
+   * ((v4.3) 관망 둘러보기: the office nobody sees (OfficeBuilding.lookingAway, its shell closed) lets go of the staff pages
+   * it asked for (wantStaffPages): officefolk's desk / work / errand pages and — unless the view is in the town, where the
+   * town's own social rule keeps them — the heads' @soc pages. Townsfolk near the view keep them alive otherwise (their
+   * social asks refresh them even where they may not load): with the chief seated at his desk they rode along to the
+   * station, 12 MiB over the GL must. They come back with the view (the reveal waits for them: staffPagesNeeded)
+   */
+  releaseStaffPages(keepHeads) {
+    if (!TF.of || !TF.ofAtlas) return 0;
+    const tex = this.gs.textures, keys = [];
+    for (const g in TF.ofAtlas) if (g !== TF.ofResident) keys.push(TF.ofAtlas[g]);
+    if (!keepHeads) for (const p of this.headPages || []) keys.push(p);
+    let n = 0;
+    for (const k of keys) if (tex.exists(k) && !Residency.pinned(k) && Residency.evict(k, true)) n++;
+    return n;
+  }
+
   /** ((v4.2 fix) the pages the seated staff show: officefolk's desk page + the heads' @soc pages (the reveal waits) */
   staffPagesNeeded() {
     if (!TF.of || !TF.ofAtlas) return [];
@@ -381,7 +398,7 @@ export class Office {
 
   letterAction(act) {
     const gs = this.gs, v = this.v42;
-    const hop = (x, y) => { gs.focusCamera(x, y, 2200); const ui = this.uiScene(); if (ui) ui.officePanel.close(); };
+    const hop = (x, y) => { gs.focusCamera(x, y, 2200, true); const ui = this.uiScene(); if (ui) ui.officePanel.close(); };
     // ((v4.2.0.1, final review F4) the jumps go to where the pad stands now: the live pad, else its spot (LineUpgrades.spotOf))
     const at = (id, kind, line) => { const L = v.lines, p = L && L.pads[id]; if (p) return p; const q = L && L.spotOf ? L.spotOf(kind, line) : null; return q && Number.isFinite(q.x) ? q : null; };
     if (act.startsWith('p2:')) {
