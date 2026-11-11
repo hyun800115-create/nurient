@@ -110,6 +110,8 @@ export class UI extends Phaser.Scene {
     this.toastBg = panel(this, 0, 0, 'ui_panel', 300, 64).setOrigin(0.5).setTint(0x2b2f3a).setAlpha(0.88);
     this.toastText = this.add.text(0, 0, '', TXT(28, '#ffffff', '#2b2f3a', 0, '800')).setOrigin(0.5);
     this.toastBox.add([this.toastBg, this.toastText]);
+    this.toastKeep = 0;                           // ((v4.3) a toast that answers the player's tap is read in full: toast())
+    this.toastNext = null;
     this.bannerBox = this.add.container(W / 2, H * 0.27).setVisible(false).setDepth(60);
     this.bannerBg = panel(this, 0, 0, 'ui_button_blue', 460, 104).setOrigin(0.5);
     this.bannerText = this.add.text(0, -4, '', TXT(50, '#ffffff', '#1f4f8f', 10)).setOrigin(0.5);
@@ -607,11 +609,17 @@ export class UI extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- messages
-  toast(msg, hold) {
+  toast(msg, hold, opts) {
     // ((v4.2.0.1) during the first-run tutorial's Act 1 its coach card already says it: no "bag full" / "customers
     //  waiting" toasts on top)
     const ob = this.gs.onboard;
     if (ob && ob.owns() && (msg === t('bagFull') || msg === t('customersWaiting'))) return;
+    // ((v4.3) opts.keep: the answer to the player's own tap (마을 깃발 「완료」) stays up for its whole hold. A toast that
+    //  comes by itself meanwhile (촌장 응원 starting as the game resumes under the closing panel) no longer replaces it:
+    //  it waits and shows right after (the latest one, as before: one toast replaces another — toastNext, tick())
+    const now = this.time.now;
+    if (!(opts && opts.keep) && this.toastBox.visible && now < this.toastKeep) { this.toastNext = { msg, hold }; return; }
+    this.toastKeep = opts && opts.keep ? now + (hold || 1500) + 350 : 0;
     // ((v4.2.0.1) never wider than the screen: shrinks to 0.85, then wraps to two lines — the 자동 줍기 tip was cut off)
     const tx = this.toastText, maxW = this.W - 80 - 70;
     tx.setScale(1).setWordWrapWidth(null).setText(msg);
@@ -1351,6 +1359,7 @@ export class UI extends Phaser.Scene {
     if (this.residents) this.residents.update(dt);
     this.updateBuildThumbs(dt);
     this.pumpBanners();
+    if (this.toastNext && (this.time.now >= this.toastKeep || !this.toastBox.visible)) { const q = this.toastNext; this.toastNext = null; this.toastKeep = 0; this.toast(q.msg, q.hold); }
     if (this.admin) this.admin.update(dt);
     if (this.onboardOv) { try { this.onboardOv.update(dt); } catch (e) { if (!this._onbErr) { this._onbErr = true; console.error('[FrostVillage] onboarding overlay:', e); } } }
     if (this.fps) this.fps.setText('FPS ' + Math.round(this.game.loop.actualFps) + '  objs ' + this.gs.children.length);

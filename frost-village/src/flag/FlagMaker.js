@@ -27,6 +27,7 @@ const NAME_SLOT = 0;          // (v4.4) the chief's name row goes between the pr
 const CONTENT = 590;          // the tallest tab's options + colours (logical px)
 const RATIO = 1.58;           // flag width / height
 const TABS = [['shape', 'flag_tab_shape'], ['pattern', 'flag_tab_pattern'], ['emblem', 'flag_tab_emblem']];
+const TAB_W = 204, TAB_H = 88;  // a tab: >= 88 logical px tall = 44 CSS px on a 360-wide phone (a finger, not a fingertip)
 const GOLD = 0xffc83d;
 const BIG_S = 1.5;            // preview texture px per logical px
 const SHEET_S = 1.5;
@@ -134,7 +135,7 @@ export class FlagMaker {
     let changed = false;
     if (commit) changed = vf.commit(this.spec, this.mode);
     this.close();
-    if (commit && changed && this.mode !== 'new') ui.toast(ft('flag_saved'));
+    if (commit && changed && this.mode !== 'new') ui.toast(ft('flag_saved'), undefined, { keep: true });   // (not replaced by one the resumed game makes at once)
   }
 
   close() {
@@ -195,19 +196,19 @@ export class FlagMaker {
     // the preview takes what the tallest tab (그림: 3 rows of pictures + 2 of colours, CONTENT px) leaves: 230 .. 420 px
     const pvTop = top + 118;
     const by0 = bot - 70;
-    const pvH = Math.max(230, Math.min(420, Math.round(by0 - 52 - 16 - CONTENT - (pvTop + NAME_SLOT + 18 + 76 + 16) - 14)));
+    const pvH = Math.max(230, Math.min(420, Math.round(by0 - 52 - 16 - CONTENT - (pvTop + NAME_SLOT + 18 + TAB_H + 16) - 14)));
     this.buildPreview(c, cx, pvTop, PW - 48, pvH);
     // ---- (v4.4) the chief's name row: NAME_SLOT px here
-    const tabY = pvTop + pvH + NAME_SLOT + 18 + 38;
+    const tabY = pvTop + pvH + NAME_SLOT + 18 + TAB_H / 2;
     this.tabBtns = TABS.map(([id, key], i) => {
       const x = cx + (i - 1) * 216, on = this.tab === id;
-      const b = ui.makeButton(x, tabY, 204, 76, on ? 'blue' : 'gray', ft(key), () => { if (this.tab !== id) { this.tab = id; this.buildTab(); } }, 30);
+      const b = ui.makeButton(x, tabY, TAB_W, TAB_H, on ? 'blue' : 'gray', ft(key), () => { if (this.tab !== id) { this.tab = id; this.buildTab(); } }, 30);
       if (b.text.width > 180) b.text.setScale(180 / b.text.width);
       b.tabId = id;
       c.add(b);
       return b;
     });
-    this.hit.tabs = TABS.map(([id], i) => ({ id, x: cx + (i - 1) * 216, y: tabY, w: 204, h: 76 }));
+    this.hit.tabs = TABS.map(([id], i) => ({ id, x: cx + (i - 1) * 216, y: tabY, w: TAB_W, h: TAB_H }));
     // ---- the bottom buttons
     const by = bot - 70;
     const sh = ui.makeButton(cx - 190, by, 250, 96, 'blue', '', () => this.shuffle(), 30);
@@ -224,7 +225,7 @@ export class FlagMaker {
     c.add(st);
     this.hit.shuffle = { x: cx - 190, y: by, w: 250, h: 96 };
     this.hit.start = { x: cx + 130, y: by, w: 370, h: 104 };
-    this.area = { x0: cx - (PW - 48) / 2, x1: cx + (PW - 48) / 2, y0: tabY + 38 + 16, y1: by - 52 - 16 };
+    this.area = { x0: cx - (PW - 48) / 2, x1: cx + (PW - 48) / 2, y0: tabY + TAB_H / 2 + 16, y1: by - 52 - 16 };
     this.buildTab();
     this.drawBig();
   }
@@ -289,7 +290,7 @@ export class FlagMaker {
     for (const b of this.tabBtns) {
       const on = b.tabId === this.tab;
       b.bg.destroy();
-      const nb = panel(ui, 0, 0, 'ui_button_' + (on ? 'blue' : 'gray'), 204, 76).setOrigin(0.5);
+      const nb = panel(ui, 0, 0, 'ui_button_' + (on ? 'blue' : 'gray'), TAB_W, TAB_H).setOrigin(0.5);
       b.addAt(nb, 0); b.bg = nb;
       b.text.setStyle(on ? TXT(30, '#ffffff', 'rgba(0,0,0,0.25)', 4, '900') : TXT(30, '#ffffff', '#4a5361', 6, '900'));
       b.setAlpha(on ? 1 : 0.86);
