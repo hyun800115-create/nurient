@@ -18,6 +18,7 @@
 // (the same migration + sanitize path as a stored save) before anything is written.
 import { SAVE_KEY, BACKUP_KEY, BAD_KEY, SAVE_VERSION, migrateSave } from './Save.js';
 import { VERSION, BUILD_DATE } from '../data/version.js';
+import { inflateRaw } from './inflate.js';
 
 export const CODE_TAG = 'SNOWBLOOM';
 export const CODE_FMT = 1;
@@ -126,7 +127,7 @@ const fail = (error, info) => ({ ok: false, error, info: info || null });
 /**
  * pasted text -> { ok: true, payload, keys, dropped } or { ok: false, error, info }.
  * errors: empty · notCode · cut (info { have, want }) · damaged · newer (a code from a newer game) · foreign (not a
- * village code) · cantOpen (compressed, and this browser cannot decompress) · noVillage · tooBig
+ * village code) · cantOpen (no longer returned: (v4.3 perf) a browser without DecompressionStream uses inflate.js) · noVillage · tooBig
  */
 export async function decodeVillage(text) {
   const s = typeof text === 'string' ? text : '';
@@ -161,8 +162,13 @@ async function decodeAt(rest) {
   let bytes;
   try { bytes = fromB64url(data); } catch (e) { return fail('damaged'); }
   if (comp === 'z') {
-    if (!canDecompress()) return fail('cantOpen');
-    try { bytes = await pump(new DecompressionStream('deflate-raw'), bytes, MAX_PAYLOAD); } catch (e) { return fail(String(e && e.message) === 'too big' ? 'tooBig' : 'damaged'); }
+    // ((v4.3 perf) a WebView without DecompressionStream (Android 10 / 11 never updated: Chrome 74-102) reads it with
+    //  the small built-in decoder (src/core/inflate.js) instead of refusing it ('cantOpen')
+    if (!canDecompress()) {
+      try { bytes = inflateRaw(bytes, MAX_PAYLOAD); } catch (e) { return fail(String(e && e.message) === 'too big' ? 'tooBig' : 'damaged'); }
+    } else {
+      try { bytes = await pump(new DecompressionStream('deflate-raw'), bytes, MAX_PAYLOAD); } catch (e) { return fail(String(e && e.message) === 'too big' ? 'tooBig' : 'damaged'); }
+    }
   } else if (comp !== 'j') return fail('newer');
   if (bytes.length > MAX_PAYLOAD) return fail('tooBig');
   let p;

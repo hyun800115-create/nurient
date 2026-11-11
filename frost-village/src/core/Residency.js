@@ -9,6 +9,7 @@ import { Assets } from './Assets.js';
 import { TF } from './Townfolk.js';
 import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
+import { Perf } from './Perf.js';
 
 const TF_SOC_ANIMS = new Set(['talk', 'wave', 'happy']);
 
@@ -84,7 +85,8 @@ export const Residency = {
     this.measure();
   },
 
-  cfg() { return (BALANCE.v4 && BALANCE.v4.tex) || { targetMiB: 300, softGap: 24, lowMiB: 200, socialPages: 5, socialTtl: 30 }; },
+  // ((v4.3 perf) the graphics preset's overrides (중사양 / 저사양: fewer social pages, a shorter TTL, a lower target)
+  cfg() { return Perf.texCfg((BALANCE.v4 && BALANCE.v4.tex) || { targetMiB: 300, softGap: 24, lowMiB: 200, socialPages: 5, socialTtl: 30 }); },
   low() { return !!(this.gs && this.gs.gfxLow); },
   budget() {
     const T = this.cfg();
@@ -105,7 +107,7 @@ export const Residency = {
       if (k === '__DEFAULT' || k === '__MISSING' || k === '__NORMAL' || k === '__WHITE') continue;
       const t = list[k];
       let b = 0;
-      for (const s of t.source) b += s.width * s.height * 4;
+      for (const s of t.source) b += s.width * s.height * 4 * (s.memScale || 1);     // ((v4.3 perf) 저사양's smaller uploads
       tot += b;
       const a = Assets.m.atlases[k];
       if (a || Assets.m.images[k]) sizes[k] = b;
@@ -214,7 +216,7 @@ export const Residency = {
         const st = this.areas[R.id];
         if (!st) continue;
         const pages = this.expand(R.extra ? R.pages.concat(R.extra(gs)) : R.pages);
-        if (!(st.gap > RELEASE)) { for (const k of pages) near.add(k); continue; }
+        if (!(st.gap > (Perf.p.far || RELEASE))) { for (const k of pages) near.add(k); continue; }
         far.push({ gap: st.gap, pages });
       }
       far.sort((x, y) => y.gap - x.gap);
@@ -384,11 +386,11 @@ export const Residency = {
     for (const R of REGIONS) {
       const st = this.areas[R.id] || (this.areas[R.id] = { farT: 0, out: false });
       const gap = st.gap = this.areaGap(view, R.rect);
-      if (gap > RELEASE) st.farT += 0.5; else st.farT = 0;
+      if (gap > (Perf.p.far || RELEASE)) st.farT += 0.5; else st.farT = 0;     // ((v4.3 perf) per preset
       for (const k of this.expand(R.extra ? R.pages.concat(R.extra(gs)) : R.pages)) {
         if (!(Assets.m.atlases[k] || Assets.m.images[k])) continue;
         far.set(k, (far.has(k) ? far.get(k) : true) && st.farT >= ttl);
-        near.set(k, (near.get(k) || false) || gap < ACQUIRE);
+        near.set(k, (near.get(k) || false) || gap < (Perf.p.near || ACQUIRE));
       }
     }
     if (!gs.camFocus) {

@@ -5,6 +5,7 @@ import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { DEPTH } from './DepthSort.js';
 import { FONT } from '../data/strings.js';
+import { Perf } from '../core/Perf.js';
 
 // particle presets: key -> { sprite, size(px), ... }
 const PRESETS = {
@@ -96,7 +97,9 @@ export class Effects {
     const p = PRESETS[name];
     if (!p) return;
     const e = this.emitter(name);
-    e.explode(qty || p.qty, x, y);
+    // ((v4.3 perf) 중사양 0.7x, 저사양 0.5x the particles of a burst (never none)
+    const n = qty || p.qty, f = Perf.p.fx;
+    e.explode(f < 1 && n > 1 ? Math.max(1, Math.round(n * f)) : n, x, y);
   }
 
   // ---------- animated fx sheets ----------

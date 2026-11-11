@@ -48,7 +48,11 @@ const R = {
   what: /^(뭐라고|뭐|응|엥|네|에)[?？!]+$/,
   ack: /^(그렇구나|그래|그래요|그렇군요|아하|오호|오|아|헐|와|우와|대박|ㅇㅋ|오케이|알겠어|알았어|알겠어요|좋아|좋네|좋다|미친 ?너무 ?좋아)[!~.?ㅋㅎ]*$/,
   // nothing to read: "ㅇㅇ", "...", "???", emoji, digits
-  blank: /^[\sㅇㄴㅋㅎㅠㅜ.?!~…^0-9\p{Extended_Pictographic}\uFE0F\u200D-]*$/u,
+  // ((v4.3 perf) \p{…} needs Chrome 64: an older WebView (Android 8 without updates) gets the emoji blocks by range)
+  blank: (() => {
+    try { return new RegExp('^[\\sㅇㄴㅋㅎㅠㅜ.?!~…^0-9\\p{Extended_Pictographic}\\uFE0F\\u200D-]*$', 'u'); } catch (e) { /* below */ }
+    return /^[\sㅇㄴㅋㅎㅠㅜ.?!~…^0-9\u00a9\u00ae\u203c-\u3299\ud83c-\udbff\udc00-\udfff\uFE0F\u200D-]*$/;
+  })(),
 };
 
 export const INTENTS = ['greeting', 'news', 'tell', 'invite', 'topic', 'how', 'weather', 'work', 'gossip', 'person', 'compliment', 'thanks', 'gift', 'joke', 'memory', 'favor', 'farewell', 'about', 'mood', 'rude', 'distress', 'sad', 'romance', 'unkind', 'vent', 'answer', 'unknown'];

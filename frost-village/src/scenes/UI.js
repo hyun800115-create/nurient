@@ -31,6 +31,7 @@ const MOVE_LABEL = { ko: '마을 옮기기', en: 'Move village' };
 import { CATALOG, TABS } from '../systems/Civic.js';
 // ---- (v4.3 마을 깃발) 설정 › 놀이 › 「마을 깃발」
 import { FlagMaker } from '../flag/FlagMaker.js';
+import { Perf } from '../core/Perf.js';
 const TAB_ICON = { work: ['ui_icon_hammer', 'ui_icon_tools', 'ui_icon_worker'], home: ['ui_icon_house', 'ui_icon_people'], decor: ['ui_icon_flower', 'ui_icon_happy', 'ui_icon_heart_full'], civic: ['ui_icon_fame', 'ui_icon_people', 'ui_icon_house'] };
 
 const TXT = (size, color = '#ffffff', stroke = '#2b2f3a', st = 7, weight = '900') => ({
@@ -1068,11 +1069,13 @@ export class UI extends Phaser.Scene {
       const Y = (i) => cy - 262 + i * 84;
       if (tab === 'play') { this.buildPlayTab(row, Y, add); this.panelFooter(add, cx, cy); return; }
       if (tab === 'snd') { this.buildSoundTab(Y, add); this.panelFooter(add, cx, cy); return; }
-      row(Y(0), t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off');
-      row(Y(1), t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off');
+      // ((v4.3 perf) eight rows here (+ 성능 정보): 73 px apart, 66 px buttons (RH)
+      const YA = (i) => cy - 268 + i * 73, RH = 66;
+      row(YA(0), t('sound'), S.sound ? t('on') : t('off'), S.sound ? 'green' : 'gray', () => { Audio.setSoundEnabled(!S.sound); this.buildPanelContent(false); }, S.sound ? 'ui_icon_sound_on' : 'ui_icon_sound_off', RH);
+      row(YA(1), t('music'), S.music ? t('on') : t('off'), S.music ? 'green' : 'gray', () => { Audio.setMusicEnabled(!S.music); this.buildPanelContent(false); }, S.music ? 'ui_icon_music_on' : 'ui_icon_music_off', RH);
       // globe icon for the language row (drawn, there is no icon sprite for it)
       const gl = add(this.add.graphics());
-      const ly = Y(2);
+      const ly = YA(2);
       gl.fillStyle(0x3d8be0, 1); gl.fillCircle(cx - 200, ly, 25);
       gl.lineStyle(3, 0xffffff, 0.95); gl.strokeCircle(cx - 200, ly, 25);
       gl.strokeEllipse(cx - 200, ly, 22, 50); gl.lineBetween(cx - 225, ly, cx - 175, ly);
@@ -1082,15 +1085,18 @@ export class UI extends Phaser.Scene {
         setLang(l); Settings.data.lang = l; Settings.save();
         this.onLanguage();
         this.buildPanelContent(false);
-      });
+      }, undefined, RH);
       // ---- (v4-B) 낮과 밤 (day & night tint on / off) and 그래픽 (auto / sharp / light)
-      row(Y(3), t('set_daynight'), S.daynight !== false ? t('on') : t('off'), S.daynight !== false ? 'green' : 'gray', () => { S.daynight = S.daynight === false; Settings.save(); this.buildPanelContent(false); }, Assets.pick('ui_icon_night', 'ui_icon_day', 'ui_icon_settings'));
-      const gfx = S.gfx === 'high' || S.gfx === 'low' ? S.gfx : 'auto';
-      row(Y(4), t('set_gfx'), t('gfx_' + gfx), 'blue', () => { S.gfx = gfx === 'auto' ? 'high' : gfx === 'high' ? 'low' : 'auto'; Settings.save(); if (this.gs.applyGfx) this.gs.applyGfx(); this.buildPanelContent(false); }, Assets.pick('ui_icon_speed', 'ui_icon_settings'));
+      row(YA(3), t('set_daynight'), S.daynight !== false ? t('on') : t('off'), S.daynight !== false ? 'green' : 'gray', () => { S.daynight = S.daynight === false; Settings.save(); this.buildPanelContent(false); }, Assets.pick('ui_icon_night', 'ui_icon_day', 'ui_icon_settings'), RH);
+      // ((v4.3 perf) 그래픽 사양: 자동 (shows its pick) → 고사양 → 중사양 → 저사양 → 자동 (Perf.js)
+      const gv = Perf.setting === 'auto' ? t('gfx_auto_is', { p: t('gfx_' + Perf.name) }) : t('gfx_' + Perf.setting);
+      const gb = row(YA(4), t('set_gfx'), gv, 'blue', () => { Perf.set(Perf.next()); this.buildPanelContent(false); }, Assets.pick('ui_icon_speed', 'ui_icon_settings'), RH);
+      gb.gfxBtn = true;
+      if (gb.text.width > 184) gb.text.setScale(184 / gb.text.width);
       // ---- (v4-C2) 물결 품질: 높음 / 간단 (the living water; Canvas / old sea: shown, has no effect)
       const gd = this.gs.ground;
       const wq = (S.water || (gd && gd.waterQuality) || 'high') === 'low' ? 'low' : 'high';
-      const wy = Y(5);
+      const wy = YA(5);
       const wi = add(this.add.graphics());
       wi.fillStyle(0x2f86c9, 1); wi.fillCircle(cx - 200, wy, 25);
       wi.lineStyle(4, 0xffffff, 0.95);
@@ -1100,9 +1106,14 @@ export class UI extends Phaser.Scene {
         if (gd && gd.setWaterQuality) gd.setWaterQuality(S.water);
         this.gs.waterBudget = null;          // the player chose: no automatic switch any more
         this.buildPanelContent(false);
-      });
+      }, undefined, RH);
       // ---- ((v4.3 hotfix) 주민 목소리 moved to the 소리 조절 tab with the other sliders: this row opens it)
-      row(Y(6), t('set_mixer'), t('set_tab_snd') + ' ›', 'blue', () => { this.settingsTab = 'snd'; this.buildPanelContent(false); }, Assets.pick('ui_icon_music_on', 'emote_music', 'ui_icon_sound_on'));
+      row(YA(6), t('set_mixer'), t('set_tab_snd') + ' ›', 'blue', () => { this.settingsTab = 'snd'; this.buildPanelContent(false); }, Assets.pick('ui_icon_music_on', 'emote_music', 'ui_icon_sound_on'), RH);
+      // ((v4.3 perf) 성능 정보: fps / preset / texture MiB / JS heap in a tiny corner box (for testers' reports)
+      const pb = row(YA(7), t('set_perfinfo'), S.perfInfo ? t('on') : t('off'), S.perfInfo ? 'green' : 'gray', () => { S.perfInfo = !S.perfInfo; Settings.save(); Perf.overlay(S.perfInfo); this.buildPanelContent(false); }, Assets.pick('ui_icon_timer', 'ui_icon_settings'), RH);
+      pb.perfBtn = true;
+      // a knob that waits for a fresh page (antialias, half-resolution pictures, the plain sea): said under the footer
+      if (Perf.needsReload()) add(this.add.text(cx, cy + 489, t('gfx_reload'), TXT(20, '#a8551c', '#ffffff', 0, '800')).setOrigin(0.5));
       this.panelFooter(add, cx, cy);
     } else {
       add(this.add.text(cx, cy - 120, t('resetConfirm'), Object.assign(TXT(32, '#2b2f3a', '#ffffff', 0, '800'), { align: 'center', lineSpacing: 10 })).setOrigin(0.5));

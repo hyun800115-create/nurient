@@ -480,7 +480,8 @@ export class ChatPanel {
     if (!retry) { this.bubble('p', clean); this.input.value = ''; this.updateCount(); }
     const ai = this.engine.modeFor(key) === 'ai';
     const typing = this.typing();
-    const ctl = this.ctl = new AbortController();
+    // ((v4.3 perf) Chrome < 66 (an un-updated Android 8 WebView) has no AbortController: a stand-in that cannot cancel
+    const ctl = this.ctl = typeof AbortController === 'function' ? new AbortController() : { signal: undefined, abort() {} };
     this.setBusy(true, ai);
     let bub = null, started = performance.now();
     const onPartial = (p) => {
@@ -575,9 +576,9 @@ export class ChatPanel {
 
 export const PANEL_CSS = `
 .fc-lock,.fc-lock body{overflow:hidden}
-.fc-root{position:fixed;inset:0;z-index:50;font-family:var(--fc-body);color:var(--fc-ink)}
-.fc-backdrop{position:absolute;inset:0;background:var(--fc-shade)}
-.fc-sheet{--fc-kb:0px;--fc-vh:100dvh;position:absolute;left:0;right:0;bottom:var(--fc-kb);margin:0 auto;max-width:560px;height:min(calc(var(--fc-vh) - 28px - env(safe-area-inset-top,0px)),760px);display:flex;flex-direction:column;background:var(--fc-paper);border:3px solid var(--fc-rim);border-bottom:0;border-radius:26px 26px 0 0;box-shadow:0 -10px 34px var(--fc-shadow);padding-bottom:env(safe-area-inset-bottom,0px);overflow:hidden}
+.fc-root{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:50;font-family:var(--fc-body);color:var(--fc-ink)}
+.fc-backdrop{position:absolute;top:0;right:0;bottom:0;left:0;inset:0;background:var(--fc-shade)}
+.fc-sheet{--fc-kb:0px;--fc-vh:100dvh;position:absolute;left:0;right:0;bottom:var(--fc-kb);margin:0 auto;max-width:560px;height:85vh;max-height:760px;height:min(calc(var(--fc-vh) - 28px - env(safe-area-inset-top,0px)),760px);display:flex;flex-direction:column;background:var(--fc-paper);border:3px solid var(--fc-rim);border-bottom:0;border-radius:26px 26px 0 0;box-shadow:0 -10px 34px var(--fc-shadow);padding-bottom:env(safe-area-inset-bottom,0px);overflow:hidden}
 .fc-sheet.fc-kb-open{height:calc(var(--fc-vh) - 8px);padding-bottom:0;border-radius:18px 18px 0 0}
 .fc-sheet.fc-in{animation:fc-up .32s cubic-bezier(.2,.9,.3,1.15)}
 @keyframes fc-up{from{transform:translateY(40%);opacity:.4}to{transform:none;opacity:1}}
@@ -612,7 +613,7 @@ export const PANEL_CSS = `
 .fc-row{display:flex}
 .fc-me{justify-content:flex-end}
 .fc-old{opacity:.6}
-.fc-bubble{position:relative;max-width:min(80%,420px);padding:9px 13px;border-radius:18px;font-size:15.5px;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere;box-shadow:0 2px 0 var(--fc-shadow)}
+.fc-bubble{position:relative;max-width:80%;max-width:min(80%,420px);padding:9px 13px;border-radius:18px;font-size:15.5px;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere;box-shadow:0 2px 0 var(--fc-shadow)}
 .fc-them .fc-bubble{background:var(--fc-frost);color:var(--fc-ink);border-top-left-radius:6px;margin-left:12px}
 .fc-them .fc-bubble.fc-ai{background:var(--fc-frost)}
 .fc-me .fc-bubble{background:var(--fc-paper-2);color:var(--fc-ink);border-top-right-radius:6px}

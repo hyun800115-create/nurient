@@ -192,13 +192,16 @@ export class RoadPaint {
     const gs = this.gs, v = gs.cameras.main.worldView, r = this.streetRect, rr = this.railRect;
     const far = (q) => v.right < q.x - FAR || v.x > q.x + q.w + FAR || v.bottom < q.y - FAR || v.y > q.y + q.h + FAR;
     if (far(r) && far(rr) && !gs.ground.dirty.size) this.farT += dt; else this.farT = 0;
-    if (this.farT > RELEASE_AFTER && !this.released) this.release();
+    // ((v4.3 perf) between FAR (800) and NEAR (1300) px the view is both "far" and "near": the pictures went after
+    //  10 s far, came back the next frame (near), and went again the frame after (farT still > 10) — 7 pictures
+    //  fetched, decoded and uploaded every other frame at the 46-min plaza (11-21 % of the main thread in texImage2D).
+    //  They now go only once the view is beyond NEAR too, and coming near starts the far clock again.)
+    const near = (q) => !(v.right < q.x - NEAR || v.x > q.x + q.w + NEAR || v.bottom < q.y - NEAR || v.y > q.y + q.h + NEAR);
+    const isNear = near(r) || near(rr);
+    if (this.farT > RELEASE_AFTER && !this.released && !isNear) this.release();
     // (the ground tiles are a pool: a street tile is baked again when the camera comes back; fetch the pictures
     //  while the camera approaches, so the tile is baked with its street, not re-baked a moment later)
-    if (this.released) {
-      const near = (q) => !(v.right < q.x - NEAR || v.x > q.x + q.w + NEAR || v.bottom < q.y - NEAR || v.y > q.y + q.h + NEAR);
-      if (near(r) || near(rr)) { this.released = false; this.want(BAKE_ONLY.filter((k) => this.needs(k))); }
-    }
+    if (this.released && isNear) { this.released = false; this.farT = 0; this.want(BAKE_ONLY.filter((k) => this.needs(k))); }
   }
 
   /** a bake-only picture this painter uses now (the 읍 cobble only after the upgrade) */
