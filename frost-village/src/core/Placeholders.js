@@ -2,7 +2,7 @@
 // always stays playable (and reasonably pretty) without the real art.
 
 const ITEM_COLORS = {
-  item_fish_raw: ['#9fb8cc', '#5f7f9c'], item_fish_cooked: ['#f08a5d', '#c0603a'], item_log: ['#8a5a33', '#6e4428'],
+  item_fish_raw: ['#9fb8cc', '#5f7f9c'], item_fish_cooked: ['#e9a24a', '#6a3a1e'], item_log: ['#8a5a33', '#6e4428'],
   item_plank: ['#e2b57c', '#c98f55'], item_wheat: ['#e8c25a', '#b8902e'], item_bread: ['#c9853f', '#9b6128'],
   item_ore: ['#7e7f86', '#d9822b'], item_ingot: ['#c8d2e0', '#8e96a3'], item_meat_raw: ['#c8463d', '#f3e6d8'],
   item_meat_cooked: ['#8a4a2a', '#f3e6d8'], item_coin: ['#f2c14e', '#c9952a'],
