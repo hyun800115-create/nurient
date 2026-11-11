@@ -20,18 +20,63 @@
     "package": "com.snowbloom.village.preview"
   },
   "playCodes": [
-    { "code": 4022, "name": "4.2.1" },
-    { "code": 4023, "name": "4.2.0.1" },
-    { "code": 4024, "name": "4.2.0.2" },
-    { "code": 4310, "name": "4.3.0-a2", "date": "2026-11-07" },
-    { "code": 4311, "name": "4.3.0-a2.1", "date": "2026-11-09" },
-    { "code": 4312, "name": "4.3.0-a2.2", "date": "2026-11-09" }
+    {
+      "code": 4022,
+      "name": "4.2.1"
+    },
+    {
+      "code": 4023,
+      "name": "4.2.0.1"
+    },
+    {
+      "code": 4024,
+      "name": "4.2.0.2"
+    },
+    {
+      "code": 4310,
+      "name": "4.3.0-a2",
+      "date": "2026-11-07"
+    },
+    {
+      "code": 4311,
+      "name": "4.3.0-a2.1",
+      "date": "2026-11-09"
+    },
+    {
+      "code": 4312,
+      "name": "4.3.0-a2.2",
+      "date": "2026-11-09"
+    },
+    {
+      "code": 4313,
+      "name": "4.3.0-a3",
+      "date": "2026-11-11",
+      "commit": "ed04b7dcba"
+    }
   ],
   "previewCodes": [
-    { "code": 4301, "name": "4.3.0-a1" },
-    { "code": 4302, "name": "4.3.0-a2" },
-    { "code": 4303, "name": "4.3.0-a2.1" },
-    { "code": 4304, "name": "4.3.0-a2.2" }
+    {
+      "code": 4301,
+      "name": "4.3.0-a1"
+    },
+    {
+      "code": 4302,
+      "name": "4.3.0-a2"
+    },
+    {
+      "code": 4303,
+      "name": "4.3.0-a2.1"
+    },
+    {
+      "code": 4304,
+      "name": "4.3.0-a2.2"
+    },
+    {
+      "code": 4305,
+      "name": "4.3.0-a3",
+      "date": "2026-11-11",
+      "commit": "ed04b7dcba"
+    }
   ],
   "troubleshooting": {
     "wrongKey": "Play says the bundle is signed with the wrong key: check the console is on this app (package above) and its 눈꽃마을 비공개 테스트 track; this upload key is the one Play accepted. If Play really expects another key, ask for an upload key reset with dist/play/snowbloom-upload-certificate.pem.",
