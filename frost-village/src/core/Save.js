@@ -173,6 +173,8 @@ export function sanitizeSave(raw) {
   const shop = (o, types) => (isObj(o) ? { stock: counts(o.stock, types), cash: count(o.cash, 1e9) } : null);
   s.market = shop(raw.market, FOODS);
   s.trade = shop(raw.trade, GOODS);
+  // ((v4.3 밀밭 · 빵집) the bakery stall's case (bread) and its till: optional (an older save has none = empty)
+  if (isObj(raw.bakery)) s.bakery = shop(raw.bakery, ['item_bread']);
   const p = isObj(raw.player) ? raw.player : {};
   const x = num(p.x, NaN), y = num(p.y, NaN);
   s.player = {

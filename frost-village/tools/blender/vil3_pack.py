@@ -7,6 +7,11 @@ Run AFTER vil3_render.py:
     python3 tools/blender/vil3_pack.py --chars npc_sawyer      # one key (manifest keeps the others)
     python3 tools/blender/vil3_pack.py --no-previews --colors 96 --dither 0.35
     python3 tools/blender/vil3_pack.py --out /tmp/x --prev /tmp/y   (dry run elsewhere)
+    python3 tools/blender/vil3_pack.py --chars npc_aunt --reuse --no-previews
+        (v4.3 bakery split) frames that are not in the render cache are cut back out of the key's current atlas in
+        assets/villagers3 (untrimmed, NOT outlined again): render only the new anims (knead / oven_in / oven_out)
+        and repack the key without re-rendering every old anim. Anims the meta no longer lists (the aunt's old
+        operate) are dropped.
 
 What it does (same post-processing as batches 1 + 2; vil_pack / vil2_pack are reused, not changed)
   1. soft 1px ink outline on every raw 128x128 frame (char_pack.ink_outline)
@@ -84,17 +89,43 @@ def load_old_manifests():
     return out
 
 
-def pack_key(cache, key, meta, colors, out_dir, dither=0.35):
+def page_frames(out_dir, key):
+    """(--reuse) the frames of the key's current atlas, untrimmed (sourceSize), as packed (outline done)."""
+    jp, pp = os.path.join(out_dir, f'vil_{key}.json'), os.path.join(out_dir, f'vil_{key}.png')
+    if not (os.path.exists(jp) and os.path.exists(pp)):
+        return {}
+    with open(jp, encoding='utf-8') as fh:
+        js = json.load(fh)
+    sheet = Image.open(pp).convert('RGBA')
+    fr = js['frames'] if isinstance(js['frames'], dict) else {f['filename']: f for f in js['frames']}
+    out = {}
+    for n, f in fr.items():
+        if f.get('rotated'):
+            raise SystemExit(f'[{key}] rotated frame {n} in the current atlas: cannot reuse')
+        r, ss, src = f['frame'], f['spriteSourceSize'], f['sourceSize']
+        full = Image.new('RGBA', (src['w'], src['h']), (0, 0, 0, 0))
+        full.paste(sheet.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h'])), (ss['x'], ss['y']))
+        out[n] = full
+    return out
+
+
+def pack_key(cache, key, meta, colors, out_dir, dither=0.35, reuse=None):
     frames, processed, missing = [], {}, []
+    reused = 0
     for anim, info in meta['anims'].items():
         for d in info['dirs']:
             for i in range(info['frames']):
                 p = os.path.join(cache, key, f'{anim}_{d}_{i}.png')
+                name = f'{anim}_{d}_{i}'
                 if not os.path.exists(p):
+                    if reuse and name in reuse:
+                        frames.append((name, reuse[name]))
+                        processed[name] = reuse[name]
+                        reused += 1
+                        continue
                     missing.append(os.path.basename(p))
                     continue
                 im = ink_outline(Image.open(p))
-                name = f'{anim}_{d}_{i}'
                 frames.append((name, im))
                 processed[name] = im
     if missing:
@@ -105,7 +136,7 @@ def pack_key(cache, key, meta, colors, out_dir, dither=0.35):
     pack_utils.save_atlas(sheet, atlas, png, js, quantize=False)
     vp.quantize_save(sheet, png, colors, dither)
     print(f'[{key}] atlas {sheet.size[0]}x{sheet.size[1]}  {os.path.getsize(png) / 1024:.0f} KB  '
-          f'({len(frames)} frames)', flush=True)
+          f'({len(frames)} frames, {reused} reused from the old atlas)', flush=True)
     return processed
 
 
@@ -123,6 +154,14 @@ def manifest_entry(key, meta, processed, has_portrait, old):
             e['workTool'] = R['workTool']
             fwd, hgt = WORK_SPOT[role]
             e['workSpot'] = {'forwardM': fwd, 'heightM': hgt}
+        if anim in va3.BAKER43_ANIMS:
+            # (v4.3 bakery split) the baker's motions in the bakery43 cottage
+            e['station'] = 'bakery43_back'
+            e['workTool'] = va3.BAKER43_TOOL[anim]
+            e['workSpot'] = ({'forwardM': va3.KNEAD_F, 'heightM': va3.BOARD_Z} if anim == 'knead'
+                             else {'forwardM': 0.64, 'heightM': 0.5})
+            if 'toolPoints' in info:
+                e['toolPoints'] = info['toolPoints']
         anims[anim] = e
     src = vb3.SOURCE.get(key)
     if src:
@@ -148,7 +187,8 @@ def manifest_entry(key, meta, processed, has_portrait, old):
     ent['carryStyle'] = 'front'
     ent['carryPoint'] = meta['carryPoint']
     ent['carryPointFrames'] = meta['carryPointFrames']
-    ent['operates'] = [va3.ROLES[role]['station']]
+    ent['operates'] = (['bakery43_back'] if any(a in va3.BAKER43_ANIMS for a in meta['anims'])
+                       else [va3.ROLES[role]['station']])
     if src:
         ent['overrides'] = src
     order = ['atlas', 'frameSize', 'anchor', 'dirs', 'mirror', 'frameName', 'kind', 'role', 'name', 'traits',
@@ -278,6 +318,7 @@ def gif(key, meta, processed, anim, path, z=1.5):
 def main():
     args = sys.argv[1:]
     cache, chars, previews, colors, dither = DEFAULT_CACHE, None, True, 96, 0.35
+    reuse = False
     out_dir, prev_dir = OUT, PREV
     i = 0
     while i < len(args):
@@ -296,6 +337,8 @@ def main():
             prev_dir = args[i + 1]; i += 2; continue
         if a == '--no-previews':
             previews = False
+        if a == '--reuse':
+            reuse = True
         i += 1
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs(prev_dir, exist_ok=True)
@@ -313,17 +356,18 @@ def main():
         if meta is None:
             print(f'[{key}] no renders in cache, skipped')
             continue
-        processed = pack_key(cache, key, meta, colors, out_dir, dither)
+        processed = pack_key(cache, key, meta, colors, out_dir, dither,
+                             reuse=page_frames(out_dir, key) if reuse else None)
         pp = os.path.join(cache, key, 'portrait.png')
         has_p = os.path.exists(pp)
         if has_p:
             vp.quantize_save(Image.open(pp).convert('RGBA'), os.path.join(out_dir, f'portrait_{key}.png'), 256, 0.4)
         characters[key] = manifest_entry(key, meta, processed, has_p, old)
-        processed['_imp'] = meta['anims']['operate']['impactFrame']
+        processed['_imp'] = meta['anims'].get('operate', {}).get('impactFrame')
         processed['_shadow'] = characters[key]['shadow']
         processed['_name'] = characters[key]['name']['en']
         all_proc[key], metas[key] = processed, meta
-        if previews:
+        if previews and 'operate' in meta['anims']:
             contact(key, meta, processed, os.path.join(prev_dir, f'vil3_{key}.png'))
             gif(key, meta, processed, 'operate', os.path.join(prev_dir, f'vil3_{key}_operate.gif'))
     present = [k for k in vb3.ALL_KEYS if k in characters and os.path.exists(os.path.join(out_dir, f'vil_{k}.png'))]
@@ -338,7 +382,7 @@ def main():
                                                'notes': '128x128 head-and-shoulders, facing S'}
     with open(man_path, 'w', encoding='utf-8') as f:
         json.dump(man, f, indent=1, ensure_ascii=False)
-    if previews and all_proc and len(all_proc) == len(present):
+    if previews and all_proc and len(all_proc) == len(present) and all(m['anims'].get('operate') for m in metas.values()):
         lineup(all_proc, os.path.join(prev_dir, 'vil3_lineup.png'))
         operate_sheet(all_proc, metas, os.path.join(prev_dir, 'vil3_operate.png'))
     total = sum(os.path.getsize(os.path.join(out_dir, f)) for f in os.listdir(out_dir))

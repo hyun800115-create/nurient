@@ -48,7 +48,8 @@ FINE_WIDTHS = tuple(range(512, 2049, 32))
 # ---------------------------------------------------------------- rules
 # villagers: anims the systems play (jobs, stations, porters, seats) stay resident; the rest is social
 CORE_ANIMS = {'idle', 'walk', 'run', 'sit', 'work', 'operate', 'serve', 'give', 'chop', 'mine', 'harvest', 'pet',
-              'skate', 'run_ball'}
+              'skate', 'run_ball',
+              'knead', 'oven_in', 'oven_out'}     # (v4.3 bakery split) the baker's loop in the bakery43 cottage
 # carry anims stay resident only for the residents who carry for a living (the porters, the porters' stand-ins
 # in Worker.js PORTER_FALLBACK, the station operators); anyone else carrying plays walk (Assets ANIM_FALLBACK)
 CARRY_ANIMS = {'carry_walk', 'carry_idle'}

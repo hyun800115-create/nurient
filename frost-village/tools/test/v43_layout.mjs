@@ -140,6 +140,8 @@ const DUMP = async () => {
   if (gs.market) addB('market', 'seller', gs.market.x, gs.market.y, fpOf(gs.market.sprite || (WORLD.market && WORLD.market.sprite), gs.market.x, gs.market.y) || diamond(gs.market.x, gs.market.y, 272, 136), { building: gs.market.sprite || '' });
   // ((review PT-4) the v4.3 gs.trade is the shop's 자재 창구 (its picture is the shop's): no trade post of its own
   if (gs.trade && gs.trade.shop !== gs.market) addB('trade', 'seller', gs.trade.x, gs.trade.y, fpOf((WORLD.trade && WORLD.trade.sprite) || 'trade_post', gs.trade.x, gs.trade.y) || diamond(gs.trade.x, gs.trade.y, 272, 136), { building: 'trade_post', enabled: !!gs.trade.enabled });
+  // ((v4.3 밀밭 · 빵집) the bakery's stall: a seller of its own (the cottage is station:bakery)
+  if (gs.bakery && gs.bakery.stall) { const S = gs.bakery.stall; addB('bakery_stall', 'seller', S.x, S.y, fpOf(S.cfg.sprite, S.x, S.y) || diamond(S.x, S.y, 104, 52), { building: S.cfg.sprite, enabled: !!gs.bakery.built }); }
   if (WORLD.bench) addB('bench', 'workshop', WORLD.bench.x, WORLD.bench.y, fpOf(WORLD.bench.sprite, WORLD.bench.x, WORLD.bench.y) || diamond(WORLD.bench.x, WORLD.bench.y, 181, 91), { building: WORLD.bench.sprite });
   // the net (a 92-px collider) — or, on the new layout, the fishing deck (WORLD.deck: its gangway polygon when given)
   if (WORLD.deck) {
@@ -346,7 +348,14 @@ function checkLayout(scene, D) {
 const WALKS = [
   { id: 'chief_first_walk', who: 'chief', primary: 'direct', near: 220, from: ['@start'], to: ['reel', 'deckReel', 'net'], note: 'new game: where the chief stands → the net gather point (new: the deck reel spot)' },
   { id: 'food_reg_to_trade_reg', who: 'chief', primary: 'direct', near: 220, from: ['register', 'foodRegister'], to: ['matRegister', 'tradeRegister'], note: 'chief: the food register ↔ the trade / 자재 register (one way; the round trip is twice)' },
-  { id: 'oven_to_shop', who: 'porter', primary: 'route', near: 360, from: ['bakeryOut'], to: ['breadShelf', 'shelf'], note: 'bread porter: oven output → the stall shelf' },
+  // ((v4.3 밀밭 · 빵집) the bakery's own legs: the oven fills its stall (loaves fly ≈ 3 m), the chief alternates the doorway and the
+  //  stall's register, the wheat porter goes pile → gate → oven door, the bread porter rack → the miners' food box, the stall's
+  //  customers walk up from the end of their line (bakery_q)
+  { id: 'oven_to_stall', who: 'chief', primary: 'direct', near: 220, from: ['bakeryDoor'], to: ['bakeryShelf'], note: 'the oven doorway (W) → the stall\'s shelf pad (the loaves fly this far)' },
+  { id: 'bakery_door_to_register', who: 'chief', primary: 'direct', near: 220, from: ['bakeryDoor'], to: ['bakeryRegister'], note: 'chief: the oven doorway W ↔ the stall\'s register R (one way)' },
+  { id: 'wheat_pile_to_bakery_in', who: 'porter', primary: 'route', near: 360, from: ['pile:wheat'], to: ['bakeryIn'], note: '밀 짐꾼: wheat pile → the field\'s wheat gate → the oven door I' },
+  { id: 'bakery_rack_to_foodbox', who: 'porter', primary: 'route', near: 360, from: ['bakeryRack'], to: ['foodBox'], note: '빵 짐꾼: the bread rack O → the miners\' food box' },
+  { id: 'customer_bakery_q_to_stall', who: 'porter', primary: 'route', near: 360, from: ['bakeryQ'], to: ['bakeryShelf'], note: 'bakery customers: the end of their line (bakery_q) → the stall' },
   { id: 'meat_rack_to_cannery', who: 'porter', primary: 'route', near: 360, from: ['pile:meat'], to: ['canneryIn'], note: '고기 짐꾼: meat rack → cannery input' },
   { id: 'cannery_to_store', who: 'porter', primary: 'route', near: 360, from: ['canneryOut'], to: ['storeShelf'], note: 'can porter: cannery output → store shelf' },
   { id: 'cannery_to_store', alt: 'bots w_m1 → w_m2', who: 'porter', primary: 'route', near: 360, from: ['canneryOut'], to: ['storeShelf'], move: { canneryOut: 'w_m1', storeShelf: 'w_m2' }, note: 'the smart bots put the cannery on w_m1 and the store on w_m2' },

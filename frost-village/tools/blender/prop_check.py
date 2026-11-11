@@ -31,6 +31,11 @@ DECOR = ['fence_log_x', 'fence_log_y', 'fence_post', 'bench', 'lamp_post', 'barr
          'signpost', 'flag_pole', 'hay_bale']
 ITEMS = ['item_fish_raw', 'item_fish_cooked', 'item_log', 'item_plank', 'item_wheat', 'item_bread', 'item_ore',
          'item_ingot', 'item_meat_raw', 'item_meat_cooked', 'item_coin']
+# (v4.3 bakery split) no longer drawn by the game, repacked out of props_buildings (tools/blender/prop_repack.py):
+# the bakery43 cottage, the market stalls, the 자재 창구, workshop43 and the fishing deck replaced them
+DROPPED = {'station_bakery', 'market_counter', 'trade_post', 'upgrade_bench', 'fish_net'}
+STATIONS = [k for k in STATIONS if k not in DROPPED]
+BUILDINGS = [k for k in BUILDINGS if k not in DROPPED]
 REQUIRED = NATURE + STATIONS + BUILDINGS + DECOR + ITEMS
 BUDGET_MB = 5.0
 

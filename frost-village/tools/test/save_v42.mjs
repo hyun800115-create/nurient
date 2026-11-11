@@ -133,5 +133,16 @@ if (fs.existsSync(lgxMod)) {
   check('Save.keepLogistics == sanitizeLogistics on 300 random slices', diff === 0, ex || { diff });
 } else console.log('  (src/city/logistics not present: logistics contract skipped)');
 
+// ((v4.3 밀밭 · 빵집) the bakery stall's block (its case's bread + its till) survives sanitizeSave; bad values are cleaned; a save
+//  without it has none (the game then starts the stall empty); no SAVE_VERSION change
+{
+  const b = sanitizeSave({ v: SAVE_VERSION, coins: 5, progress: { done: { zone_farm: true } }, bakery: { stock: { item_bread: 17, item_fish_cooked: 3, bad: 9 }, cash: 140 } });
+  check('the bakery block survives sanitize (bread + till only)', b.bakery && b.bakery.stock.item_bread === 17 && !('item_fish_cooked' in b.bakery.stock) && b.bakery.cash === 140, b.bakery);
+  const c = sanitizeSave({ v: SAVE_VERSION, coins: 5, bakery: { stock: { item_bread: -4 }, cash: 'x' } });
+  check('a broken bakery block is cleaned (never negative)', c.bakery && !(c.bakery.stock.item_bread > 0) && c.bakery.cash === 0, c.bakery);
+  const d = sanitizeSave({ v: SAVE_VERSION, coins: 5 });
+  check('an older save has no bakery block', d.bakery === undefined, d.bakery);
+}
+
 console.log(fail.length ? '\n' + fail.length + ' FAILED' : '\nall passed');
 process.exit(fail.length ? 1 : 0);

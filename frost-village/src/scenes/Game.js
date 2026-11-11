@@ -26,7 +26,8 @@ import { Occlusion } from '../systems/Occlusion.js';
 import { Culler } from '../systems/Culler.js';
 import { Animal } from '../entities/Animal.js';
 import { Station } from '../entities/Station.js';
-import { Market, StageMarket, FOODS, GOODS } from '../entities/Seller.js';
+import { Market, StageMarket, FOODS, GOODS, SHOP_FOODS } from '../entities/Seller.js';
+import { Bakery43, BakeryStation } from '../entities/Bakery43.js';
 import { Tree, Rock, Wheat } from '../entities/ResourceNode.js';
 import { FishingDeck } from '../entities/FishingDeck.js';
 import { Workshop43 } from '../entities/Workshop43.js';
@@ -49,7 +50,7 @@ import { Tower } from '../entities/Tower.js';
 import { Boathouse } from '../entities/Boathouse.js';
 import { BUILD_UNLOCK, UNIQUE_BUILDINGS } from '../systems/Progression.js';
 import { Residency } from '../core/Residency.js';
-import { STORE_GOODS, TOOLS, MATERIALS, priceOf } from '../data/items.js';
+import { STORE_GOODS, TOOLS, MATERIALS, BAKERY_GOODS, priceOf } from '../data/items.js';
 // ---- (v4-A) the neighbour town, the snow train, day and night
 import { Neighbours } from '../systems/Neighbours.js';
 // ---- (v4-C) the west strip: the town hall, the big restaurant, decor, settlers, houses that can always be built
@@ -269,6 +270,8 @@ export class Game extends Phaser.Scene {
     this.events.on('step', onStep43);
     this.events.once('shutdown', () => this.events.off('step', onStep43));
     this.events.on('traded', () => this.progress.setFlag('firstTrade'));
+    // ((v4.3 밀밭 · 빵집) an old village whose bakery just moved out of the field: said once
+    if (this.progress.bakeryMovedNow) this.time.delayedCall(5000, () => { if (this.ui && this.ui.banner) this.ui.banner(t('bakeryUp'), t('bakeryMoved')); });
     // spots residents never stand on (pads)
     this.padSpots = [];
     const spot = (pd, r) => { if (pd) this.padSpots.push({ x: pd.x, y: pd.y, r }); };
@@ -398,7 +401,7 @@ export class Game extends Phaser.Scene {
     // then residents who live here already
     const first = working.concat((this.life && this.life.moved) || [], ['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
     // (v3) the building / construction / boat pictures come first once they are needed (plots may be on screen)
-    const n = Assets.queueLazy(this.load, first, ['market_s3', 'market_s2', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    const n = Assets.queueLazy(this.load, first, ['bakery43', 'market_s3', 'market_s2', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (want.length) Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
     this.lazyGateT = 2;
     if (!want.length && !n) return;
@@ -414,7 +417,10 @@ export class Game extends Phaser.Scene {
     // ((v4.3) the shop's stage pages: stage 2 once the forest is near (its pad shows), stage 3 once the farm is open
     const ms = /^market_s([2-9])$/.exec(k);
     //  ((review CD-2) a page of an earlier stage is never fetched (stage 3 carries its own sled): 1.15 MiB less at stage 3)
-    if (ms) { const n = Number(ms[1]), st = this.market ? this.market.stage : 1; if (st > n) return false; return st === n || (n === 2 ? pr.isDone('hire_fisherman') : pr.isDone('zone_farm')); }
+    //  ((v4.3 밀밭 · 빵집) stage 3 comes after village complete now (the first smoked meat sold): fetched from the hunt on)
+    if (ms) { const n = Number(ms[1]), st = this.market ? this.market.stage : 1; if (st > n) return false; return st === n || (n === 2 ? pr.isDone('hire_fisherman') : pr.isDone('zone_hunt')); }
+    // ((v4.3 밀밭 · 빵집) the bakery cottage, its stall and the field's 농막 / props: once the field is next (the lumberjack hired)
+    if (k === 'bakery43') return pr.isDone('hire_lumberjack') || pr.isDone('zone_farm') || pr.isDone('bld_bakery');
     if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
     if (f === 'buildings') return pr.complete || pr.isDone('hire_farmer') || Object.keys(this.sites || {}).some((id) => this.sites[id].state !== 'plot');
     // ---- (v4-A) late v4 files: only the ones a v4 system asked for
@@ -446,7 +452,7 @@ export class Game extends Phaser.Scene {
     if (this.lazyGateT > 0) return;
     this.lazyGateT = 2;
     if (!Assets.gate) return;
-    const n = Assets.queueLazy(this.load, [], ['market_s2', 'market_s3', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    const n = Assets.queueLazy(this.load, [], ['bakery43', 'market_s2', 'market_s3', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (n) this.startLazyLoad();
   }
 
@@ -492,7 +498,7 @@ export class Game extends Phaser.Scene {
       ghosts.push(im);
     };
     const [zx, zy] = z.center;
-    for (const st of WORLD.stations) if (st.zone === id) ghost(st.sprite, st.x, st.y);
+    for (const st of WORLD.stations) if (st.zone === id && !st.gate) ghost(st.sprite, st.x, st.y);     // ((v4.3) not the bakery: it is built by its own step
     if (id === 'forest') for (const [mx, my, k] of [[-1.6, 1.0, 'tree_pine_a'], [1.4, -1.8, 'tree_pine_snow'], [-2.6, -1.6, 'tree_pine_b'], [0.2, -3.0, 'tree_pine_a']]) { const p = isoPt(zx, zy, mx, my); ghost(k, p.x, p.y, 0.85); }
     if (id === 'farm') { const w = WORLD.wheat; for (const [i, j] of [[0, 0], [1, 1], [2, 0], [2, 2]]) { const p = isoPt(w.origin[0], w.origin[1], (i - 1) * w.step, (j - 1) * w.step); ghost('crop_wheat_3', p.x, p.y); } }
     if (id === 'mine') for (const [x, y, k] of WORLD.rocks.slice(0, 4)) ghost(k, x, y);
@@ -507,6 +513,9 @@ export class Game extends Phaser.Scene {
 
   staticImage(key, x, y, opts = {}) {
     const img = Assets.image(this, x, y, key).setDepth(y + (opts.depthOff || 0));
+    // ((v4.3 밀밭 · 빵집) a decor picture on an after-title page (the field's 농막 / scarecrow / sled: assets/bakery43) takes its real
+    //  look when the page comes
+    this.lazyImage(img, key);
     if (opts.flip) img.setFlipX(true);
     if (opts.scale) { img.setScale(opts.scale); img.__bs = opts.scale; }
     const r = opts.r !== undefined ? opts.r : DECOR_R[key];
@@ -717,6 +726,8 @@ export class Game extends Phaser.Scene {
     for (const id in WORLD.pads2 || {}) { const p = WORLD.pads2[id]; spots.push([p.x, p.y, 120]); }
     if (WORLD.foodBox) spots.push([WORLD.foodBox.x, WORLD.foodBox.y, 140]);
     for (const q of pileSpots()) spots.push(q);
+    // ((v4.3 밀밭 · 빵집) the bakery cottage, its stall, the line and its LINE / P2 pads keep clear (world.js bakery43.decorClear)
+    for (const q of (WORLD.bakery43 && WORLD.bakery43.decorClear) || []) spots.push(q);
     for (const [sx, sy, r] of spots) if (gdist(x, y, sx, sy) < r) return true;
     return false;
   }
@@ -840,11 +851,13 @@ export class Game extends Phaser.Scene {
     this.stationList = [];
     this.stationByInput = {};
     for (const c of WORLD.stations) {
-      const s = new Station(this, c);
+      // ((v4.3 밀밭 · 빵집) the bakery cottage is the oven station (same id); it is built by its own step (cfg.gate), not by the
+      //  field's reveal (Bakery43 hides it until then)
+      const s = c.id === 'bakery' ? new BakeryStation(this, c) : new Station(this, c);
       this.stations[c.id] = s;
       this.stationByInput[c.input] = s;
       this.stationList.push(s);
-      if (WORLD.zones[c.zone].unlock) this.addToZone(c.zone, s);
+      if (WORLD.zones[c.zone].unlock && !c.gate) this.addToZone(c.zone, s);
     }
   }
 
@@ -944,6 +957,8 @@ export class Game extends Phaser.Scene {
     //  shop's stage 2, which comes with the forest — as the trade post did)
     this.market = new StageMarket(this, WORLD.market);
     this.trade = this.market.mat;
+    // ((v4.3 밀밭 · 빵집) the bakery cottage (the oven station) and its stall: hidden until 빵집 짓기 (bld_bakery)
+    this.bakery = new Bakery43(this);
     this.trash = new TrashPad(this, WORLD.trash);
     // ((v4.3) 옷·신발 공방: the bench as a small workshop with its name on a board (Workshop43); `bench` stays its picture
     this.workshop43 = new Workshop43(this, WORLD.bench);
@@ -1647,7 +1662,17 @@ export class Game extends Phaser.Scene {
     this.effects.sheet('fx_sparkle', pad.x, pad.y - 10, { size: 120 });
   }
 
-  workerHome(type, index) {
+  workerHome(type, index, rest) {
+    // ((v4.3 밀밭 · 빵집) rest = the place an idle worker goes after a while (the farmers: by the 농막's door)
+    const R = rest && WORLD.workerRest && WORLD.workerRest[type];
+    if (R) {
+      const key = 'rest:' + type + ':' + index, C = this._homes || (this._homes = {});
+      if (C[key]) return C[key].slice();
+      const q = this.freeSpot(R.at[0] + index * 34, R.at[1] + index * 17, 16, 120);
+      const out = [Math.round(q.x), Math.round(q.y)];
+      if (this.collision.walk) C[key] = out;
+      return out.slice();
+    }
     const h = WORLD.workerHome[type];
     // ((v4.2.0.1) a home on open ground: the row (+40, +20 a worker) ran into the smelter, the sawmill, the hay bale
     //  and a fence, and an idle worker walked on the spot there for good. Looked up once per (type, index))
@@ -2023,6 +2048,7 @@ export class Game extends Phaser.Scene {
     for (const a of this.animals) a.update(dt);
     for (const s of this.stationList) s.update(dt);
     this.market.update(dt);
+    if (this.bakery) this.bakery.update(dt);
     // (v3) construction, workshops, storage, the store, houses, towers, boats, fog
     for (const id in this.sites) this.sites[id].update(dt);
     for (const w of this.workshops) w.update(dt);
@@ -2209,6 +2235,12 @@ export class Game extends Phaser.Scene {
     }
     if (this.market.cash.pad.contains(p.x, p.y) || (this.trade.enabled && this.trade.cash.pad.contains(p.x, p.y))) on = true;
     if (this.market.chiefOn()) on = true;
+    // ((v4.3 밀밭 · 빵집) the bakery stall: its shelf pad takes bread, its till, its register R (the chief sells there)
+    const bks = this.bakery && this.bakery.built ? this.bakery.stall : null;
+    if (bks && bks.enabled) {
+      if (bks.shelf.contains(p.x, p.y)) { on = true; if (ready && p.stack.hasAny(BAKERY_GOODS) && bks.feedFrom(p)) { this.padT = BALANCE.player.padItemInterval; bks.shelf.pulse(); bks.caseChanged(); } }
+      if (bks.cash.pad.contains(p.x, p.y) || bks.register.chief) on = true;
+    }
     // (v3) construction sites (plot pad: the build menu; drop pad: materials), workshops, storage, food, store, the catch
     for (const id in this.sites) {
       const st = this.sites[id];
@@ -2280,7 +2312,9 @@ export class Game extends Phaser.Scene {
     // goods a porter is carrying are saved where they are going (v3: the place it is heading for;
     // sites and hire pads count them themselves)
     const tradeExtra = Object.assign({}, this.trade.flying);
-    const storeExtra = {}, whExtra = {}, foodExtra = {}, wsExtra = {}, dockExtra = {}, pantryExtra = {}, exportExtra = {};
+    const storeExtra = {}, whExtra = {}, foodExtra = {}, wsExtra = {}, dockExtra = {}, pantryExtra = {}, exportExtra = {}, bakeryExtra = {};
+    // ((v4.3 밀밭 · 빵집) the bakery stall's case (bread): its own place in the chain (the shop's rack takes fish + meat only)
+    const BK = this.bakery && this.bakery.built ? this.bakery.stall : null;
     const add = (o, ty) => { o[ty] = (o[ty] || 0) + 1; };
     const sumOf = (o) => { let n = 0; for (const k in o) n += o[k]; return n; };
     // ((v4.2 robust review M2) every restore clamps to its place's cap, and the 창고 refuses raw goods: a load is
@@ -2293,7 +2327,8 @@ export class Game extends Phaser.Scene {
     const outOf = (ty) => this.stationList.find((q) => q.output === ty);
     const pileOf = (ty) => { for (const id in this.piles) if (this.piles[id].item === ty) return this.piles[id]; return null; };
     const BIN = {
-      market: (ty) => FOODS.indexOf(ty) >= 0 && this.market.stock.countWithIncoming(ty) + (unpaid[ty] || 0) < this.market.maxPerType && (add(unpaid, ty), true),
+      market: (ty) => SHOP_FOODS.indexOf(ty) >= 0 && this.market.stock.countWithIncoming(ty) + (unpaid[ty] || 0) < this.market.maxPerType && (add(unpaid, ty), true),
+      bakery: (ty) => !!BK && BAKERY_GOODS.indexOf(ty) >= 0 && BK.stock.countWithIncoming(ty) + (bakeryExtra[ty] || 0) < BK.maxPerType && (add(bakeryExtra, ty), true),
       // ((v4.3) the shop's 자재 창구 (the trade post's place in the chain; its stock still saves as `trade`)
       mat: (ty) => GOODS.indexOf(ty) >= 0 && this.trade.enabled && this.trade.stock.countWithIncoming(ty) + (tradeExtra[ty] || 0) < this.trade.maxPerType && (add(tradeExtra, ty), true),
       store: (ty) => !!this.store && STORE_GOODS.indexOf(ty) >= 0 && this.store.stock.countWithIncoming(ty) + (storeExtra[ty] || 0) < this.store.maxPerType && (add(storeExtra, ty), true),
@@ -2306,7 +2341,8 @@ export class Game extends Phaser.Scene {
       boat: (ty) => !!(boat0 && this.boathouse) && (ty === 'item_fish_raw' || ty === 'item_fish_big') && sumOf(boat0.catch || {}) + sumOf(dockExtra) < this.boathouse.outStack.max && (add(dockExtra, ty), true),
       dock: (ty) => !!F && (F.dock[ty] || 0) + (exportExtra[ty] || 0) < 999 && (add(exportExtra, ty), true),
     };
-    const chainOf = (ty) => (FOODS.indexOf(ty) >= 0 ? ['market', 'pantry', 'food', 'wh', 'out', 'dock']
+    const chainOf = (ty) => (BAKERY_GOODS.indexOf(ty) >= 0 ? ['bakery', 'pantry', 'food', 'wh', 'out', 'dock']
+      : FOODS.indexOf(ty) >= 0 ? ['market', 'pantry', 'food', 'wh', 'out', 'dock']
       : GOODS.indexOf(ty) >= 0 ? ['mat', 'wh', 'out', 'dock']
         : STORE_GOODS.indexOf(ty) >= 0 ? ['store', 'wh', 'dock']
           : this.stationByInput[ty] ? ['input', 'pile', 'boat', 'wh', 'dock'] : ['wh', 'boat', 'dock']);
@@ -2328,6 +2364,7 @@ export class Game extends Phaser.Scene {
           else place(ty, null);
         }
         else if (d && this.store && d === this.store.sink) place(ty, 'store');
+        else if (d && BK && d === BK.sink) place(ty, 'bakery');
         else if (d && W && d === W.sink) place(ty, 'wh');
         else if (d && d === fb) place(ty, 'food');
         else if (d && R && d === R.sink) place(ty, 'pantry');
@@ -2338,7 +2375,7 @@ export class Game extends Phaser.Scene {
     // (a shelf can hold more than its max for a moment — a porter's load lands on a nearly full shelf, items fly in:
     //  the restore keeps maxPerType, the rest is saved elsewhere)
     const trim = new Map();
-    for (const [seller, types] of [[this.market, FOODS], [this.trade, GOODS], [this.store, STORE_GOODS]]) {
+    for (const [seller, types] of [[this.market, SHOP_FOODS], [this.trade, GOODS], [this.store, STORE_GOODS], [BK, BAKERY_GOODS]]) {
       if (!seller || !seller.stock) continue;
       const tm = {};
       for (const ty of types) { const over = seller.stock.countWithIncoming(ty) - seller.maxPerType; if (over > 0) { tm[ty] = over; for (let k = 0; k < over; k++) place(ty, null); } }
@@ -2357,6 +2394,10 @@ export class Game extends Phaser.Scene {
     for (const w of this.workers) if (w.pile && w.pile.id in piles) for (const ty of typesOf(w)) place(ty, 'pile');
     for (const r of this.rawPorters) for (const ty of typesOf(r)) place(ty, r.dest && r.dest.station ? 'input' : 'pile');
     for (const c of this.store ? this.store.queue : []) for (const ty of c.bought.concat(c.flying || [])) place(ty, 'store');
+    for (const c of BK ? BK.queue : []) for (const ty of c.bought.concat(c.flying || [])) place(ty, 'bakery');
+    // ((v4.3 밀밭 · 빵집) the loaves still in the oven are saved on the rack (BakeryStation.serialize): past the rack's max they go
+    //  to the stall's case, else on down the bread's chain)
+    { const bs = this.stations.bakery, d = st.bakery; if (bs && d && d.o > bs.outStack.max) { const ov = d.o - bs.outStack.max; d.o = bs.outStack.max; for (let k = 0; k < ov; k++) place('item_bread', 'bakery'); } }
     // (v3.5 review) raw items on their way into a station that is already full go back onto its pile
     // (the input is restored up to its maximum: nothing may vanish on a reload)
     for (const s of this.stationList) {
@@ -2382,6 +2423,7 @@ export class Game extends Phaser.Scene {
       food, dock, workshops: wss,
       store: this.store ? { stock: shelf(this.store.stock, STORE_GOODS, storeExtra), cash: this.store.cash.serialize() } : undefined,
     };
+    const bkS = this.bakery ? this.bakery.stall : null;
     const pl = this.player.stack;
     const out = {
       territory: this.territory.serialize(),
@@ -2393,6 +2435,8 @@ export class Game extends Phaser.Scene {
       market: { stock: shelf(this.market.stock, FOODS, unpaid), cash: this.market.cash.serialize() },
       // ((v4.3) one till for the whole shop: its coins save with `market` (an old save's trade cash is added to it on load)
       trade: { stock: shelf(this.trade.stock, GOODS, tradeExtra), cash: 0 },
+      // ((v4.3 밀밭 · 빵집) the bakery stall's case and its till (bread no longer lies on the shop's rack)
+      bakery: bkS ? { stock: BK ? shelf(BK.stock, BAKERY_GOODS, bakeryExtra) : { item_bread: 0 }, cash: bkS.cash.serialize() } : undefined,
       player: { x: Math.round(this.player.x), y: Math.round(this.player.y), stack: pl.items.map((i) => i.type).concat(pl.inTypes) },
       life: this.life ? this.life.serialize() : undefined,
       labour: { piles },
@@ -2431,7 +2475,11 @@ export class Game extends Phaser.Scene {
     //  nothing an old village owns may vanish)
     const over = {};
     const fillN = (stock, obj, max, ok) => { if (!obj) return; for (const ty in obj) { const n = Math.max(0, Math.floor(obj[ty] || 0)); const k = ok ? Math.min(max, n) : 0; for (let i = 0; i < k; i++) stock.push(ty, null, fx); if (n > k) over[ty] = (over[ty] || 0) + n - k; } };
-    if (sv.market) fillN(this.market.stock, sv.market.stock, this.market.maxPerType, true);
+    // ((v4.3 밀밭 · 빵집) bread on an old save's shop rack goes to the bakery (its stall, its rack, the 창고, else coins in its till)
+    const oldBread = sv.market && sv.market.stock ? Math.max(0, Math.floor(Number(sv.market.stock.item_bread) || 0)) : 0;
+    const mkStock = sv.market && sv.market.stock ? Object.assign({}, sv.market.stock) : null;
+    if (mkStock) delete mkStock.item_bread;
+    if (sv.market) fillN(this.market.stock, mkStock, this.market.maxPerType, true);
     if (sv.trade) fillN(this.trade.stock, sv.trade.stock, this.trade.maxPerType, this.trade.open);
     const tillCoins = (sv.market ? Math.max(0, Math.floor(Number(sv.market.cash) || 0)) : 0) + (sv.trade ? Math.max(0, Math.floor(Number(sv.trade.cash) || 0)) : 0);
     if (tillCoins > 0) this.market.cash.restore(tillCoins);
@@ -2439,6 +2487,26 @@ export class Game extends Phaser.Scene {
     // (what the shop took back at load: tests compare it with the save — sales start right after)
     const cnt = (st, types) => Object.fromEntries(types.map((ty) => [ty, st.countOf(ty)]));
     this.shopLoaded = { stage: this.market.stage, food: cnt(this.market.stock, FOODS), mat: cnt(this.trade.stock, GOODS), till: this.market.cash.value, over: Object.assign({}, over) };
+    // ((v4.3 밀밭 · 빵집) the bakery: its saved case + till, then an old village's shop bread (stall → rack; the rest after the 창고's
+    //  own stock came back: settleShopOver)
+    {
+      const bk = this.bakery ? this.bakery.restore(sv.bakery) : { stall: 0, over: 0 };
+      let n = oldBread + bk.over;
+      const res = { old: oldBread, saved: bk.stall, stall: 0, rack: 0, wh: 0, coins: 0 };
+      if (n > 0 && this.bakery && this.bakery.built) {
+        const S = this.bakery.stall, bs = this.stations.bakery;
+        let k = Math.max(0, Math.min(n, S.maxPerType - S.stock.count));
+        for (let i = 0; i < k; i++) S.stock.push('item_bread', null, fx);
+        res.stall = k; n -= k;
+        k = Math.max(0, Math.min(n, bs.outStack.max - bs.outStack.count - bs.outStack.incoming));
+        for (let i = 0; i < k; i++) bs.outStack.push('item_bread', null, fx);
+        res.rack = k; n -= k;
+        S.caseShown = -1; S.caseChanged();
+      }
+      this.breadOver = n > 0 ? n : 0;
+      res.rackAt = this.stations.bakery ? this.stations.bakery.outStack.count : 0;
+      this.shopLoaded.bread = res;
+    }
     if (sv.player && sv.player.stack) for (const ty of sv.player.stack.slice(0, this.player.capacity)) this.player.stack.push(ty, null, fx);
     this.market.restoreQueue(BALANCE.start.firstCustomers);
   }
@@ -2446,6 +2514,16 @@ export class Game extends Phaser.Scene {
   /** ((v4.3) what an old save's shelves held beyond the shop's racks (Game.restore): into the 창고 when there is room (after
    *  its own stock came back), the rest paid into the shop's till at today's price */
   settleShopOver() {
+    // ((v4.3 밀밭 · 빵집) an old village's shop bread that found no room at the bakery: into the 창고, else paid at today's price
+    //  into the bakery's till (the shop's while there is no bakery)
+    const bo = this.breadOver || 0;
+    this.breadOver = 0;
+    if (bo > 0) {
+      let n = bo;
+      const W0 = this.warehouse, R = this.shopLoaded && this.shopLoaded.bread;
+      if (W0 && W0.accepts('item_bread')) { const k = Math.max(0, Math.min(n, W0.cap - W0.total)); if (k) { W0.restore({ item_bread: k }); n -= k; if (R) R.wh = k; } }
+      if (n > 0) { const c = n * priceOf('item_bread'); ((this.bakery && this.bakery.built) ? this.bakery.stall.cash : this.market.cash).addQuiet(c); if (R) R.coins = c; }
+    }
     const over = this.shopOver;
     this.shopOver = null;
     if (!over) return;
@@ -2512,6 +2590,7 @@ export class Game extends Phaser.Scene {
           warehouse: gs.warehouse ? { total: gs.warehouse.total, counts: Object.assign({}, gs.warehouse.counts) } : null,
           workshops: Object.fromEntries(gs.workshops.map((w) => [w.kind, { in: w.inStack.count, out: w.outStack.count, outs: w.serialize().outs, working: w.working }])),
           store: gs.store ? { stock: gs.store.stock.count, cash: gs.store.cash.value, queue: gs.store.queue.length, clerk: !!gs.store.register.clerk, waitingPay: gs.store.waitingPay } : null,
+          bakery: gs.bakery ? gs.bakery.state() : null,
           boat: gs.boathouse && gs.boathouse.boat ? { level: gs.boathouse.level, state: gs.boathouse.boat.state, cargo: gs.boathouse.boat.cargo.count, x: Math.round(gs.boathouse.boat.x), y: Math.round(gs.boathouse.boat.y), catch: gs.boathouse.outStack.count } : null,
           population: gs.life ? { people: gs.life.people(), cap: gs.popCap(), waiting: gs.life.waiting.length } : null,
           goal: gs.progress.nextGoal() ? gs.progress.nextGoal().id : null,
@@ -2536,6 +2615,8 @@ export class Game extends Phaser.Scene {
         };
       },
       give(c) { gs.economy.add(Math.floor(c || 0)); return gs.economy.coins; },
+      /** ((v4.3 밀밭 · 빵집) the bakery: built, the case / rack / oven / wheat, its till, line, clerk, baker (Bakery43.state) */
+      bakery() { return gs.bakery ? gs.bakery.state() : null; },
       /** (v4.3) the fishing deck: state; { hire: n } hires fishermen up to n (the steps hire_fisherman / hire2 / hire3, their
        *  pads skipped: tests), { instant } seats them at once */
       deck(o) {
@@ -2593,8 +2674,18 @@ export class Game extends Phaser.Scene {
           //  registers, the merchant; (review PT-4) the deck's reel spot and fish crate, the food lanes' shelf (one rack)
           matShelf: gs.trade.enabled ? gs.trade.shelf : null, matRegister: gs.trade.enabled ? gs.trade.register : null, merchant: gs.trade.merchant,
           reel: gs.deck ? gs.deck.gather : gs.net.gather, deckReel: gs.deck ? gs.deck.gather : null, crate: gs.piles.fish || null,
-          fishShelf: gs.market.shelf, breadShelf: gs.market.shelf,
+          fishShelf: gs.market.shelf, meatShelf: gs.market.shelf,
         };
+        // ((v4.3 밀밭 · 빵집) the bakery: its stall's shelf pad / register R / till, the doorway pad W, the oven's in-pad I and the
+        //  bread rack O, the baker's post, the stall itself, the field's 농막 (breadShelf = the stall's shelf now)
+        const BKy = gs.bakery;
+        if (BKy && BKy.built) {
+          const S = BKy.stall, bs = gs.stations.bakery;
+          Object.assign(m, { bakeryStall: S, bakeryShelf: S.shelf, breadShelf: S.shelf, bakeryRegister: S.register, bakeryCash: S.cash.pad, bakeryDoor: bs.op, bakeryIn: bs.inPad, bakeryOut: bs.outPad, bakeryRack: bs.outPad, bakeryPost: bs.op.post, bakeryCase: S.caseAt });
+        }
+        if (BKy) m.bakery = BKy.station;
+        { const q = WORLD.roads.nodes.bakery_q; if (q) m.bakeryQ = { x: q[0], y: q[1] }; }
+        if (gs.decorById && gs.decorById.farm43_hut) m.nongmak = gs.decorById.farm43_hut;
         for (const id in gs.market.lanes || {}) { const L = gs.market.lanes[id]; if (L.open && L.register) m[id + 'Register'] = L.register; }
         for (const s of gs.stationList) { m[s.id + 'In'] = s.inPad; m[s.id + 'Out'] = s.outPad; }
         for (const id in gs.progress.pads) m[id] = gs.progress.pads[id];

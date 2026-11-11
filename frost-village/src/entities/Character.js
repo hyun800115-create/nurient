@@ -13,7 +13,8 @@ import { DollSprite } from './DollSprite.js';
 import { Residency } from '../core/Residency.js';
 
 // anims that are always resident (no on-demand page lookup for them: they are played every frame)
-const LOCO = new Set(['idle', 'walk', 'run', 'sit', 'work', 'operate']);
+// ((v4.3 밀밭 · 빵집) + the baker's knead / oven_in / oven_out: on her resident core page (tools/build/pack_pages.py CORE_ANIMS)
+const LOCO = new Set(['idle', 'walk', 'run', 'sit', 'work', 'operate', 'knead', 'oven_in', 'oven_out']);
 
 // small sideways shift of a head-carried tower per rendered direction (the head leans a little)
 const HEAD_DX = { S: 0, SE: 3, E: 5, NE: 3, N: 0 };

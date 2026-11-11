@@ -258,6 +258,8 @@ try {
   s = await st();
   const mig = { coins: s.coins, ops: Object.fromEntries(Object.entries(s.ops).map(([k, v]) => [k, v.hired])), raw: s.rawPorters.map((r) => r.station), done: s.done.filter((d) => /^(op|raw)_/.test(d)) };
   step('v3 save migrates: lines that ran on their own keep operator + raw porter, the toolsmith its operator', s.coins === 777 && ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse', 'toolsmith'].every((k) => mig.ops[k]) && mig.raw.length === 5, JSON.stringify(mig));
+  // ((v4.3 밀밭 · 빵집) the field was open: the bakery (its cottage + stall) and its 판매원 come free, the baker works in it
+  step('v3 save with the field: the bakery and its clerk come free (bld_bakery, hire_clerk_bakery), the baker hired in it', s.done.includes('bld_bakery') && s.done.includes('hire_clerk_bakery') && s.bakery && s.bakery.built && s.bakery.clerk && mig.ops.bakery, JSON.stringify({ done: s.done.filter((d) => /bakery/.test(d)), bakery: s.bakery }));
   await adv(20);
   s = await st();
   step('migrated lines keep producing (no stall after the update)', s.ops.grill.out + s.market.stock + s.market.cash > 0 && Object.values(s.piles).some((p) => p.n > 0 || true), JSON.stringify(s.ops.grill));

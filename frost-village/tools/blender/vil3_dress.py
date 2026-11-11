@@ -17,7 +17,7 @@ New looks
 Work tools (add_work_tools(rig, role)) - every tool is an unparented empty with child
 meshes, registered as a Rig toggle (so it is hidden in every other anim) and placed each
 frame by a Rig.strings callback from the pose's '_work' state (see vil3_anim):
-    grill       pan, fish_op                  bakery     rpin, board, dough
+    grill       pan, fish_op                  bakery     rpin, board, dough (+ peel: v4.3 bakery43 anims)
     smelter     hammer, tongs, hotbar         sawmill    log
     smokehouse  ham, fan                      cannery    press, lever, ram, can_open, can_sealed
 pin_hands() runs FIRST in Rig.strings: it re-solves the arm IK so the mitten centres land
@@ -316,6 +316,22 @@ def make_dough(e):
                        loc=(0, 0, 0.025))]
 
 
+def make_peel(e):
+    """(v4.3 bakery split) the baker's EMPTY wooden peel: handle along -y from the right-hand grip, a flat blade at
+    the far end (tip va3.PEEL_TIP from the grip). Never anything on it (the loaves are the game's item sprites)."""
+    wood = M('peel_wood', '#D9A867', rough=0.55)
+    dark = M('peel_handle', '#A8743F', rough=0.55)
+    tip = va3.PEEL_TIP
+    blade_l = 0.25
+    objs = [g.mesh_obj('peel_handle', _y_cyl(0.018, 0.018, tip - blade_l + 0.08, seg=12), dark, e,
+                       loc=(0, -(tip - blade_l - 0.08) / 2, 0)),
+            g.mesh_obj('peel_blade', g.bm_box(0.27, blade_l, 0.016, bevel=0.007), wood, e,
+                       loc=(0, -(tip - blade_l / 2), -0.007)),
+            g.mesh_obj('peel_neck', g.bm_box(0.07, 0.06, 0.018, bevel=0.006), wood, e,
+                       loc=(0, -(tip - blade_l - 0.02), -0.009))]
+    return objs
+
+
 def make_hammer(e):
     wood = M('hammer_wood', '#C98F55', rough=0.55)
     iron = M('hammer_iron', '#A9B2BF', rough=0.30, metal=0.6)
@@ -472,7 +488,7 @@ def _can(e, sealed):
 
 TOOLS = {
     'grill': {'pan': make_pan, 'fish_op': make_fish},
-    'bakery': {'rpin': make_rolling_pin, 'board': make_board, 'dough': make_dough},
+    'bakery': {'rpin': make_rolling_pin, 'board': make_board, 'dough': make_dough, 'peel': make_peel},
     'smelter': {'hammer': make_hammer, 'tongs': make_tongs, 'hotbar': make_hotbar},
     'sawmill': {'log': make_log},
     'smokehouse': {'ham': make_ham, 'fan': make_fan},

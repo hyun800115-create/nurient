@@ -9,12 +9,12 @@ import { ItemStack } from './ItemStack.js';
 import { Character } from './Character.js';
 import { Register } from './Register.js';
 import { DEPTH } from '../systems/DepthSort.js';
-import { FOODS, GOODS, priceOf } from '../data/items.js';
+import { FOODS, GOODS, SHOP_FOODS, priceOf } from '../data/items.js';
 import { PRIO } from '../systems/Logistics.js';
 import { t } from '../data/strings.js';
 import { floatLabel } from './Shop.js';
 
-export { FOODS, GOODS };
+export { FOODS, GOODS, SHOP_FOODS };
 
 // ------------------------------------------------------------------ cash pad
 /** (v4.2 F1) has this shelf had none of `ty` for porters.shelfEmptyAfter s? (Surplus keeps the clocks) */
@@ -223,7 +223,8 @@ export class Market {
     this.maxPerType = Math.max(1, Math.floor(cfg.shelfMax || BALANCE.customers.shelfMax) || 40);
     const tc = {};
     this.goods.forEach((g, i) => { tc[g] = i; });
-    this.stock = new ItemStack(gs, {
+    // ((v4.3 밀밭 · 빵집) cfg.makeStock: a stock of its own (the bakery stall's bread case: data, drawn by the case's overlays)
+    this.stock = cfg.makeStock ? cfg.makeStock(this) : new ItemStack(gs, {
       scale: 0.95, cols: cfg.stockCols || [[-28, -2], [0, 10], [28, -2]],
       typeCols: tc, max: this.maxPerType * this.goods.length, bake: cfg.id === 'store' ? true : 'eager',
       // ((v4.2.0.2 fix STALL-P2) the plaza stall's towers stop growing below its signboard (world.js stockDrawMax):
@@ -326,9 +327,12 @@ export class Market {
     // ((v4.2 fix) the general store's places moved around a pine / the edge of the land: Game.storeLine)
     if (c.slots && c.slots[i]) return { x: c.slots[i].x, y: c.slots[i].y };
     const turn = c.queueTurn || 1e9;
-    const a = Math.min(i, turn - 1), b = Math.max(0, i - (turn - 1));
-    const s2 = c.queueStep2 || c.queueStep;
-    return { x: this.x + c.queueStart[0] + c.queueStep[0] * a + s2[0] * b, y: this.y + c.queueStart[1] + c.queueStep[1] * a + s2[1] * b };
+    // ((v4.3 밀밭 · 빵집) queueTurn2 / queueStep3: a second bend (the shop's stage-3 east line: its places past the 8th went
+    //  under the bakery cottage's roof, they turn back down-left there)
+    const turn2 = c.queueTurn2 && c.queueStep3 ? Math.max(turn, c.queueTurn2) : 1e9;
+    const a = Math.min(i, turn - 1), b = Math.max(0, Math.min(i, turn2 - 1) - (turn - 1)), e = Math.max(0, i - (turn2 - 1));
+    const s2 = c.queueStep2 || c.queueStep, s3 = c.queueStep3 || [0, 0];
+    return { x: this.x + c.queueStart[0] + c.queueStep[0] * a + s2[0] * b + s3[0] * e, y: this.y + c.queueStart[1] + c.queueStep[1] * a + s2[1] * b + s3[1] * e };
   }
 
   accepts(type) { return this.goods.indexOf(type) >= 0 && this.stock.countOf(type) < this.maxPerType; }
@@ -890,11 +894,13 @@ export class TradePost {
 //   first lane takes them, as the stall always did. A lane whose kinds have been gone for market43.switchS s (or that
 //   nobody serves) sends its waiting customers to a served lane that has stock. Customers still appear on market.entry.
 //   Seats: the clerks belong to seats that move with the stages — A = the first clerk (hire_clerk_market: the food lane,
-//   at stage 3 the fish lane), M = the 자재 점원 (hire_clerk_trade), B = the stage-3 빵·고기 clerk (hire_clerk_s3).
-const LANE_TYPES = { food: FOODS, fish: ['item_fish_cooked'], breadmeat: ['item_bread', 'item_meat_cooked'] };
-export const SHOP_COUNTERS = { 1: ['food'], 2: ['mat', 'food'], 3: ['mat', 'fish', 'breadmeat'] };
+//   at stage 3 the fish lane), M = the 자재 점원 (hire_clerk_trade), B = the stage-3 고기 clerk (hire_clerk_s3).
+// ((v4.3 밀밭 · 빵집) bread is sold only at the bakery's own stall: the food counters sell fish + meat (SHOP_FOODS) and the
+//  stage-3 third counter is the meat counter (seat B, 고기 점원: hire_clerk_s3)
+const LANE_TYPES = { food: SHOP_FOODS, fish: ['item_fish_cooked'], meat: ['item_meat_cooked'] };
+export const SHOP_COUNTERS = { 1: ['food'], 2: ['mat', 'food'], 3: ['mat', 'fish', 'meat'] };
 export const SHOP_STAGE_MAX = 3;
-const SEAT_OF = { food: 'A', fish: 'A', breadmeat: 'B', mat: 'M' };
+const SEAT_OF = { food: 'A', fish: 'A', meat: 'B', mat: 'M' };
 const M43 = () => BALANCE.market43 || {};
 const LANE_BUBBLE = (slot) => (slot <= 0 ? 0.74 : slot === 1 ? 0.64 : 0.56);
 const m43List = (k, i, d) => { const a = M43()[k]; const v = Array.isArray(a) ? Number(a[Math.max(0, Math.min(a.length - 1, i))]) : NaN; return Number.isFinite(v) && v > 0 ? v : d; };
@@ -1113,7 +1119,7 @@ export class StageMarket {
   constructor(gs, cfg) {
     this.gs = gs; this.cfg = cfg;
     this.id = 'market';
-    this.goods = FOODS;
+    this.goods = SHOP_FOODS;
     this.enabled = true;
     this.stage = 1;
     this.base = { x: cfg.x, y: cfg.y };            // the stage-1 stall's anchor (world.js market): stage offsets start here
@@ -1136,18 +1142,19 @@ export class StageMarket {
     this.shelf = new Pad(gs, this.x + cfg.shelf[0], this.y + cfg.shelf[1], 'input', 1.6, { icon: FOODS[0], iconSize: 40 });
     this.maxPerType = shopShelfMax(1);
     const tc = {};
+    // ((v4.3 밀밭 · 빵집) the towers keep their places (fish left, meat right): the middle one was bread's
     FOODS.forEach((g, i) => { tc[g] = i; });
     this.stock = new ItemStack(gs, {
-      scale: 0.95, cols: cfg.stockCols || [[-28, -2], [0, 10], [28, -2]], typeCols: tc, max: shopShelfMax(SHOP_STAGE_MAX) * FOODS.length, bake: 'eager',
+      scale: 0.95, cols: cfg.stockCols || [[-28, -2], [0, 10], [28, -2]], typeCols: tc, max: shopShelfMax(SHOP_STAGE_MAX) * SHOP_FOODS.length, bake: 'eager',
       drawMax: Math.max(0, Math.floor(cfg.stockDrawMax) || 0), drawMaxBy: cfg.stockDrawMaxBy || null,
     });
     this.cash = new CashPad(gs, this.x + cfg.cash[0], this.y + cfg.cash[1]);
     this.leaving = [];
     this.spawnT = 1.0;
     this.lastKeys = [];
-    this.lanes = { food: new Lane(this, 'food'), fish: new Lane(this, 'fish'), breadmeat: new Lane(this, 'breadmeat') };
+    this.lanes = { food: new Lane(this, 'food'), fish: new Lane(this, 'fish'), meat: new Lane(this, 'meat') };
     this.mat = new MatCounter(this);
-    // the seats' registers (A: the first clerk, M: the 자재 점원, B: the stage-3 빵·고기 clerk), all built on the stall's art
+    // the seats' registers (A: the first clerk, M: the 자재 점원, B: the stage-3 고기 clerk), all built on the stall's art
     const clerkOf = { A: cfg.clerk, M: (cfg.mat && cfg.mat.clerk) || ['npc_clerk_b', 'npc_merchant'], B: cfg.clerk3 || cfg.clerk };
     this.seats = {};
     for (const k of ['A', 'M', 'B']) {
@@ -1160,7 +1167,7 @@ export class StageMarket {
     this.sign = null; this.plates = [];
     this.sink = {
       id: this.id + '_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
-      accepts: (ty) => FOODS.indexOf(ty) >= 0,
+      accepts: (ty) => SHOP_FOODS.indexOf(ty) >= 0,
       room: (ty) => (this.enabled ? Math.max(0, this.maxPerType - this.stock.countWithIncoming(ty)) : 0),
       prio: (ty) => (shelfEmpty(gs, this, ty) ? PRIO.SHELF_EMPTY : this.stock.countWithIncoming(ty) < this.maxPerType * (BALANCE.warehouse.restockBelow || 0.25) ? PRIO.SHELF_LOW : PRIO.SHELF),
       feed: (ch) => this.feedFrom(ch),
@@ -1181,8 +1188,9 @@ export class StageMarket {
   get maxQueue() { return Math.max(1, Math.floor(this.cfg.maxQueue || BALANCE.customers.maxQueue) || 6); }
   /** the lane of seat A now (the stall's line; the fish line at stage 3) */
   get primary() { return this.stage >= 3 ? this.lanes.fish : this.lanes.food; }
-  /** a seller's register by the step's seller id ('market' = seat A, 'trade' = the 자재 창구, 'breadmeat' = seat B) */
-  registerOf(seller) { return seller === 'trade' || seller === 'mat' ? this.seats.M : seller === 'breadmeat' ? this.seats.B : this.seats.A; }
+  /** a seller's register by the step's seller id ('market' = seat A, 'trade' = the 자재 창구, 'meat' = seat B; 'breadmeat' =
+   *  seat B too: an a2-era save's step) */
+  registerOf(seller) { return seller === 'trade' || seller === 'mat' ? this.seats.M : seller === 'meat' || seller === 'breadmeat' ? this.seats.B : this.seats.A; }
 
   /**
    * go to stage `st`: the art, the counters (their pads, clerks' posts, lines), the racks, the till, the walls. instant =
@@ -1261,6 +1269,8 @@ export class StageMarket {
           queueTurn: Math.min(st === 3 && k === ids.length - 1 ? 4 : 1e9, Math.max(2, Math.floor(Number(M43().lineShow) || this.cfg.queueTurn || 6))),
           // the east-most line bends east (as the stall's did), the others bend west: never into the next line
           queueStep2: st === 1 ? (this.cfg.queueStep2 || XO(0.9)) : (k === ids.length - 1 ? XO(0.9) : XO(-0.9)),
+          // ((v4.3 밀밭 · 빵집) the stage-3 east line's 9th / 10th places stood under the bakery cottage's roof: back down-left there
+          queueTurn2: st === 3 && k === ids.length - 1 ? 8 : 0, queueStep3: st === 3 && k === ids.length - 1 ? YO(-0.9) : null,
           faceTo: st === 1 ? (this.cfg.faceTo || [40, -20]) : [(staff[0] + 11), (staff[1] - 14)],
         };
       }
@@ -1306,8 +1316,8 @@ export class StageMarket {
     g.clear();
     let n = 0;
     if (st >= 2) {
-      const COL = { mat: 0x8ea2b6, food: 0xe7a55e, fish: 0x6aa6dc, breadmeat: 0xe7a55e };
-      const ICON = { mat: 'item_plank', food: 'item_fish_cooked', fish: 'item_fish_cooked', breadmeat: 'item_bread' };
+      const COL = { mat: 0x8ea2b6, food: 0xe7a55e, fish: 0x6aa6dc, meat: 0xd0806a };
+      const ICON = { mat: 'item_plank', food: 'item_fish_cooked', fish: 'item_fish_cooked', meat: 'item_meat_cooked' };
       for (const id of SHOP_COUNTERS[st]) {
         const c = id === 'mat' ? this.mat.merchant : null;
         const L = id === 'mat' ? null : this.lanes[id];
@@ -1403,7 +1413,8 @@ export class StageMarket {
       const pq = pl.quad;
       if (!Array.isArray(pq) || pq.length < 4) continue;
       const txt = t(pl.text) || '';
-      const icon = { plate_fish: 'item_fish_cooked', plate_food: 'item_fish_cooked', plate_breadmeat: 'item_bread', plate_mat: 'item_plank' }[pl.text] || null;
+      // ((v4.3 밀밭 · 빵집) the third plate (plate_breadmeat in the a2 art, plate_meat in a later one) reads 고기 with the meat icon
+      const icon = { plate_fish: 'item_fish_cooked', plate_food: 'item_fish_cooked', plate_breadmeat: 'item_meat_cooked', plate_meat: 'item_meat_cooked', plate_mat: 'item_plank' }[pl.text] || null;
       const w = Math.max(8, pq[1][0] - pq[0][0]), h = Math.max(8, pq[3][1] - pq[0][1]);
       const room = icon ? Math.min(w * 0.36, h * 1.25) : 0;
       const key = 'fv_plate_' + this.stage + '_' + pl.text + '_' + txt;
@@ -1476,7 +1487,7 @@ export class StageMarket {
   /** the chief stands on one of the shop's register pads */
   chiefOn() { for (const k in this.seats) if (this.seats[k].chief) return true; return false; }
   slotPos(i) { return this.primary.slotPos(i); }
-  accepts(type) { return FOODS.indexOf(type) >= 0 && this.stock.countOf(type) < this.maxPerType; }
+  accepts(type) { return SHOP_FOODS.indexOf(type) >= 0 && this.stock.countOf(type) < this.maxPerType; }
   feedFrom(ch) { return Market.prototype.feedFrom.call(this, ch); }
   customerKeys() { return Market.prototype.customerKeys.call(this); }
   entryPath(from, sp) {
@@ -1485,7 +1496,13 @@ export class StageMarket {
   }
   exitPath(c) { return Market.prototype.exitPath.call(this, c); }
   spawnPoint() { return Market.prototype.spawnPoint.call(this); }
-  availableFoods() { return Market.prototype.availableFoods.call(this); }
+  /** ((v4.3 밀밭 · 빵집) what the shop's customers ask for: grilled fish, smoked meat once the hunt is open — never bread
+   *  (the bakery's stall sells it) */
+  availableFoods() {
+    const p = this.gs.progress, list = ['item_fish_cooked'];
+    if (p && p.isDone('zone_hunt')) list.push('item_meat_cooked');
+    return list;
+  }
 
   /** the open lane that sells `type` (a served one first) */
   laneFor(type, servedOnly) {
@@ -1656,7 +1673,8 @@ export class StageMarket {
     Audio.play('sfx_customer_happy', { volume: 0.7 });
     gs.time.delayedCall(200, () => { this.cash.add(value, c.x, c.y - 50); if (gs.isNear(c.x, c.y, 650)) Audio.play('sfx_cash', { volume: 0.55, throttle: 250 }); });
     gs.events.emit(this.cfg.soldEvent || 'sold', value, c);
-    // ((v4.3, D4) the first bread sold: the 눈꽃 시장 pad appears (Progression mkt_s3 flag)
-    if (gs.progress && !gs.progress.flags.firstBreadSale && (c.bought || []).indexOf('item_bread') >= 0) gs.progress.setFlag('firstBreadSale');
+    // ((v4.3 밀밭 · 빵집, D4 alternative B) the first smoked meat sold: the 눈꽃 시장 pad appears after village complete (Progression
+    //  mkt_s3: after hire_hunter, flag firstMeatSale). The first bread sale is the bakery stall's now (Bakery43)
+    if (gs.progress && !gs.progress.flags.firstMeatSale && (c.bought || []).indexOf('item_meat_cooked') >= 0) gs.progress.setFlag('firstMeatSale');
   }
 }

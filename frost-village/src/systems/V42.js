@@ -12,7 +12,7 @@ import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
 import { Settings } from '../core/Save.js';
 import { StockLedger, LINES } from './StockLedger.js';
-import { FOODS, GOODS } from '../entities/Seller.js';
+import { SHOP_FOODS, GOODS } from '../entities/Seller.js';
 
 /** the village tills: [{ name, till }] — every CashPad that takes coins (depot = the DepotSystem, optional) */
 export function villageTills(gs, depot) {
@@ -22,6 +22,8 @@ export function villageTills(gs, depot) {
   // ((v4.3) the 자재 창구 pays into the shop's one till (gs.market.cash): an old build's separate trade till only)
   if (gs.trade && gs.trade.enabled && gs.trade.cash !== (gs.market && gs.market.cash)) add('trade', gs.trade.cash);
   if (gs.store && gs.store.enabled) add('store', gs.store.cash);
+  // ((v4.3 밀밭 · 빵집) the bakery stall's till (딸랑이's round, 관망's 수금 pick it up through gs.tills)
+  if (gs.bakery && gs.bakery.built) add('bakery', gs.bakery.stall.cash);
   const C = gs.civic;
   if (C && C.restaurant && C.restaurant.cash) add('rest', C.restaurant.cash);
   if (C && C.hall && C.hall.tax) add('tax', C.hall.tax);
@@ -81,7 +83,9 @@ export class V42 {
       if (!seller) return;
       for (const ty of types) L.register({ id: 'shelf:' + ty + (tag || ''), kind: 'shelf', item: ty, cap: seller.maxPerType || 40, get: () => (seller.enabled === false ? 0 : seller.stock.countOf(ty)), place: { x: seller.shelf.x, y: seller.shelf.y }, emptyAt: emptyAt || 0 });
     };
-    shelf(gs.market, FOODS);
+    shelf(gs.market, SHOP_FOODS);
+    // ((v4.3 밀밭 · 빵집) bread's shelf is the bakery stall's case (the ledger's id stays shelf:item_bread)
+    if (gs.bakery) { const S = gs.bakery.stall; L.register({ id: 'shelf:item_bread', kind: 'shelf', item: 'item_bread', cap: S.maxPerType || 24, get: () => (gs.bakery.built && S.enabled ? S.stock.countOf('item_bread') : 0), place: { x: S.shelf.x, y: S.shelf.y }, emptyAt: 0 }); }
     // ((v4.2 fix, gameplay L3) the 교역소 keeps trade.displayKeep of each good on display after village complete: that
     //  many reads as empty for the 재고 statuses)
     shelf(gs.trade, GOODS, '', () => (this.complete ? Math.max(0, Number(BALANCE.v42 && BALANCE.v42.trade && BALANCE.v42.trade.displayKeep) || 0) : 0));

@@ -336,3 +336,121 @@ def operate_info(role):
     info = dict(ANIMS['operate'])
     info['impactFrame'] = ROLES[role]['impactFrame']
     return info
+
+
+# =========================================================================== (v4.3 bakery split) the baker's motions
+# 빵집 아주머니 (npc_aunt) in the new bakery cottage (assets/bakery43): she kneads at the table along the cottage's right
+# wall (facing SE), then turns W to the brick oven in the front-left corner: the EMPTY peel slides into the mouth
+# (oven_in), and comes back out (oven_out) - the loaves are item sprites the game flies from bakery43_back
+# fxPoints.ovenMouth, so nothing on the peel is ever bread (ghost-sweep rule).  These replace her generic 'operate'.
+#   knead     8f @ 10 fps, loop, dir SE only (the table is SE of her post), impactFrame 4 = palms press flat
+#   oven_in   6f @ 10 fps, once, dir E only (the game mirrors it to W), impactFrame 3 = the peel is in the mouth
+#   oven_out  6f @ 10 fps, once, dir E only (mirrored W), impactFrame 3 = the peel comes out (loaves released)
+# The oven mouth is 0.64 m in front of her (bakery43 staffPoints[0] -> fxPoints.ovenMouth), its floor 0.50 m high;
+# the kneading board rests on the table top (0.50 m) 0.36 m in front of her.
+PEEL_GRIP = 0.0          # the right hand holds the handle end
+PEEL_LEFT = 0.24         # the left hand, this far along the handle
+PEEL_TIP = 0.64          # grip -> blade tip (vil3_dress.make_peel)
+KNEAD_F = 0.36           # board centre, forward of the anchor
+
+BAKER43_ANIMS = {
+    'knead': dict(frames=8, fps=10, repeat=-1, dirs=['SE'], impactFrame=4),
+    'oven_in': dict(frames=6, fps=10, repeat=0, dirs=['E'], impactFrame=3),
+    'oven_out': dict(frames=6, fps=10, repeat=0, dirs=['E'], impactFrame=3),
+}
+BAKER43_BEATS = {'knead': ('press', (6, 'fold')), 'oven_in': ('peel_in', (3, 'glow_flare')),
+                 'oven_out': ('peel_out', (3, 'loaves_out'))}
+BAKER43_TOOL = {
+    'knead': 'a floured board (resting on the cottage table, top 0.50 m, centre 0.36 m in front) and a ball of dough '
+             'that both palms push down and forward; it squashes flat on frame 4 (impactPoint = flour puff on the '
+             'dough) and is folded back on frame 6 (beats[1]).',
+    'oven_in': 'an EMPTY wooden peel (0.64 m) held in both hands; it slides forward and its blade is inside the oven '
+               'mouth (0.64 m in front, floor 0.50 m) on frame 3 (impactPoint = the blade tip = oven glow flare).',
+    'oven_out': 'the same EMPTY peel reaches into the mouth, scoops and comes back out on frame 3 (impactPoint = the '
+                'blade tip at the mouth: the game releases the batch of loaves there and flies them to the stall).',
+}
+
+
+def _peel_work(grip, el, yawR=-8.0):
+    """Both hands on the peel handle: right hand = grip, left hand PEEL_LEFT further along."""
+    lh = along(grip, el, yawR, PEEL_LEFT)
+    lh = vadd(lh, (-0.035, 0.0, 0.0))
+    tip = along(grip, el, yawR, PEEL_TIP)
+    return lh, tip
+
+
+def _knead(i, ch):
+    k = i % 8
+    #       hand fwd  hand z  dough (sxy, sz)   lean gaze bend face
+    K = [(0.320, 0.700, (0.80, 2.6), 5, 10, 2, 'focus'),          # hands lifted over the dough ball
+         (0.335, 0.660, (0.82, 2.5), 10, 11, 3, 'focus'),
+         (0.352, 0.615, (0.90, 2.1), 15, 12, 5, 'focus_o'),
+         (0.370, 0.585, (1.02, 1.6), 20, 13, 7, 'focus'),
+         (0.388, 0.560, (1.18, 1.2), 26, 14, 9, 'smile'),           # impact: palms press it flat
+         (0.376, 0.570, (1.15, 1.3), 21, 13, 7, 'smile'),
+         (0.330, 0.612, (1.00, 1.8), 12, 12, 4, 'focus'),           # fold it back
+         (0.315, 0.668, (0.86, 2.4), 7, 11, 3, 'focus_blink')][k]
+    hf, hz, (sxy, sz), ln, gz, bend, f = K
+    L = ch.get('leg_len', 0.338)
+    p = {**legs_stand(4, bend), **lean(ln, 0, 0), **gaze(gz, ln), **body(0, -0.004 * ln / 10, 0)}
+    if k == 4:
+        p.update(squat(7, L))
+        p.update(lean(ln))
+        p.update(gaze(gz, ln))
+    dough_top = BOARD_Z + 0.025 * sz * 2
+    spread = 0.062 + 0.012 * (sxy - 0.8)
+    hz = max(hz, dough_top + 0.022)
+    work = {'R': (spread, hf, hz), 'L': (-spread, hf, hz),
+            'poleR': (-0.7, 0.3, -0.7), 'poleL': (0.7, 0.3, -0.7),
+            'props': {'board': {'root': (0.0, KNEAD_F, BOARD_Z)},
+                      'dough': {'root': (0.0, KNEAD_F - 0.01, BOARD_Z), 'scale': (sxy, sxy * 0.95, sz)}},
+            'fx': {'root': (0.0, KNEAD_F + 0.06, dough_top + 0.01)},
+            'fx2': {'root': (0.0, KNEAD_F, dough_top)}}
+    p['_work'] = work
+    p.update(face(f, {'board', 'dough'}))
+    return p
+
+
+def _oven(i, ch, out):
+    k = i % 6
+    if not out:
+        #      grip (r, f, z)            elev lean bend face
+        K = [((0.10, -0.04, 0.720), 28, 4, 2, 'focus'),            # peel raised (blade up, away from the mouth)
+             ((0.10, 0.00, 0.690), 12, 9, 4, 'focus'),
+             ((0.10, 0.07, 0.640), -4, 15, 7, 'focus_o'),            # lowered to the oven floor
+             ((0.10, 0.14, 0.610), -7, 22, 10, 'smile'),            # impact: slid into the mouth
+             ((0.10, 0.10, 0.620), -6, 18, 8, 'smile'),
+             ((0.10, -0.02, 0.690), 10, 7, 3, 'focus_blink')][k]  # drawn back out, rising
+    else:
+        K = [((0.10, 0.10, 0.610), -6, 17, 8, 'focus'),            # reach into the mouth
+             ((0.10, 0.14, 0.600), -7, 22, 10, 'focus'),
+             ((0.10, 0.12, 0.640), 2, 18, 8, 'focus_o'),            # scoop
+             ((0.10, 0.03, 0.700), 12, 10, 5, 'happy'),             # impact: out comes the peel (loaves released)
+             ((0.10, -0.03, 0.740), 30, 5, 3, 'happy'),             # peel swung up high
+             ((0.10, -0.04, 0.720), 18, 4, 2, 'smile')][k]
+    grip, el, ln, bend, f = K
+    yawR = -8.0
+    lh, tip = _peel_work(grip, el, yawR)
+    L = ch.get('leg_len', 0.338)
+    lunge = max(0.0, min(1.0, (grip[1] + 0.06) / 0.2))
+    p = {'hip_L': (16 * lunge + bend, 4, 0), 'knee_L': (20 * lunge + 2 * bend, 0, 0),
+         'hip_R': (-8 * lunge + bend, 4, 0), 'knee_R': (4 + bend, 0, 0),
+         **body(0, -0.035 * lunge, -0.014 * lunge), **lean(ln), **gaze(6, ln)}
+    # the fx markers ride on the peel itself: impactPoint / toolPoints = the blade tip as drawn (even where the
+    # arms fall a few cm short of the grip targets)
+    tip_fx = {'parent': 'peel', 'off': (0.0, PEEL_TIP - 0.03, 0.0)}
+    work = {'R': grip, 'L': lh, 'poleR': (-0.8, 0.2, -0.6), 'poleL': (0.8, 0.3, -0.6),
+            'props': {'peel': {'hand': 'R', 'rot': (el, 0, yawR)}},
+            'fx': tip_fx,
+            'fx2': tip_fx}
+    p['_work'] = work
+    p.update(face(f, {'peel'}))
+    return p
+
+
+BAKER43_FN = {'knead': _knead, 'oven_in': lambda i, ch: _oven(i, ch, False),
+              'oven_out': lambda i, ch: _oven(i, ch, True)}
+
+
+def baker43_pose(anim, i, ch):
+    return BAKER43_FN[anim](i, ch)

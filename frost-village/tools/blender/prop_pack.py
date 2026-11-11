@@ -115,6 +115,10 @@ def load_frames(cache):
                 m = json.load(f)
             if 'key' in m and 'frames' in m:
                 metas[m['key']] = m
+    # (v4.3 bakery split) keys the game no longer draws stay out of the atlases even when a full render has them
+    from prop_check import DROPPED
+    for k in DROPPED:
+        metas.pop(k, None)
     keys = [k for k in KEY_ORDER if k in metas] + sorted(k for k in metas if k not in KEY_ORDER)
     frames = {}
     for k in keys:

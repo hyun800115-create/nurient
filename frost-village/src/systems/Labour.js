@@ -66,6 +66,9 @@ export class OperatorSpot {
     // pad of a build plot; the station's product shows what working here makes
     const tex = Assets.pick('ui_pad_register', 'ui_pad_input');
     this.pad = new Pad(gs, this.x, this.y, 'input', 1.3, { tex, tint: tex === 'ui_pad_register' ? 0xfff2c0 : 0xffd27a });
+    // ((v4.3 밀밭 · 빵집) padDepth: a pad inside a building's doorway (the bakery's) is drawn over its floor (station.y + padDepth),
+    //  under its front layer — on the ground layer the cottage's back picture hid it)
+    if (Number.isFinite(c.padDepth)) this.pad.img.setDepth(station.y + c.padDepth);
     // small floating label "서서 굽기"
     const lab = gs.add.container(this.x, this.y - 48).setDepth(this.y + 1990);
     this.labelText = gs.add.text(0, 0, '', { fontFamily: gs.font, fontSize: '19px', fontStyle: '800', color: '#2b2f3a', resolution: 2 }).setOrigin(0.5, 0.5);
@@ -158,7 +161,9 @@ export class OperatorSpot {
     let key = want;
     if (!Assets.charReady(want)) key = Assets.charReady('villager_b') ? 'villager_b' : 'villager_a';
     const sx = instant || x === undefined ? this.post.x : x, sy = instant || y === undefined ? this.post.y : y;
-    const op = new Operator(gs, this, key, sx, sy);
+    // ((v4.3 밀밭 · 빵집) a station may bring its own operator (the bakery's baker: knead → oven in → oven out)
+    const OpC = this.station.operatorClass || Operator;
+    const op = new OpC(gs, this, key, sx, sy);
     op.wantKey = want !== key ? want : null;
     if (instant) op.arrive();
     else {
@@ -327,7 +332,11 @@ export class Pile {
     if (cfg.prop === 'rack') this.buildRack(this.x + pa[0], this.y + pa[1]);
     else if (cfg.prop) {
       // ((v4.3) propOld: the picture to use while the new one (the deck's fish crate) is not there)
-      const img = Assets.image(gs, this.x + pa[0], this.y + pa[1], cfg.propOld ? Assets.pick(cfg.prop, cfg.propOld) : cfg.prop).setDepth(this.y + pa[1]);
+      //  ((v4.3 밀밭 · 빵집) a prop on an after-title page (the field's grain sacks, assets/bakery43) waits for it: propOld is only for
+      //   art that is not there at all)
+      const pk = cfg.propOld && !Assets.has(cfg.prop) && !Assets.pending(cfg.prop) ? cfg.propOld : cfg.prop;
+      const img = Assets.image(gs, this.x + pa[0], this.y + pa[1], pk).setDepth(this.y + pa[1]);
+      if (gs.lazyImage) gs.lazyImage(img, pk);
       if (cfg.propScale) img.setScale(cfg.propScale);
       this.props.push(img);
       this.obstacle = gs.collision.add(this.x + pa[0], this.y + pa[1], cfg.propR || 22, 'pile');

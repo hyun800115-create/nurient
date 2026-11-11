@@ -39,6 +39,8 @@ ROLE = {'npc_chef': 'grill', 'npc_aunt': 'bakery', 'npc_blacksmith': 'smelter', 
         'npc_smoker': 'smokehouse', 'npc_cannery': 'cannery'}
 
 NOFUR = dict(hem_fur=False, cuff_fur=False, boot_fur=False)
+# (v4.3 bakery split) characters whose station anims are vil3_anim.BAKER43_ANIMS instead of operate
+BAKER43_KEYS = {'npc_aunt'}
 
 SPECS = {
     'npc_sawyer': dict(
@@ -70,6 +72,11 @@ def anims_for(key):
         out = vb2.anims_for(key)
     else:
         out = {n: dict(va3.ANIMS[n]) for n in va3.ORDER if n in va3.CORE}
+    if key in BAKER43_KEYS:
+        # (v4.3 bakery split) the baker's knead / oven_in / oven_out replace her generic operate (bakery43 cottage)
+        for a, info in va3.BAKER43_ANIMS.items():
+            out[a] = dict(info)
+        return out
     out['operate'] = va3.operate_info(ROLE[key])
     return out
 
@@ -152,8 +159,8 @@ def show_set(rig, face, props, anim=None):
 def pose_for(rig, anim, i, d):
     key = rig.meta['key']
     ch = rig.meta['ch']
-    if anim == 'operate':
-        p = va3.operate_pose(ROLE[key], i, ch)
+    if anim == 'operate' or anim in va3.BAKER43_ANIMS:
+        p = va3.operate_pose(ROLE[key], i, ch) if anim == 'operate' else va3.baker43_pose(anim, i, ch)
         extra = va.posture(ch, anim)
         if extra:
             p = add_keep(p, extra)

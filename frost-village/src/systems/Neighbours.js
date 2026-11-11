@@ -511,6 +511,9 @@ export class Neighbours {
     // (B) a founded shop with something on its shelves
     const shops = this.growth && this.growth.shopTargets ? this.growth.shopTargets() : [];
     if (shops.length && r() < V.shopChance) { const sh = shops[Math.floor(r() * shops.length)]; if (sh) targets.splice(r() < 0.5 ? 0 : targets.length, 0, sh); }
+    // ((v4.3 밀밭 · 빵집) the bakery stall: some visitors buy bread there too (when it has bread on its case)
+    const bk = gs.bakery && gs.bakery.built ? gs.bakery.stall : null;
+    if (bk && bk.enabled && bk.stock.count > 0 && r() < (Number(V.bakeryChance) || 0)) targets.push(bk);
     // (v4-C) the big restaurant: some visitors sit down for a meal after shopping
     const RS = gs.civic && gs.civic.restaurant, RC = (BALANCE.civic && BALANCE.civic.restaurant) || {};
     if (RS && RS.enabled && RS.hasFood() && r() < (Number(RC.visitorChance) || 0)) targets.push(RS);

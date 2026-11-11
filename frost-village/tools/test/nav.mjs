@@ -121,6 +121,44 @@ try {
     });
     ok(nc.none && nc.active && /가득|없어요|full|Nowhere/.test(nc.chip || '') && nc.objects === 0, 'nothing takes it: the chip says "가득 · 잠시 기다리거나 버려요", no path drawn', nc);
   }
+  // ((v4.3 밀밭 · 빵집) bread goes to the bakery's stall (or the food box / pantry); the walks to the bakery's pads (I, W, R, O,
+  //  the stall's shelf, its till) never cross the cottage's walls; the wheat porter's way goes through the field's wheat gate;
+  //  farm_link is gone
+  {
+    const bk = await page.evaluate(() => {
+      const F = window.__FV, gs = F.scene, T = gs.tutorial, C = gs.collision, b = gs.bakery;
+      if (!b || !b.built) return { built: false };
+      F.clearStack(); F.carry('item_bread', 4);
+      const d = T.destination('item_bread');
+      F.clearStack();
+      const S = b.stall, st = gs.stations.bakery;
+      const walls = st.walls.filter((w) => w.active);
+      const inWall = (x, y) => walls.some((w) => Math.hypot(x - w.x, (y - w.y) * 2) < w.r - 2);
+      const crossing = [];
+      const froms = [[990, 1100], [1180, 1320], [1573, 1302], [1500, 1000]];
+      const tos = { I: st.inPad, W: st.op.pad, R: S.register, O: st.outPad, shelf: S.shelf, cash: S.cash.pad };
+      for (const f of froms) for (const k in tos) {
+        // (each walk is asked in a frame of its own: the roads' per-frame budget for going round things (Roads.newFrame)
+        //  would otherwise run out after a few, and those legs go straight that frame — the walkers' safety net later)
+        if (gs.roads.newFrame) gs.roads.newFrame(1 / 60);
+        const r = gs.roads.route(f[0], f[1], tos[k].x, tos[k].y, []);
+        let px = f[0], py = f[1];
+        for (const q of r) { for (let t = 0.1; t < 1; t += 0.1) { const x = px + (q.x - px) * t, y = py + (q.y - py) * t; if (inWall(x, y)) { crossing.push(k + ' from ' + f.join(',')); break; } } px = q.x; py = q.y; }
+      }
+      // the wheat porter: pile → I passes the wheat gate (between its posts) and not through the fence
+      if (gs.roads.newFrame) gs.roads.newFrame(1 / 60);
+      const pile = gs.piles.wheat, wr = gs.roads.route(pile.x, pile.y, st.inPad.x, st.inPad.y, []);
+      let fence = false, gx = pile.x, gy = pile.y;
+      for (const q of wr) { for (let t = 0.05; t < 1; t += 0.05) { const x = gx + (q.x - gx) * t, y = gy + (q.y - gy) * t; if (C.blocked(x, y, 6)) { fence = true; break; } } gx = q.x; gy = q.y; }
+      const nodes = gs.roads.nodes.map((n) => n.id);
+      return { built: true, dest: d ? d.label : null, crossing, fence, n: wr.length, farmLink: nodes.indexOf('farm_link') >= 0, fieldGate: nodes.indexOf('field_gate') >= 0 };
+    });
+    if (bk.built) {
+      ok(['place_bakery', 'place_food', 'place_pantry', 'place_dock', 'place_warehouse'].indexOf(bk.dest) >= 0 && bk.dest !== 'place_market', 'bread goes to the bakery stall (or the food box / pantry), never the shop\'s rack (' + bk.dest + ')', bk);
+      ok(bk.crossing.length === 0, 'routes to the bakery\'s pads (I, W, R, O, shelf, till) never cross the cottage walls', bk.crossing.slice(0, 4));
+      ok(!bk.fence && !bk.farmLink && bk.fieldGate, 'the wheat porter\'s way goes through the wheat gate; farm_link is gone, field_gate is there', bk);
+    } else ok(false, 'the 46-min village has its bakery (the field was open)', bk);
+  }
   // off: setting, empty bag
   await page.evaluate(() => { const F = window.__FV; F.clearStack(); F.carry('item_bread', 4); F.v42.settings({ nav: false }); });
   await advance(page, 0.5);
