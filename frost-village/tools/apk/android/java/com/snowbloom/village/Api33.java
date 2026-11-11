@@ -24,7 +24,7 @@ final class Api33 {
 
         @Override
         public void onBackInvoked() {
-            activity.askToExit();
+            activity.onBack();             // (4.3) an open game window closes first, else the exit dialog
         }
     }
 

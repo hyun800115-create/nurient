@@ -119,6 +119,8 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private WebView web;
     private WebBridge bridge;                          // window.SnowbloomAndroid (마을 옮기기)
+    /** (4.3) the page closes its top window (src/core/Back.js): "true" when it did */
+    static final String JS_BACK = "(function(){try{return !!(window.__fvApp&&window.__fvApp.back&&window.__fvApp.back())}catch(e){return false}})()";
     private AlertDialog exitDialog;
     private Object backCallback;                       // Api33.BackCallback (Android 13+)
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -394,7 +396,19 @@ public class MainActivity extends Activity {
      */
     @Override
     public void onBackPressed() {
-        askToExit();
+        onBack();
+    }
+
+    /**
+     * (4.3) Back: a game window open (the residents' window, a profile, following a resident; WebBridge.backOpen) is
+     * closed by the page first (window.__fvApp.back() -> true); otherwise, or when the page does not answer "true",
+     * the exit dialog as before. With nothing open the dialog comes at once (no round trip to the page).
+     */
+    void onBack() {
+        if (web == null || bridge == null || !bridge.backOpen()) { askToExit(); return; }
+        evaluate(JS_BACK, new ValueCallback<String>() {
+            @Override public void onReceiveValue(String v) { if (!"true".equals(v)) askToExit(); }
+        });
     }
 
     /**

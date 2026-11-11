@@ -2083,7 +2083,10 @@ export class Game extends Phaser.Scene {
     }
     if (this.camFocus) { if (time < this.camFocus.until) { fx = this.camFocus.x; fy = this.camFocus.y; } else this.camFocus = null; }
     if (this.overview && !this.camFocus) { const r = this.overviewRect(); fx = r.x + r.w / 2; fy = r.y + r.h / 2 - 40; }
-    const k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
+    let k = this.camFocus ? 1 - Math.pow(1 - 0.06, delta / 16.67) : 1 - Math.pow(1 - BALANCE.camera.lerp, delta / 16.67);
+    // (v4.3 주민 따라가기) the followed resident wins over every other camera target (src/systems/residents/Follow.js)
+    const RF = this.resFollow;
+    if (RF && (RF.on || RF.back)) { k = RF.frame(ct, fx, fy, delta, k); if (RF.on) { fx = RF.px; fy = RF.py; } }
     ct.x += (fx - ct.x) * k; ct.y += (fy - ct.y) * k;
 
     // ambient snow
