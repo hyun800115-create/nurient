@@ -19,7 +19,8 @@
 //   modal     not during settings / overview / a ceremony; Escape and window.__fvApp.back() close profile → list →
 //             window and end a follow, and say false with nothing open
 //   budget    no new texture keys, ≤ 0.25 MiB more GL texture after every page and five profiles; the logic step with
-//             the window open costs about what it costs closed
+//             the window open costs about what it costs closed (its own work timed inside the step ≤ 0.1 ms; the whole
+//             step within 0.1 ms or within the closed bench's own run-to-run spread)
 //   reload    the profiles are the same after a save and a reload
 //   en        360 x 640 English: every row and profile fits
 //   night     the late village at night (screenshots)
@@ -77,12 +78,23 @@ async function enter(page, reload = true) {
   await installStepper(page);
   await page.evaluate(() => { try { if (window.__FV.v42) window.__FV.v42.v.seen.whatsNew = 1; } catch (e) { /* */ } });
 }
+/** (v4.3 마을 깃발) a new game with the tutorial opens 「우리 마을 깃발」 first (the Game paused under it, the tutorial starts
+ *  after): one real tap on 「이대로 시작」, as onboarding.mjs does. 'none' when the maker was not up, else whether the village runs */
+async function passFlagMaker(page) {
+  const at = await page.evaluate(() => { const f = window.__FV.flag && window.__FV.flag(); return f && f.maker && f.maker.open ? f.maker.hit.start : null; });
+  if (!at) return 'none';
+  await render(page, 1);
+  const p = await page.evaluate(([x, y]) => { const c = document.querySelector('canvas').getBoundingClientRect(), ui = window.__FV.game.scene.getScene('UI'); return { x: c.left + x * c.width / ui.W, y: c.top + y * c.height / ui.H }; }, [at.x, at.y]);
+  await page.touchscreen.tap(p.x, p.y);
+  await page.evaluate(() => window.__step.run(2 / 60));
+  return page.evaluate(() => { const f = window.__FV.flag(); return !f.maker.open && !window.__FV.game.scene.isPaused('Game'); });
+}
 const S = (page) => page.evaluate(() => window.__FV.residents.state());
 const H = (page, fn, a) => page.evaluate(fn, a);
 async function shot(page, name) {
   await render(page, 3);
   const f = path.join(SHOTS, 'res_' + name + '.png');
-  await page.screenshot({ path: f });
+  await page.screenshot({ path: f, timeout: 180000 });     // (SwiftShader on CPUs shared with other suites: a frame can take long)
   META[name] = f;
 }
 /** settle the day / night tint at once (the clock fades it in over seconds) */
@@ -163,6 +175,8 @@ let saved46 = null;
 if (want('chip')) {
   console.log('chip (a fresh game, first-run tutorial on)');
   const { page, ctx, log } = await boot({ onboard: true });
+  const flagMaker = await passFlagMaker(page);
+  ok(flagMaker !== false, 'the new-game flag maker first: one tap on 「이대로 시작」 starts the village (' + (flagMaker === 'none' ? 'no maker' : 'passed') + ')');
   await advance(page, 1.5);
   let st = await S(page);
   const onb = await H(page, () => window.__FV.onboard().mode);
@@ -509,16 +523,24 @@ if (want('count') || want('list') || want('actions') || want('profile') || want(
   }
   if (want('budget')) {
     console.log(' budget');
-    const closed1 = await H(page, () => window.__step.bench(300));
+    // (a logic-step bench that also times the window's own share of each step: UI.update → ResidentsPanel.update is the
+    //  only thing the window runs per step — the 2 Hz list / profile refresh with its text, the follow, the chip)
+    const OWN = (n) => {
+      const R = window.__FV.game.scene.getScene('UI').residents, had = Object.prototype.hasOwnProperty.call(R, 'update'), f = R.update;
+      let ms = 0;
+      R.update = function () { const a = performance.now(); try { return f.apply(this, arguments); } finally { ms += performance.now() - a; } };
+      try { const b = window.__step.bench(n); b.own = +(ms / n).toFixed(4); return b; } finally { if (had) R.update = f; else delete R.update; }
+    };
+    const closed1 = await H(page, OWN, 300);
     await H(page, () => window.__FV.residents.open());
     for (let p = 0; p < 7; p++) { await H(page, (n) => window.__FV.residents.page(n), p); await advance(page, 0.3); }
     for (const pid of PROFILES) { await H(page, (p) => window.__FV.residents.profile(p), pid); await advance(page, 0.3); }
     await H(page, () => window.__FV.residents.back());
-    const open1 = await H(page, () => window.__step.bench(300));
+    const open1 = await H(page, OWN, 300);
     await H(page, () => window.__FV.residents.close());
-    const closed2 = await H(page, () => window.__step.bench(300));
+    const closed2 = await H(page, OWN, 300);
     await H(page, () => window.__FV.residents.open());
-    const open2 = await H(page, () => window.__step.bench(300));
+    const open2 = await H(page, OWN, 300);
     await H(page, () => window.__FV.residents.close());
     await advance(page, 0.5);
     const tex1 = await H(page, () => ({ keys: window.__FV.game.textures.getTextureKeys(), mib: window.__FV.texStats().totalMiB }));
@@ -544,9 +566,15 @@ if (want('count') || want('list') || want('actions') || want('profile') || want(
     META.textCanvas = open3;
     ok(open3.mib <= 4, 'the open list\'s text labels: ' + open3.n + ' canvases, ' + open3.mib + ' MiB (freed on close)');
     console.log('   (GL texture total ' + tex0.mib + ' → ' + tex1.mib + ' MiB while the village loaded ' + allNew.length + ' more pictures of its own)');
-    const dAvg = Math.min(open1.avg, open2.avg) - Math.min(closed1.avg, closed2.avg);
-    META.bench = { closed1, open1, closed2, open2, dAvg };
-    ok(dAvg <= 0.1, 'a logic step with the window open: ' + Math.min(open1.avg, open2.avg) + ' ms vs closed ' + Math.min(closed1.avg, closed2.avg) + ' ms (Δ ' + dAvg.toFixed(3) + ' ms)');
+    // the window's own work, timed inside the steps: <= 0.1 ms a step with it open (list and profile)
+    const own = Math.min(open1.own, open2.own);
+    ok(own <= 0.1, 'the window\'s own work in a logic step: ' + own + ' ms open (the 2 Hz list / profile refresh, the follow, the chip; ' + Math.min(closed1.own, closed2.own) + ' ms closed)', { open1: open1.own, open2: open2.own });
+    // the whole step open vs closed: within 0.1 ms, or within what the same closed bench itself moves between its two runs
+    // (other suites sharing the 4 CPUs, the village streaming pictures and growing over the sequence: on a busy machine two
+    //  identical closed runs differ by more than the 0.1 ms budget, which the own-work check above holds)
+    const dAvg = Math.min(open1.avg, open2.avg) - Math.min(closed1.avg, closed2.avg), noise = Math.abs(closed1.avg - closed2.avg);
+    META.bench = { closed1, open1, closed2, open2, dAvg, noise, own };
+    ok(dAvg <= 0.1 + noise, 'a logic step with the window open: ' + Math.min(open1.avg, open2.avg) + ' ms vs closed ' + Math.min(closed1.avg, closed2.avg) + ' ms (Δ ' + dAvg.toFixed(3) + ' ms; the two closed runs differ by ' + noise.toFixed(3) + ' ms)', META.bench);
     const txt = await H(page, () => {
       const R = window.__FV.residents; R.open();
       const C = window.__FV.game.scene.getScene('UI').residents.c;
