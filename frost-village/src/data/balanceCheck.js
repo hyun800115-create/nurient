@@ -134,14 +134,14 @@ export function checkBalance() {
   // ---- (v4.3 밀밭 · 빵집) the bakery cottage + its stall: a missing block is filled silently
   const BK = B.bakery43 = B.bakery43 && typeof B.bakery43 === 'object' ? B.bakery43 : {};
   const bb = BK.build = BK.build && typeof BK.build === 'object' ? BK.build : {};
-  fixNum(bb, 'coins', 'bakery43.build.coins', 1, 1e9, 150, true);
+  fixNum(bb, 'coins', 'bakery43.build.coins', 1, 1e9, 70, true);
   fixNum(bb, 'item_plank', 'bakery43.build.item_plank', 0, 999, 4, true);
   fixNum(BK, 'stallMax', 'bakery43.stallMax', 1, 200, 24, true);
   fixNum(BK, 'fullAt', 'bakery43.fullAt', 1, BK.stallMax, 12, true);
   fixNum(BK, 'batch', 'bakery43.batch', 1, 12, 3, true);
-  fixNum(BK, 'spawnEvery', 'bakery43.spawnEvery', 0.3, 120, 3.2);
-  fixNum(BK, 'spawnEveryLate', 'bakery43.spawnEveryLate', 0.3, 120, 2.6);
-  fixNum(BK, 'wantMax', 'bakery43.wantMax', 1, 20, 3, true);
+  fixNum(BK, 'spawnEvery', 'bakery43.spawnEvery', 0.3, 120, 2.2);
+  fixNum(BK, 'spawnEveryLate', 'bakery43.spawnEveryLate', 0.3, 120, 2.2);
+  fixNum(BK, 'wantMax', 'bakery43.wantMax', 1, 20, 4, true);
   fixNum(BK, 'maxQueue', 'bakery43.maxQueue', 1, 12, 5, true);
   B.workers = B.workers || {};
   fixNum(B.workers, 'speed', 'workers.speed', 20, 1000, 150);

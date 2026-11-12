@@ -6,6 +6,7 @@
 //        [--frules-early]                         (F1–F3 + Surplus from minute 0: window.__FV_FRULES_EARLY)
 //        [--out DIR] [--early 40]                 (early = the first N game minutes counted apart: early piles)
 //        [--seed N] [--botopts JSON]              (seeded Math.random; extra bot options, e.g. {"p2Early":true})
+//        [--bal JSON]                             (balance values merged in before the start, as review_gameplay_sim --bal)
 //   node tools/test/review_gameplay_census.mjs --summarize file.census.json [more.json]   (measures of saved runs)
 // Measures (shares of 10-s samples): market shelf empty per food, 교역소 empty per good, station outputs ≥ 90 %,
 // any raw pile ≥ 90 % (and per pile), 창고 average stock, dock backlog (card crates + surplus), boathouse catch vs
@@ -145,7 +146,14 @@ try {
   await page.evaluate((sv) => { try { localStorage.clear(); if (sv) localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, saveTxt);
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
-  await page.evaluate(async () => { const m = await import(new URL('src/data/balance.js', location.href).href); window.__BAL = m.BALANCE; });
+  // ((v4.3 step B, BAL) --bal '{"bakery43":{"spawnEvery":2.8}}': balance values merged in before the game starts, as
+  //  review_gameplay_sim.mjs --bal does — knob trials without editing balance.js; the final value is measured from the file)
+  await page.evaluate(async (bal) => {
+    const m = await import(new URL('src/data/balance.js', location.href).href);
+    window.__BAL = m.BALANCE;
+    const merge = (a, b) => { for (const k in b) { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k])) merge(a[k] = a[k] || {}, b[k]); else a[k] = b[k]; } };
+    if (bal) merge(window.__BAL, JSON.parse(bal));
+  }, opt('--bal', ''));
   // porter carry capacities (before the game makes any porter)
   const CARRY = opt('--carry', '');
   if (CARRY) await page.evaluate((C) => {
