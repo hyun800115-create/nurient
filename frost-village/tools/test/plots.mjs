@@ -3,11 +3,15 @@
 // 1 the west strip: open from the start (no fog), walkable, the shore holds, roads reach it, the start still frames
 // the plaza; 2 every locked card says what opens it; houses can be built with nobody waiting; 3 empty houses bring
 // settlers (gentle: after the first miner, one household every settlers.every s) and too many empty beds pause the
-// houses until settlers fill them; 4 big plots stay free for the four big workshops (houses/decor wait there);
-// 5 decor makes the village happier and the residents come by; 6 the town hall: more room, the tax box fills per
-// resident and the chief collects it, the notice board opens, the rank ceremony moves in front of the hall;
-// 7 the build menu (tabs, cards, a new-region plot with buildable houses); 8 save + reload keeps it; a real v3.5
-// save keeps every position; 0 page errors / placeholders.
+// houses until settlers fill them; 4 ((v4.3 step B, plot table v2) every workshop has its own fixed plot (d_tool / d_wh /
+// d_cannery / d_store: only that card), the generic M / L plots offer houses and decor (`types`) and are never kept for a
+// workshop, w_hall takes the hall only and w_rest the restaurant only, the hidden plots (w_civic, d_labour, d_school,
+// d_clinic) never get a Site, the build menu's cards are plotRules.menuKinds, the tutorial points a workshop at its own
+// plot, a site that holds a building is never hidden by refreshSites (BP-17)); 5 decor makes the village happier and the
+// residents come by; 6 the town hall (on w_hall beside the hut, 180, 760): more room, the tax box fills per resident and
+// the chief collects it, the notice board opens, the rank ceremony moves in front of the hall; 7 the build menu (tabs,
+// cards, a new-region plot with buildable houses); 8 save + reload keeps it; a real v3.5 save keeps every position;
+// 0 page errors / placeholders.
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -105,28 +109,50 @@ try {
   step('2 a west plot offers houses and decor', h0.shown && h0.house && h0.deco.length === 4, h0);
   step('2 a house can be built with nobody waiting for a home (no more 이주민이 없다)', h0.house && !h0.house.locked, h0);
 
-  // ---- 4. big plots kept for the big workshops (the rule as it is now, then with too few big plots left)
-  const bp = await ev(() => {
-    const gs = window.__FV.scene, cv = gs.civic;
-    const big = Object.values(gs.sites).filter((st) => st.kind === 'plot' && st.state === 'plot' && !st.only && (st.size === 'M' || st.size === 'L'));
-    const now = big.map((st) => { const h = gs.buildChoices(st).find((q) => q.key === 'house_c'); return { id: st.id, res: cv.bigPlotReserved(st), locked: h.locked, reason: h.reason }; });
-    // only two big plots left before the store: they must wait for the workshops (the others are taken for a moment)
-    const keep = big.slice(0, 2), taken = big.slice(2);
-    for (const st of taken) st.state = '__test';
-    const st = keep[0];
-    const h = gs.buildChoices(st).find((q) => q.key === 'house_c');
-    const d = gs.buildChoices(st).find((q) => q.key === 'deco_rink');
-    const tight = { id: st.id, res: cv.bigPlotReserved(st), house: h && { locked: h.locked, reason: h.reason, text: h.text }, deco: d && { locked: d.locked, reason: d.reason } };
-    for (const q of taken) q.state = 'plot';
-    return { now, tight };
-  });
-  const bpOk = bp.now.every((q) => !q.res || (q.locked && (q.reason === 'lockBigPlot' || /^lock_/.test(q.reason))));
-  step('4 big plots: houses/decor allowed while enough big plots stay for the workshops', bp.now.length > 0 && bpOk, bp.now.slice(0, 4));
-  step('4 too few big plots left: houses and decor wait there, the card names the workshops', bp.tight.res && bp.tight.house.locked && bp.tight.house.reason === 'lockBigPlot' && /대장간|창고|통조림|잡화점|Toolsmith|Warehouse/.test(bp.tight.house.text) && bp.tight.deco.locked, bp.tight);
-
   // ---- 3. empty houses bring settlers; too many empty beds pause the houses
   await ev(() => { window.__FV.unlockV3(); window.__FV.give(40000); });
   await adv(2);
+
+  // ---- 4. ((v4.3 step B, plot table v2) fixed workshop plots, generic plots for houses and decor, hidden plots
+  //      (every land open: unlockV3 above. Its test plan still puts the workshops on e_m1 / e_m2 / s_m1 / s_m2 — the hook
+  //       builds without the menu; L2 moves that plan to the d_* plots — so their own plots show the card locked: built)
+  await ev(() => { window.__FV.doneStep('boat_rowboat'); window.__FV.scene.refreshSites(); });     // (the cannery's plot opens with the rowboat)
+  await adv(1);
+  const p4 = await ev(async () => {
+    const gs = window.__FV.scene, cv = gs.civic;
+    const { WORLD } = await import('/fv/src/data/world.js');
+    const PR = await import('/fv/src/systems/plotRules.js');
+    const keys = (id) => (gs.sites[id] ? gs.buildChoices(gs.sites[id]).map((c) => c.key).sort() : null);
+    const WS = { toolsmith: 'd_tool', warehouse: 'd_wh', cannery: 'd_cannery', store: 'd_store' };
+    const fixed = Object.fromEntries(Object.entries(WS).map(([k, id]) => [id, { keys: keys(id), shown: !!(gs.sites[id] && gs.sites[id].shown) }]));
+    const generic = Object.values(gs.sites).filter((st) => st.kind === 'plot' && !st.only && (st.size === 'M' || st.size === 'L'));
+    const gen = generic.map((st) => { const ch = gs.buildChoices(st); return { id: st.id, work: ch.filter((c) => /^(toolsmith|warehouse|cannery|store)$/.test(c.key)).map((c) => c.key), houses: ch.filter((c) => /^house_/.test(c.key)).length, decor: ch.filter((c) => /^deco_/.test(c.key)).length, kept: cv.bigPlotReserved(st), bigLock: ch.filter((c) => c.reason === 'lockBigPlot').map((c) => c.key) }; });
+    const seam = Object.values(gs.sites).filter((st) => st.kind === 'plot').filter((st) => JSON.stringify(gs.buildChoices(st).map((c) => c.key).sort()) !== JSON.stringify(PR.menuKinds(st).slice().sort())).map((st) => st.id);
+    const hidden = Object.keys(WORLD.plots).filter((id) => WORLD.plots[id].hidden === true);
+    const tut = Object.fromEntries(Object.keys(WS).map((k) => { const pl = gs.tutorial && gs.tutorial.plotFor ? gs.tutorial.plotFor(k) : null; return [k, pl ? pl.id : null]; }));
+    return { fixed, gen, seam, hidden, hiddenSites: hidden.filter((id) => !!gs.sites[id]), hall: keys('w_hall'), rest: keys('w_rest'), hallAt: gs.sites.w_hall && [gs.sites.w_hall.x, gs.sites.w_hall.y, gs.sites.w_hall.region], tut };
+  });
+  step('4 each workshop has its own plot that offers only it (d_tool / d_wh / d_cannery / d_store), all shown with every land open', Object.entries(p4.fixed).every(([id, v]) => v.shown && v.keys && v.keys.length === 1 && v.keys[0] === { d_tool: 'toolsmith', d_wh: 'warehouse', d_cannery: 'cannery', d_store: 'store' }[id]), p4.fixed);
+  step('4 the generic M / L plots offer houses and decor, never a workshop, and are never kept for one (no lockBigPlot)', p4.gen.length >= 6 && p4.gen.every((q) => !q.work.length && q.houses === 3 && q.decor === 3 && !q.kept && !q.bigLock.length), p4.gen);
+  step('4 the build menu\'s cards are plotRules.menuKinds on every plot (one place reads only / types / size)', !p4.seam.length, p4.seam);
+  step('4 w_hall (180, 760, start) takes the hall only; w_rest the restaurant only', JSON.stringify(p4.hall) === '["town_hall"]' && JSON.stringify(p4.rest) === '["big_restaurant"]' && p4.hallAt && p4.hallAt[0] === 180 && p4.hallAt[1] === 760 && p4.hallAt[2] === 'start', { hall: p4.hall, rest: p4.rest, at: p4.hallAt });
+  step('4 the hidden plots (w_civic, d_labour, d_school, d_clinic) have no Site — no sprite, pad, sign or menu — with every step done', p4.hidden.sort().join() === 'd_clinic,d_labour,d_school,w_civic' && !p4.hiddenSites.length, p4);
+  step('4 the tutorial points each workshop at its own plot', p4.tut.toolsmith === 'd_tool' && p4.tut.warehouse === 'd_wh' && p4.tut.cannery === 'd_cannery' && p4.tut.store === 'd_store', p4.tut);
+  // (BP-17) a site that holds a building is never hidden, whatever its plot's condition says now
+  const p17 = await ev(() => {
+    const gs = window.__FV.scene, id = 's_s1';
+    const ok0 = window.__FV.build(id, 'deco_bench'); window.__FV.supply(id); window.__FV.finishSite(id);
+    const st = gs.sites[id], cfg = st.cfg;
+    st.cfg = Object.assign({}, cfg, { after: 'never_a_step' });
+    gs.refreshSites(); const a = st.shown;
+    const plot = Object.values(gs.sites).find((q) => q.kind === 'plot' && q.state === 'plot' && q.shown && q.id !== id);
+    const pc = plot.cfg; plot.cfg = Object.assign({}, pc, { after: 'never_a_step' });
+    gs.refreshSites(); const b = plot.shown;
+    st.cfg = cfg; plot.cfg = pc; gs.refreshSites();
+    return { built: ok0 && st.state === 'done', heldShown: a, emptyHidden: !b, plot: plot.id, back: plot.shown };
+  });
+  step('4 refreshSites never hides a site that holds a building (an empty plot whose condition is not met still hides) (BP-17)', p17.built && p17.heldShown && p17.emptyHidden && p17.back, p17);
+
   const free = ['w_s1', 'w_s2', 'w_s3'];
   let built = 0, lockAt = null;
   for (const id of free) {
@@ -178,7 +204,7 @@ try {
   const tax = await ev(() => window.__FV.civic().hall);
   step('6 the tax box fills per resident (about perMin a minute)', tax.tax > 0 && Math.abs(tax.tax - tax.perMin) <= tax.perMin * 0.25 + 8, tax);
   await ev(() => { const p = window.__FV.where('hallTax'); window.__FV.teleport(p.x - 160, p.y + 80); });
-  await ev(() => window.__FV.camera(-860, 1880, 1.0));
+  await ev(() => window.__FV.camera(150, 880, 1.0));      // ((v4.3 step B) the hall beside the hut: w_hall (180, 760))
   await adv(1);
   await shot('03_town_hall_tax');
   await ev(() => window.__FV.camera());
@@ -192,7 +218,7 @@ try {
   const b6 = await ev(() => { const ui = window.__FV.game.scene.getScene('UI'); const L = window.__FV.scene.civic.hall.boardLines(); return { open: !!ui.v4PanelOpen, req: L.requests.length, news: L.news.length, lines: L.news.map((q) => q.text).slice(0, 3) }; });
   step('6 the notice board opens: requests + village news (v5 missions later)', b6.open && b6.news >= 3, b6);
   await shot('04_notice_board');
-  await ev(() => { const ui = window.__FV.game.scene.getScene('UI'); ui.hud4.closePanel(true); window.__FV.teleport(-600, 1500); });
+  await ev(() => { const ui = window.__FV.game.scene.getScene('UI'); ui.hud4.closePanel(true); window.__FV.teleport(700, 1000); });
   await adv(1);
   // ((v4.2.0.1) the 승격식 pay pad stands a little left of the venue (TownHall SPOT.rankPad: off the tax box's coin pile);
   //  the ceremony itself is still held at venue('rank'))
@@ -225,7 +251,9 @@ try {
   await shot('01_west_strip');
   await ev(() => window.__FV.camera());
   const mx = await ev(() => { window.__FV.openMenu('w_rest'); const m = window.__FV.menu(); window.__FV.game.scene.getScene('UI').closeBuildMenu(true); return m; });
-  step('7 an XL plot shows the 마을 tab only (hall + restaurant)', mx && mx.tabs.length === 1 && mx.tabs[0] === 'civic' && mx.all.length === 2, mx && { tabs: mx.tabs, all: mx.all.map((c) => c.key + (c.locked ? '!' : '')) });
+  step('7 the restaurant\'s XL plot (w_rest) shows the 마을 tab with the big restaurant only ((v4.3 step B) the hall has its own plot)', mx && mx.tabs.length === 1 && mx.tabs[0] === 'civic' && mx.all.length === 1 && mx.all[0].key === 'big_restaurant', mx && { tabs: mx.tabs, all: mx.all.map((c) => c.key + (c.locked ? '!' : '')) });
+  const mt = await ev(() => { window.__FV.openMenu('d_tool'); const m = window.__FV.menu(); window.__FV.game.scene.getScene('UI').closeBuildMenu(true); return m; });
+  step('7 a fixed workshop plot (d_tool) shows its one card (대장간)', mt && mt.all.length === 1 && mt.all[0].key === 'toolsmith', mt && { tabs: mt.tabs, all: mt.all.map((c) => c.key + (c.locked ? '!' : '')) });
 
   // ---- 8. save + reload; a real v3.5 save
   const before = await ev(() => { window.__FV.save(); const c = window.__FV.civic(); return { settlers: c.settlers, tax: c.hall.tax, am: c.amenities.slice().sort(), cap: window.__FV.scene.popCap(), v: JSON.parse(localStorage.getItem('frostVillage.save.v1')).v }; });
@@ -254,6 +282,38 @@ try {
     const again = await ev(() => { window.__FV.save(); return JSON.parse(localStorage.getItem('frostVillage.save.v1')); });
     step('8 ' + f + ': the chief and every building stay where they were (v' + j.v + ' -> v6+)', posOk && sitesOk && s8.west && again.v >= 6 && s8.coins >= j.coins - 5, { player: s8.p, was: j.player && { x: j.player.x, y: j.player.y }, sites: Object.keys(j.sites || {}).length });
   }
+  // ---- 8b. ((v4.3 step B, L1) every fixture (v3.5 … the a2 bread village) still loads on plot table v2 — no remap yet (S's
+  //      R43 moves the workshops onto the d_* plots later): each saved building stands on its saved plot id and is shown
+  //      (BP-17: refreshSites never hides a site that holds a building, whatever its plot's `after` says now — v42_office
+  //      opens at zone_mine, w_hall at hire_hunter), an old hall on w_hall stands at the hall's new plot (180, 760), and
+  //      no step-B hidden plot gets a Site. Page errors: step 0 below)
+  const fx8 = {};
+  for (const f of fs.readdirSync(FIX).filter((q) => /\.json$/.test(q)).sort()) {
+    const j0 = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'));
+    const raw = j0 && j0.keys ? j0.keys['frostVillage.save.v1'] : JSON.stringify(j0);
+    const j = typeof raw === 'string' ? JSON.parse(raw) : null;
+    if (!j) { fx8[f] = 'no save'; continue; }
+    const tw8 = [log.warnings.length, 1e9];
+    titleWins.push(tw8);
+    await boot(raw);
+    tw8[1] = log.warnings.length;
+    const r = await ev((saved) => {
+      const gs = window.__FV.scene, bad = [];
+      for (const k in saved) {
+        const st = gs.sites[k];
+        if (!st) { bad.push(k + ' missing'); continue; }
+        if (st.building !== saved[k]) bad.push(k + ' holds ' + st.building + ' not ' + saved[k]);
+        if (st.state === 'plot') bad.push(k + ' empty');
+        if (st.kind === 'plot' && !st.shown) bad.push(k + ' hidden');
+      }
+      const hidden = ['w_civic', 'd_labour', 'd_school', 'd_clinic'].filter((id) => !!gs.sites[id]);
+      const hall = gs.sites.w_hall && gs.sites.w_hall.state !== 'plot' ? [gs.sites.w_hall.x, gs.sites.w_hall.y, gs.sites.w_hall.shown] : null;
+      return { bad, hidden, hall, n: Object.keys(saved).length };
+    }, Object.fromEntries(Object.entries(j.sites || {}).filter(([, d]) => d && d.b).map(([k, d]) => [k, d.b])));
+    fx8[f] = r;
+  }
+  const fxBad = Object.entries(fx8).filter(([, r]) => typeof r === 'string' || r.bad.length || r.hidden.length || (r.hall && !(r.hall[0] === 180 && r.hall[1] === 760 && r.hall[2])));
+  step('8 every fixture (' + Object.keys(fx8).length + ') loads on plot table v2 with no remap: each saved building on its saved plot, shown (BP-17); an old hall stands on w_hall at (180, 760); no hidden plot gets a Site', Object.keys(fx8).length >= 12 && !fxBad.length, fxBad.length ? Object.fromEntries(fxBad) : Object.fromEntries(Object.entries(fx8).map(([f, r]) => [f, r.n + (r.hall ? ' +hall' : '')])));
 } catch (e) { fatal = e; console.log('FATAL', e.stack || e.message); }
 const errs = log.errors.filter((e) => !/AudioContext|play\(\) request/i.test(e));
 step('0 no page errors', !errs.length && !fatal, errs.slice(0, 5));

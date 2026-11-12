@@ -66,7 +66,9 @@ try {
   await ev(() => { window.__FV.unlockV3(); window.__FV.give(30000); });
   await adv(2);
   const ch = await ev(() => window.__FV.choices('w_rest'));
-  step('1 an XL plot offers the 마을회관 and the 큰 식당', ch && ch.length === 2 && ch.every((c) => !c.locked) && ch.some((c) => c.key === 'big_restaurant') && ch.some((c) => c.key === 'town_hall'), ch);
+  // ((v4.3 step B, plot table v2) the hall has its own plot beside the hut (w_hall, `only`): w_rest offers the restaurant only (`types`)
+  const chH = await ev(() => window.__FV.choices('w_hall'));
+  step('1 the restaurant\'s XL plot (w_rest) offers the 큰 식당 only; the 마을회관 has its own plot (w_hall)', ch && ch.length === 1 && !ch[0].locked && ch[0].key === 'big_restaurant' && chH && chH.length === 1 && chH[0].key === 'town_hall', { rest: ch, hall: chH });
   const coins0 = await ev(() => window.__FV.state().coins);
   const ok = await ev(() => window.__FV.build('w_rest', 'big_restaurant'));
   const site = await ev(() => { const st = window.__FV.scene.sites.w_rest; return { state: st.state, need: st.need, coins: window.__FV.state().coins, sink: window.__FV.scene.logistics.sinks.indexOf(st) >= 0 }; });

@@ -147,5 +147,42 @@ ok(rn.cellList(CELL.WALK).length > before, 'sidewalk cells added (' + before + '
 ok(rn.upgrade('main', 'cobble') === false, 'the same upgrade twice is a no-op');
 ok(rn.driveEdges.some((e) => e.street === 'main' && e.cls === 1), 'lanes rebuilt with the new class');
 
+// ================================================================ (v4.3 step B, L1) the village road graph vs plot table v2
+// Node only, the v2 road graph (WORLD.roads + WORLD.v42.roads, every zone / land open): no road node stands inside a plot's
+// ground (shown or hidden) or inside the 한마당 reserve (but the x = 990 road's cross_n / green); every fixed workshop plot, the
+// hall's plot and the moved first house are reached by the roads from the plaza (Roads.path between their nearest nodes,
+// the last leg off-road ≤ 6 m); the reserve keeps its walk road (cross_n → green → cross_s)
+console.log('plot table v2 (village roads)');
+{
+  const N = Object.assign({}, WORLD.roads.nodes, (WORLD.v42.roads || {}).nodes || {});
+  const E = WORLD.roads.edges.concat((WORLD.v42.roads || {}).edges || []);
+  const VR = new Roads(() => true, { nodes: N, edges: E }, () => true);
+  const FP = { S: [181, 91], M: [272, 136], L: [362, 181], XL: [525, 262] };
+  const inDia = (p, x, y) => { const f = FP[p.size] || FP.M; return Math.abs(x - p.x) / (f[0] / 2) + Math.abs(y - p.y) / (f[1] / 2) < 1; };
+  const inPoly = (P, x, y) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) { const [xa, ya] = P[a], [xb, yb] = P[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) c = !c; } return c; };
+  const STEPB = ['w_hall', 'w_civic', 'd_tool', 'd_wh', 'd_cannery', 'd_store', 'd_labour', 'd_school', 'd_clinic', 'h43_2'];
+  const under = [];
+  for (const id of STEPB) { const p = WORLD.plots[id]; if (!p) { under.push(id + ' missing'); continue; } for (const n in N) if (inDia(p, N[n][0], N[n][1])) under.push(id + ':' + n); }
+  ok(!under.length, 'no road node on a step-B plot\'s ground (' + STEPB.length + ' plots, hidden ones too)', under);
+  const R0 = WORLD.reserves && WORLD.reserves.p47_plaza;
+  ok(!!(R0 && Array.isArray(R0.poly) && R0.poly.length === 4), 'WORLD.reserves.p47_plaza has its ground polygon');
+  const inRes = Object.keys(N).filter((n) => R0 && inPoly(R0.poly, N[n][0], N[n][1]));
+  ok(inRes.sort().join() === 'cross_n,green', 'inside the 한마당 reserve only the x = 990 road\'s nodes (cross_n, green)', inRes);
+  const keepRoad = ['cross_n|green', 'green|cross_s'].every((k) => { const [a, b] = k.split('|'); return E.some((e) => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a)); });
+  ok(keepRoad, 'the walk road through the reserve stays (cross_n → green → cross_s)');
+  const from = VR.byId.plaza_c.i, far = [], legs = [];
+  for (const id of ['d_tool', 'd_wh', 'd_cannery', 'd_store', 'w_hall', 'h43_2', 'h43_1']) {
+    const p = WORLD.plots[id];
+    const dx = Array.isArray(p.drop) ? p.drop[0] : p.x + 2, dy = Array.isArray(p.drop) ? p.drop[1] : p.y + 87;
+    const n = VR.nearest(dx, dy), nd = VR.nodes[n];
+    const leg = Math.hypot(nd.x - dx, (nd.y - dy) * 2) / 64;
+    const path = VR.path(from, n);
+    // (porters walk to the workshops and the hall: ≤ 6 m off the road; a first house is a home, reached over the snow: ≤ 10 m)
+    if (!path || leg > (/^h43_/.test(id) ? 10 : 6)) far.push(id + ' leg ' + leg.toFixed(1) + ' m to ' + nd.id + (path ? '' : ' (no path)'));
+    legs.push(id + ' ' + leg.toFixed(1));
+  }
+  ok(!far.length, 'the roads reach every fixed workshop plot and the hall\'s plot (last leg ≤ 6 m) and the first houses (≤ 10 m) from the plaza: ' + legs.join(', '), far);
+}
+
 console.log(`\nroadnet: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

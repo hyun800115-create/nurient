@@ -65,6 +65,8 @@ const FRESH_MIN = Number(opt('--fresh-min', '47'));
 const VERB = args.includes('-v');
 // --probe 'hut:600,640,M;hall:180,760,XL': footprints that do not exist in the game yet, checked like the real ones
 //   (a proposed plot before it is coded). Sizes S / M / L / XL = the Site footprints 181×91 / 272×136 / 362×181 / 525×262
+// --from DIR: no browser; the layout section re-runs on the raw dumps (layout_raw_fresh / _late.json) an earlier run wrote to DIR
+const FROM = opt('--from', null) ? path.resolve(opt('--from')) : null;
 const PROBES = (opt('--probe', '') || '').split(';').filter(Boolean).map((q) => { const [id, rest] = q.split(':'); const [x, y, size] = rest.split(','); return { id, x: Number(x), y: Number(y), size: size || 'M' }; });
 const FIX = path.join(ROOT, 'tools/test/fixtures');
 fs.mkdirSync(OUT, { recursive: true });
@@ -80,14 +82,15 @@ const writeCsv = (name, rows, cols) => {
 const ALL = { args, root: ROOT, at: new Date().toISOString() };
 
 // ------------------------------------------------------------------------------------------------ browser
-const srv = await start(0, { prefix: '/fv/', root: ROOT });
-const browser = await launch();
+// (the browser starts on the first boot: `--from` runs the layout check on saved dumps without one)
+let srv = null, browser = null;
 let page = null, log = null, ctx = null;
 const errors = [];
 const ev = (fn, a) => page.evaluate(fn, a);
 /** a fresh page (own context: the init script differs per run), the save keys set, the title tapped, the stepper on */
 async function boot({ keys = null, init = '', stepper = true, viewport = { width: 390, height: 844 } } = {}) {
   if (ctx) { errors.push(...log.errors); await ctx.close(); }
+  if (!browser) { srv = await start(0, { prefix: '/fv/', root: ROOT }); browser = await launch(); }
   ({ page, log, ctx } = await openPage(browser, srv.url + 'index.html', { viewport, dpr: 1, init: init || undefined }));
   await ev((k) => { try { localStorage.clear(); if (k) for (const n in k) localStorage.setItem(n, k[n]); } catch (e) { /* */ } }, keys);
   await page.reload({ waitUntil: 'load', timeout: 180000 });
@@ -145,7 +148,7 @@ const DUMP = async () => {
     const st = gs.sites[id];
     const fp = (st.def && st.def.footprint) || [272, 136];
     addB((st.kind === 'tower' ? 'tower:' : 'plot:') + id, st.kind === 'tower' ? 'tower' : 'plot', st.x, st.y, diamond(st.x, st.y, fp[0], fp[1]),
-      { size: st.size, state: st.state, building: st.building || '', only: st.only || '', region: st.kind === 'tower' ? regionOf(st.x, st.y) : (st.cfg && st.cfg.region) || regionOf(st.x, st.y), opens: st.kind === 'tower' ? (st.cfg && st.cfg.region) || '' : '', after: (st.cfg && st.cfg.after) || '', shown: !!st.shown,
+      { size: st.size, state: st.state, building: st.building || '', only: st.only || '', region: st.kind === 'tower' ? regionOf(st.x, st.y) : (st.cfg && st.cfg.region) || regionOf(st.x, st.y), opens: st.kind === 'tower' ? (st.cfg && st.cfg.region) || '' : '', after: (st.cfg && st.cfg.after) || '', also: st.cfg && st.cfg.also ? [].concat(st.cfg.also) : [], shown: !!st.shown,
         water: st.cfg && (Number.isFinite(st.cfg.shore) || st.only === 'boathouse') ? 1 : 0 });
   }
   // the fixed buildings of the first village
@@ -242,7 +245,24 @@ const DUMP = async () => {
   // ---- water and fog
   const regions = Object.fromEntries(Object.keys(gs.territory.regions).map((k) => { const r = gs.territory.regions[k]; return [k, { open: !!r.open, rect: r.rect || (r.cfg && r.cfg.rect) || null, cfg: { open: r.cfg && r.cfg.open === true, openWith: (r.cfg && r.cfg.openWith) || '', openFlag: (r.cfg && r.cfg.openFlag) || '', tower: (r.cfg && r.cfg.tower) || '' } }]; }));
   const shore = []; for (let x = Math.floor((WORLD.left || 0) / 8) * 8; x <= WORLD.width; x += 8) shore.push([x, r1(W.shoreY(x))]);
-  return { bld, dec, nodes, edges, streets, pads, regions, shore, world: { left: WORLD.left || 0, width: WORLD.width, height: WORLD.height, player: WORLD.player } };
+  // ---- (v4.3 step B, L1 — BP-19) hidden plots (world.js `hidden: true`: no Site) from WORLD.plots, checked like the others; the
+  //      plot rows themselves, the reserves, the build unlocks and the build-menu kinds (the step-B rules: checkStepB)
+  const FPS = { S: [181, 91], M: [272, 136], L: [362, 181], XL: [525, 262] };
+  for (const id in WORLD.plots) {
+    const p = WORLD.plots[id];
+    if (p.hidden !== true) continue;
+    const f = FPS[p.size] || FPS.M;
+    addB('hidden:' + id, 'hidden', p.x, p.y, diamond(p.x, p.y, f[0], f[1]), { size: p.size, building: '', only: p.only || '', region: p.region || regionOf(p.x, p.y), after: p.after || '', also: p.also ? [].concat(p.also) : [], site: !!gs.sites[id] });
+  }
+  const plotRows = Object.fromEntries(Object.entries(WORLD.plots).map(([id, p]) => [id, { x: p.x, y: p.y, size: p.size, region: p.region || '', after: p.after || '', also: p.also ? [].concat(p.also) : [], only: p.only || '', types: Array.isArray(p.types) ? p.types.slice() : null, hidden: p.hidden === true, pads: p.pads || null, clear: p.clear || null, drop: p.drop || null, site: !!gs.sites[id], shown: !!(gs.sites[id] && gs.sites[id].shown), state: gs.sites[id] ? gs.sites[id].state : null }]));
+  const reserves = Object.fromEntries(Object.entries(WORLD.reserves || {}).map(([id, R]) => [id, { m: R.m, zone: R.zone, poly: (R.poly || []).map(([x, y]) => [r1(x), r1(y)]) }]));
+  let unlock = {}, kinds = [];
+  try { const PR2 = await import(new URL('src/systems/Progression.js', location.href).href); unlock = Object.assign({}, PR2.BUILD_UNLOCK || {}); } catch (e) { /* */ }
+  try { const C = await import(new URL('src/systems/Civic.js', location.href).href); kinds = Object.keys(C.CATALOG || {}); } catch (e) { /* */ }
+  // (WORLD.v43: where an old village's chief restarts after the remap (S): the hut door, the shop front — walkable here?)
+  const V43 = WORLD.v43 || {}, C0 = gs.collision;
+  const starts = Object.fromEntries(['oldStart', 'shopFront'].filter((k) => Array.isArray(V43[k])).map((k) => { const [x, y] = V43[k]; return [k, { x, y, blocked: !!C0.blocked(x, y, 16), walk: C0.inWalk ? !!C0.inWalk(x, y) : true }]; }));
+  return { bld, dec, nodes, edges, streets, pads, regions, shore, plotRows, reserves, unlock, kinds, starts, world: { left: WORLD.left || 0, width: WORLD.width, height: WORLD.height, player: WORLD.player } };
 };
 
 // ------------------------------------------------------------------------------------------------ node side: geometry
@@ -340,17 +360,127 @@ function checkLayout(scene, D) {
     b.shoreMargin = Math.round(worst);
     if (worst < MARGIN.water) add(b, 'water', b.water ? 'by design' : worst < 0 ? 'overlap' : 'touch', 'sea', Math.round(wx), Math.round(shoreAt(D.shore, wx)), worst, worst < 0 ? 'px into the sea' : 'px from the shore (walkers keep 46)');
     // the fog: a corner (or edge middle) in land that opens at another time than the building's own
+    //  ((v4.3 step B, L1) …and that may still be closed while it shows: land open from the start never is, nor land its plot's
+    //   `after` / `also` waits for ('r:east': d_store's east corner, the store needs the open east coast))
     const own = opensWhen(D.regions, b.region);
+    const sure = new Set([own, 'start']);
+    for (const c of [b.after].concat(b.also || [])) if (typeof c === 'string' && /^r:/.test(c)) sure.add(opensWhen(D.regions, c.slice(2)));
     const pts = b.poly.concat(b.poly.map((p, k) => { const q = b.poly[(k + 1) % b.poly.length]; return [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]; }));
     const bad = new Set();
     for (const [x, y] of pts) {
       const r = regionAt(D.regions, x, y);
       if (!r) { if (x < D.world.left || x > D.world.width || y > D.world.height) bad.add('outside the map'); continue; }
-      if (r !== b.region && opensWhen(D.regions, r) !== own) bad.add(r + ' (' + opensWhen(D.regions, r) + ')');
+      if (r !== b.region && !sure.has(opensWhen(D.regions, r))) bad.add(r + ' (' + opensWhen(D.regions, r) + ')');
     }
     for (const r of bad) add(b, 'fog', 'overlap', r, b.x, b.y, 0, 'part of the footprint lies in land that opens ' + (r === 'outside the map' ? 'never' : 'at another time') + '; own: ' + b.region + ' (' + own + ')');
   }
   return rows;
+}
+
+// ------------------------------------------------------------------------------------------------ step B (L1): plot table v2
+// (v4.3 step B 「마을 새 단장 둘째 걸음」 — build_plan.md §2, §3.4 L1, BP-19 / BP-31, decisions §4 광장 1, Q25, Q29 / Q37)
+// The rules of plot table v2, checked on each scene's dump (every row a pass / FAIL line; a FAIL sets the exit code):
+//   ids     every step-B plot id is a WORLD.plots row; exactly w_civic / d_labour / d_school / d_clinic are hidden and have no
+//           Site; a hidden plot's `only` is not a building of this version (d_labour: labour_office, v4.4); the fixed workshop
+//           plots take only their workshop and open with it (BUILD_UNLOCK); w_hall takes only the hall (start, hire_hunter);
+//           w_rest offers the restaurant only (`types`); generic M / L plots carry `types` and offer no workshop; every plot
+//           site that holds a building is shown (BP-17: the late fixture's hall, office, workshops)
+//   starts  WORLD.v43.oldStart (the hut door) and shopFront, where S restarts an old village's chief: walkable, off every pad
+//   overlap no step-B plot (new, moved or hidden) shares ground with another plot — or with the 한마당 reserve
+//   reserve nothing inside p47_plaza but what stood there at L1 (RESERVE_KEEP): no new tree, decor, plot, pad or road node
+//   branch  the branch-shop candidates (s_m1 / s_l1, se_m1 / se_l1, w_civic) stay free: no `only`, no step-B plot on them
+//   hall    the hall's front square (w_hall `clear`) holds no decor and no pad but the hall's own (BP-31)
+//   inside  no decor and no pad inside a step-B plot's footprint (a hidden plot's land stays empty snow), apart from what L2
+//           moves off the hall site (L2_PENDING: the trash pad and its fire, X-4)
+const STEPB_PLOTS = ['w_hall', 'w_civic', 'd_tool', 'd_wh', 'd_cannery', 'd_store', 'd_labour', 'd_school', 'd_clinic', 'h43_2', 'v42_office'];
+const STEPB_NEW = ['w_hall', 'w_civic', 'd_tool', 'd_wh', 'd_cannery', 'd_store', 'd_labour', 'd_school', 'd_clinic', 'h43_2'];
+const HIDDEN = ['w_civic', 'd_labour', 'd_school', 'd_clinic'];
+const WORKSHOP_PLOT = { toolsmith: 'd_tool', warehouse: 'd_wh', cannery: 'd_cannery', store: 'd_store' };
+const BRANCH = ['s_m1', 's_l1', 'se_m1', 'se_l1', 'w_civic'];
+const V43_BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower', 'station', 'town_hall', 'big_restaurant', 'chief_office', 'bank42', 'depot42'];
+// what stood inside the reserve when L1 drew it (decisions §4: the green's props, the x = 990 road and its crossing, the
+// roadside lamp / signpost / bush / snow pile / ice, four ground decals): [x, y] ± 26 px. Anything else inside is new.
+const RESERVE_KEEP = [[1040, 1500], [940, 1520], [1052, 1660], [900, 1720], [1060, 1760], [740, 1575], [740, 1521], [835, 1546],
+  [1235, 1555], [1440, 1610], [1215, 1700], [760, 1580], [1220, 1590], [1120, 1520], [1010, 1720]];
+const RESERVE_NODES = ['cross_n', 'green'];
+// L2 clears the hall site (X-4, BP-18): until then these stand on w_hall's footprint [what, x, y]
+const L2_PENDING = { w_hall: [['trash', 150, 700]] };
+function checkStepB(scene, D, rows) {
+  const out = [];
+  const T = (c, msg, extra) => out.push({ scene, ok: !!c, msg, extra: c ? undefined : extra });
+  const P = D.plotRows || {};
+  const isW = (k) => V43_BUILDINGS.indexOf(k) >= 0 || (D.kinds || []).indexOf(k) >= 0;
+  // ---- ids and rows
+  const missing = STEPB_PLOTS.filter((id) => !P[id]);
+  T(!missing.length, 'ids: every step-B plot id is a WORLD.plots row', missing);
+  const hidden = Object.keys(P).filter((id) => P[id].hidden);
+  T(hidden.slice().sort().join() === HIDDEN.slice().sort().join(), 'ids: exactly w_civic / d_labour / d_school / d_clinic are hidden', hidden);
+  T(hidden.every((id) => !P[id].site), 'ids: a hidden plot has no Site (no sprite, pad, sign, menu)', hidden.filter((id) => P[id].site));
+  T(hidden.every((id) => P[id].only && (id === 'd_labour' ? P[id].only === 'labour_office' : !isW(P[id].only))), 'ids: a hidden plot\'s `only` is no building of this version (d_labour: labour_office)', hidden.map((id) => id + ':' + P[id].only));
+  const ws = Object.entries(WORKSHOP_PLOT).filter(([k, id]) => !P[id] || P[id].only !== k || P[id].size !== 'M' || P[id].after !== (D.unlock[k] || P[id].after));
+  T(!ws.length, 'ids: d_tool / d_wh / d_cannery / d_store take only their workshop (M) and open with it (BUILD_UNLOCK)', ws.map(([k, id]) => id + ':' + (P[id] && P[id].only) + '/' + (P[id] && P[id].after) + ' vs ' + D.unlock[k]));
+  const H = P.w_hall || {};
+  T(H.only === 'town_hall' && H.size === 'XL' && H.region === 'start' && H.after === 'hire_hunter', 'ids: w_hall = the hall only, XL, start, after hire_hunter', H);
+  const R0 = P.w_rest || {};
+  T(!R0.only && Array.isArray(R0.types) && R0.types.join() === 'big_restaurant', 'ids: w_rest offers the big restaurant only (types)', R0);
+  const generic = Object.keys(P).filter((id) => !P[id].only && !P[id].hidden && (P[id].size === 'M' || P[id].size === 'L'));
+  const gbad = generic.filter((id) => !Array.isArray(P[id].types) || P[id].types.some((t) => /^(toolsmith|warehouse|cannery|store)$/.test(t)));
+  T(generic.length >= 6 && !gbad.length, 'ids: every generic M / L plot (' + generic.length + ') carries `types` and offers no workshop', gbad);
+  T(P.v42_office && P.v42_office.after === 'zone_mine', 'ids: v42_office opens at zone_mine (the office as a side goal)', P.v42_office && P.v42_office.after);
+  // (BP-17) a plot site that holds a building (foundation, scaffold or finished: the late fixture's hall on w_hall, its office)
+  //  is shown, whatever its plot's after / also say now
+  const heldHidden = Object.keys(P).filter((id) => P[id].site && P[id].state && P[id].state !== 'plot' && !P[id].shown);
+  T(!heldHidden.length, 'ids: every plot site that holds a building is shown (BP-17; ' + Object.keys(P).filter((id) => P[id].site && P[id].state && P[id].state !== 'plot').length + ' held)', heldHidden);
+  // (WORLD.v43, B0 values / L1 final) the old-village restart spots: on the map, walkable, off every pad (S restarts the chief there)
+  const ST = D.starts || {};
+  const stBad = ['oldStart', 'shopFront'].filter((k) => !ST[k] || ST[k].blocked || !ST[k].walk || D.pads.some((p) => Math.abs(p.x - ST[k].x) + 2 * Math.abs(p.y - ST[k].y) < p.hw + 10)).map((k) => k + ':' + JSON.stringify(ST[k] || null) + (ST[k] ? ' pads ' + D.pads.filter((p) => Math.abs(p.x - ST[k].x) + 2 * Math.abs(p.y - ST[k].y) < p.hw + 10).map((p) => p.id).join(',') : ''));
+  T(!stBad.length, 'starts: WORLD.v43.oldStart (' + (ST.oldStart ? ST.oldStart.x + ', ' + ST.oldStart.y : '?') + ') and shopFront (' + (ST.shopFront ? ST.shopFront.x + ', ' + ST.shopFront.y : '?') + ') are walkable and off every pad', stBad);
+  T(['d_tool', 'd_cannery'].every((id) => P[id] && P[id].pads && Array.isArray(P[id].pads.line) && Array.isArray(P[id].pads.p2)) && P.d_cannery && P.d_cannery.pads && Array.isArray(P.d_cannery.pads.mcan), 'ids: the workshop plots name their hire pads (d_tool line / p2, d_cannery line / p2 / mcan: BP-20)');
+  // ---- overlaps (ground shared with another plot or the reserve)
+  const B = D.bld.filter((b) => b.kind === 'plot' || b.kind === 'hidden');
+  const idOf = (b) => b.id.replace(/^(plot|hidden):/, '');
+  const ov = [];
+  for (const a of B) for (const b of B) if (a !== b && idOf(a) < idOf(b) && (STEPB_NEW.indexOf(idOf(a)) >= 0 || STEPB_NEW.indexOf(idOf(b)) >= 0)) { const s2 = clipArea(a.poly, b.poly); if (s2 > 1) ov.push(idOf(a) + '~' + idOf(b) + ' ' + Math.round(s2)); }
+  T(!ov.length, 'overlap: no step-B plot shares ground with another plot (BP-19; hidden plots read from WORLD.plots)', ov);
+  const res = D.reserves || {};
+  for (const rid in res) {
+    const RP = res[rid].poly;
+    if (!RP || RP.length < 3) { T(false, 'reserve ' + rid + ': has a polygon'); continue; }
+    const ovr = B.filter((b) => clipArea(b.poly, RP) > 1).map((b) => idOf(b));
+    T(!ovr.length, 'reserve ' + rid + ': no plot (shown or hidden) reaches into it', ovr);
+    const inside = (x, y) => polyDist(RP, x, y) < 0;
+    const keep = (x, y) => RESERVE_KEEP.some(([kx, ky]) => Math.hypot(kx - x, (ky - y) * 2) < 52);
+    const newDec = D.dec.filter((d) => inside(d.x, d.y) && !keep(d.x, d.y)).map((d) => d.key + '@' + d.x + ',' + d.y);
+    T(!newDec.length, 'reserve ' + rid + ': no new tree / decor / prop inside (' + D.dec.filter((d) => inside(d.x, d.y)).length + ' kept from L1)', newDec);
+    const padIn = D.pads.filter((p) => inside(p.x, p.y) || polyDist(RP, p.x, p.y) < p.hw / 2).map((p) => p.id + '@' + p.x + ',' + p.y);
+    T(!padIn.length, 'reserve ' + rid + ': no pad (paid, to come or work) stands in it', padIn);
+    const nodeIn = D.nodes.filter((n) => inside(n.x, n.y) && RESERVE_NODES.indexOf(n.id) < 0).map((n) => n.id);
+    T(!nodeIn.length, 'reserve ' + rid + ': no road node inside but the x = 990 road\'s (cross_n, green)', nodeIn);
+  }
+  // ---- branch-shop candidates stay free
+  const br = BRANCH.filter((id) => !P[id] || (id === 'w_civic' ? !P[id].hidden || isW(P[id].only) : !!P[id].only || P[id].hidden || !Array.isArray(P[id].types)));
+  T(!br.length, 'branch: s_m1 / s_l1 / se_m1 / se_l1 stay generic (types, no only) and w_civic hidden (Q29 / Q37)', br);
+  // ---- the hall's front square
+  const hb = D.bld.find((b) => b.id === 'plot:w_hall');
+  if (hb && Array.isArray(H.clear)) {
+    const C2 = H.clear.map(([dx, dy, r]) => [hb.x + dx, hb.y + dy, r]);
+    const inC = (x, y) => C2.some(([cx, cy, r]) => Math.hypot(cx - x, (cy - y) * 2) < r);
+    const own = /^(drop:w_hall|rank_eup|place:rank_eup|hall|w_hall)/;
+    const dIn = D.dec.filter((d) => inC(d.x, d.y) && !d.soft).map((d) => d.key + '@' + d.x + ',' + d.y);
+    const pIn = D.pads.filter((p) => inC(p.x, p.y) && !own.test(p.id)).map((p) => p.id + '@' + p.x + ',' + p.y);
+    T(!dIn.length && !pIn.length, 'hall: the front square (w_hall clear) holds no decor and no pad but the hall\'s own (BP-31)', { decor: dIn, pads: pIn });
+  } else T(false, 'hall: w_hall has its front square (clear)');
+  // ---- nothing inside a step-B plot's footprint (decor, pads) but L2's list
+  const inBad = [];
+  for (const r of rows) {
+    const id = r.building.replace(/^(plot|hidden):/, '');
+    if (r.building === id || STEPB_NEW.indexOf(id) < 0 || r.level !== 'overlap' || (r.type !== 'decor' && r.type !== 'pad' && r.type !== 'road_node')) continue;
+    if (r.type === 'decor' && /^decal:/.test(r.other)) continue;            // (ground decals: painted snow, nothing stands there)
+    const pend = (L2_PENDING[id] || []).some(([w, x, y]) => (r.other.indexOf(w) === 0) && Math.hypot(r.ox - x, (r.oy - y) * 2) < 30);
+    if (!pend) inBad.push(id + ': ' + r.type + ' ' + r.other + ' @' + r.ox + ',' + r.oy);
+  }
+  T(!inBad.length, 'inside: no decor, pad or road node on a step-B plot (L2_PENDING: the trash pad on w_hall, X-4)', inBad);
+  return out;
 }
 
 // ------------------------------------------------------------------------------------------------ page side: walks
@@ -461,22 +591,29 @@ const WALK_PAGE = async (list) => {
 
 // ------------------------------------------------------------------------------------------------ sections
 const summary = {};
+let stepBFail = false;
 if (ONLY.includes('layout') || ONLY.includes('walks')) {
-  const lrows = [], wrows = [], dumps = {};
+  const lrows = [], wrows = [], dumps = {}, stepB = [];
   for (const [scene, keys] of [['fresh', null], ['late', fixtureKeys('v42_village_late.json')]]) {
     console.log(`— ${scene} (${wall()})`);
-    await boot({ keys });
-    await ev(() => { window.__FV.teleport(window.__FV.scene.player.x, window.__FV.scene.player.y); window.__step.run(1); });
+    // (--from DIR: the layout check on the dumps a run saved there (layout_raw_<scene>.json), no browser: probes iterate fast)
+    const rawF = FROM && path.join(FROM, 'layout_raw_' + scene + '.json');
+    if (!FROM) {
+      await boot({ keys });
+      await ev(() => { window.__FV.teleport(window.__FV.scene.player.x, window.__FV.scene.player.y); window.__step.run(1); });
+    }
     if (ONLY.includes('layout')) {
-      const D = await ev(DUMP);
+      const D = FROM ? JSON.parse(fs.readFileSync(rawF, 'utf8')) : await ev(DUMP);
+      if (!FROM) fs.writeFileSync(path.join(OUT, 'layout_raw_' + scene + '.json'), JSON.stringify(D));
       const FP = { S: [181, 91], M: [272, 136], L: [362, 181], XL: [525, 262] };
       for (const q of PROBES) { const [w, h] = FP[q.size] || FP.M; D.bld.push({ id: 'probe:' + q.id, kind: 'probe', x: q.x, y: q.y, size: q.size, poly: [[q.x - w / 2, q.y], [q.x, q.y - h / 2], [q.x + w / 2, q.y], [q.x, q.y + h / 2]], region: regionAt(D.regions, q.x, q.y) || 'start' }); }
       dumps[scene] = { counts: { buildings: D.bld.length, decor: D.dec.length, nodes: D.nodes.length, edges: D.edges.length, streets: D.streets.length, pads: D.pads.length }, regions: D.regions, buildings: D.bld };
       const rows = checkLayout(scene, D);
       lrows.push(...rows);
+      for (const r of checkStepB(scene, D, rows)) { stepB.push(r); console.log(`  ${r.ok ? 'ok  ' : 'FAIL'} [${scene}] ${r.msg}${r.ok ? '' : ' ' + JSON.stringify(r.extra === undefined ? '' : r.extra).slice(0, 700)}`); }
       console.log(`  ${D.bld.length} footprints, ${D.dec.length} decor, ${D.nodes.length} road nodes / ${D.edges.length} edges, ${D.pads.length} pads -> ${rows.filter((r) => r.level === 'overlap').length} overlaps, ${rows.filter((r) => r.level === 'touch').length} touches`);
     }
-    if (ONLY.includes('walks')) {
+    if (ONLY.includes('walks') && !FROM) {
       const W = await ev(WALK_PAGE, WALKS);
       for (const w of W) {
         wrows.push({ scene, walk: w.id, alt: w.alt, who: w.who, m: w.m, measure: w.primary, route_m: w.routeM, direct_m: w.directM, straight_m: w.straightM, straight_clear: w.clear, ratio: w.m && w.straightM ? +(w.m / w.straightM).toFixed(2) : null, near: w.near, waypoints: w.waypoints, places: w.parts.map((p) => `${p.from}(${p.ax},${p.ay})→${p.to}(${p.bx},${p.by}) route ${p.m} / direct ${p.directM} m`).join(' | '), missing: w.miss || '', note: w.note });
@@ -496,6 +633,9 @@ if (ONLY.includes('layout') || ONLY.includes('walks')) {
     ALL.layout = { dumps, rows: lrows.length };
     summary.layout = Object.fromEntries(Object.keys(dumps).map((sc) => [sc, Object.fromEntries(['building', 'decor', 'road_node', 'road_edge', 'street', 'pad', 'water', 'fog'].map((t) => [t, lrows.filter((r) => r.scene === sc && r.area === 'village' && r.type === t && r.level === 'overlap').length]))]));
     summary.layoutNote = 'overlaps in the first village (x < 3000) per type; footprints.csv has every row, the station town too';
+    summary.stepB = { checks: stepB.length, failed: stepB.filter((r) => !r.ok).map((r) => r.scene + ': ' + r.msg) };
+    ALL.stepB = stepB;
+    if (stepB.some((r) => !r.ok)) stepBFail = true;
   }
   if (ONLY.includes('walks')) {
     writeCsv('walks.csv', wrows, ['scene', 'walk', 'alt', 'who', 'm', 'measure', 'route_m', 'direct_m', 'straight_m', 'straight_clear', 'ratio', 'near', 'waypoints', 'places', 'missing', 'note']);
@@ -693,6 +833,7 @@ ALL.summary = summary; ALL.errors = errors.slice(0, 20); ALL.wall = wall();
 fs.writeFileSync(path.join(OUT, 'v43_layout.json'), JSON.stringify(ALL, null, 1));
 console.log('SUMMARY ' + JSON.stringify(summary));
 console.log(`page errors ${errors.length}${errors.length ? ': ' + errors.slice(0, 3).join(' | ').slice(0, 400) : ''}  (wall ${wall()})`);
-await browser.close();
-await srv.close();
-process.exit(errors.length ? 1 : 0);
+if (browser) await browser.close();
+if (srv) await srv.close();
+console.log(`step B plot table v2: ${summary.stepB ? summary.stepB.checks - summary.stepB.failed.length + '/' + summary.stepB.checks + ' passed' : 'not run'}`);
+process.exit(errors.length || stepBFail ? 1 : 0);

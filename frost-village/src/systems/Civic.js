@@ -6,7 +6,9 @@
 //   - houses are always buildable; only when `civic.settlers.maxVacant` beds already stand empty does a house wait
 //     (the settlers fill them: one household every `settlers.every` s once the village is complete)
 //   - big plots: houses and decor may use one as long as enough big plots stay free for the four big workshops
-//     (counted over the land that opens before the general store: start, west, east, south)
+//     (counted over the land that opens before the general store: start, west, east, south). ((v4.3 step B, plot table v2)
+//     each workshop has its own fixed plot now (world.js d_tool / d_wh / d_cannery / d_store): a generic plot never
+//     takes one, so it is never kept for one — the rule only counts plots whose menu (plotRules) offers that workshop)
 //   - happiness: the decor and the hall add to the neighbours' happiness (v4 rank bar), halving for repeats, capped
 //   - late art (the town hall, the restaurant, the park / street props, flower stands) is fetched when needed
 // Numbers: balance.js `buildings` + `civic`; places: world.js `plots`; texts: strings.js.
@@ -20,6 +22,7 @@ import { gdist } from '../core/Iso.js';
 import { buildCost } from '../entities/Site.js';
 import { Character } from '../entities/Character.js';
 import { BUILD_UNLOCK } from './Progression.js';
+import { menuKinds, plotAccepts } from './plotRules.js';
 import { settlerIdentity } from './residents/identity.js';
 
 // where a late picture lives: [fragment, atlas or 'atlas@page'] (the manifest arrives with the fragment)
@@ -34,11 +37,13 @@ export const ART_SRC = {
  * the build menu: cat = the tab, sizes = which plots offer it (S, M, L, X = XL), unique = one in the village,
  * thumb = the picture on the card (a late picture shows a hammer until it has arrived), art = late pictures it needs
  */
+// ((v4.3 step B, D6) the four big workshops stand on their own fixed plots (world.js d_tool / d_wh / d_cannery / d_store,
+//  `only`): no size letter, like the boathouse and the station — the generic M / L plots offer houses and decor)
 export const CATALOG = {
-  toolsmith: { cat: 'work', sizes: 'ML', unique: true, thumb: 'station_toolsmith' },
-  warehouse: { cat: 'work', sizes: 'ML', unique: true, thumb: 'warehouse' },
-  cannery: { cat: 'work', sizes: 'ML', unique: true, thumb: 'station_cannery' },
-  store: { cat: 'work', sizes: 'ML', unique: true, thumb: 'shop_general' },
+  toolsmith: { cat: 'work', sizes: '', unique: true, thumb: 'station_toolsmith' },
+  warehouse: { cat: 'work', sizes: '', unique: true, thumb: 'warehouse' },
+  cannery: { cat: 'work', sizes: '', unique: true, thumb: 'station_cannery' },
+  store: { cat: 'work', sizes: '', unique: true, thumb: 'shop_general' },
   boathouse: { cat: 'work', sizes: '', unique: true, thumb: 'boathouse' },
   station: { cat: 'work', sizes: '', unique: true, thumb: 'train_station' },
   house_c: { cat: 'home', sizes: 'SML', thumb: 'house_c' },
@@ -55,11 +60,14 @@ export const CATALOG = {
   deco_playground: { cat: 'decor', sizes: 'ML', thumb: 'playground', art: ['playground'] },
   deco_fountain: { cat: 'decor', sizes: 'ML', thumb: 'park_fountain', art: ['park_fountain'] },
 };
-/** the cards of each plot size, in this order (tabs: work, home, decor, civic) */
+/** the cards of each plot size, in this order (tabs: work, home, decor, civic). A plot's own `only` / `types`
+ *  (world.js) narrow it: systems/plotRules.js menuKinds is the one place that reads them.
+ *  ((v4.3 step B) M / L: the four big workshops left (their fixed plots offer them through `only`); XL: w_hall takes the
+ *  hall only (`only`), w_rest the restaurant only (`types`)) */
 export const MENU = {
   S: ['house_c', 'house_a', 'house_b', 'deco_snowman', 'deco_bench', 'deco_lamp', 'deco_flowers'],
-  M: ['toolsmith', 'warehouse', 'cannery', 'store', 'house_c', 'house_a', 'house_b', 'deco_rink', 'deco_playground', 'deco_fountain'],
-  L: ['toolsmith', 'warehouse', 'cannery', 'store', 'house_c', 'house_a', 'house_b', 'deco_rink', 'deco_playground', 'deco_fountain'],
+  M: ['house_c', 'house_a', 'house_b', 'deco_rink', 'deco_playground', 'deco_fountain'],
+  L: ['house_c', 'house_a', 'house_b', 'deco_rink', 'deco_playground', 'deco_fountain'],
   XL: ['town_hall', 'big_restaurant'],
 };
 export const TABS = ['work', 'home', 'decor', 'civic'];
@@ -131,7 +139,7 @@ export class Civic {
   /** the cards for a plot: [{ key, cost, locked, reason, text, cat }] (text: why it is locked / what unlocks it) */
   choices(site) {
     const gs = this.gs, pr = gs.progress;
-    const keys = site.only ? [site.only] : (MENU[site.size] || MENU.M);
+    const keys = menuKinds(site);              // ((v4.3 step B) `only`, else `types`, else the size's menu: plotRules)
     const out = [];
     for (const k of keys) {
       const c = buildCost(k, site.id);                 // ((v4.3) a plot may have its own price: the first two houses)
@@ -146,7 +154,7 @@ export class Civic {
       else if (isHouse(k) && this.vacantBeds() >= this.maxVacant()) { reason = 'lockVacant'; text = t('lockVacant', { n: this.vacantBeds() }); }
       else if ((isHouse(k) || isDecor(k)) && site.size !== 'S' && !site.only && this.bigPlotReserved(site)) {
         reason = 'lockBigPlot';
-        const left = BIG_UNIQUES.filter((u) => !gs.isBuilt(u) && !gs.isBuilding(u)).map((u) => t('b_' + u));
+        const left = BIG_UNIQUES.filter((u) => !gs.isBuilt(u) && !gs.isBuilding(u) && plotAccepts(site, u)).map((u) => t('b_' + u));
         text = t('lockBigPlot2', { names: left.slice(0, 2).join(', ') + (left.length > 2 ? ' …' : '') });
       }
       out.push({ key: k, cost: c, locked: !!reason, reason, text: text || (reason ? t(reason) : null), cat, happy: Math.floor(num(c.happy, 0)) });
@@ -164,16 +172,19 @@ export class Civic {
    */
   bigPlotReserved(site) {
     const gs = this.gs;
-    const left = BIG_UNIQUES.filter((u) => !gs.isBuilt(u) && !gs.isBuilding(u)).length;
-    if (!left) return false;
+    // ((v4.3 step B) only the workshops still to come that this plot's menu offers (plotRules): with plot table v2 none
+    //  (each has its own `only` plot), so a generic plot is never kept. For such a workshop the other free plots of the
+    //  early land that offer it are counted as before)
+    const left = BIG_UNIQUES.filter((u) => !gs.isBuilt(u) && !gs.isBuilding(u) && plotAccepts(site, u));
+    if (!left.length) return false;
     let free = 0;
     for (const id in gs.sites) {
       const st = gs.sites[id];
       if (st === site || st.kind !== 'plot' || st.state !== 'plot' || st.only || (st.size !== 'M' && st.size !== 'L')) continue;
-      if (!PRE_STORE.has(st.region || 'start')) continue;
+      if (!PRE_STORE.has(st.region || 'start') || !left.some((u) => plotAccepts(st, u))) continue;
       free++;
     }
-    return free < left;
+    return free < left.length;
   }
 
   // ================================================================ people

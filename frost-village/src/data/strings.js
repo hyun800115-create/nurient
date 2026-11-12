@@ -524,6 +524,9 @@ export const STRINGS = {
     // ==== (v4.3 step B 「마을 새 단장 둘째 걸음」, B0) ko: each package adds its keys ONLY between its own start / end
     //      lines (the same pair in ko and en), so parallel packages never edit the same lines (build_plan.md §3.1)
     // >>> v43B:L start (layout: place names for the carry pill, 눈꽃 큰길, moved home lines)
+    // (L1, plot table v2) 공방 · 마을회관 제 부지의 이름표 (Site 의 'plotOnly_' + only)
+    plotOnly_toolsmith: '대장간 터', plotOnly_warehouse: '창고 터', plotOnly_cannery: '통조림 공장 터', plotOnly_store: '잡화점 터',
+    plotOnly_town_hall: '마을회관 터',
     // <<< v43B:L end
 
     // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
@@ -1021,6 +1024,9 @@ export const STRINGS = {
     // ==== (v4.3 step B 「마을 새 단장 둘째 걸음」, B0) en: each package adds its keys ONLY between its own start / end
     //      lines (the same pair in ko and en), so parallel packages never edit the same lines (build_plan.md §3.1)
     // >>> v43B:L start (layout: place names for the carry pill, 눈꽃 큰길, moved home lines)
+    // (L1, plot table v2) the workshops' and the hall's own plots (Site label 'plotOnly_' + only)
+    plotOnly_toolsmith: 'Toolsmith site', plotOnly_warehouse: 'Warehouse site', plotOnly_cannery: 'Cannery site', plotOnly_store: 'General store site',
+    plotOnly_town_hall: 'Town hall site',
     // <<< v43B:L end
 
     // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
