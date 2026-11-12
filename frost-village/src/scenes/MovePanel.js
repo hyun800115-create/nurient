@@ -12,7 +12,7 @@
 //            a spare (되돌리기), writes the new one with the running game's saves blocked (window.__FV_NO_SAVE) and
 //            reloads the page.
 // The Android app (tools/apk) adds window.SnowbloomAndroid { copy(text), share(text), paste() } for its own pages only.
-import { SAVE_KEY, SETTINGS_KEY, SAVE_VERSION, Save, Settings } from '../core/Save.js';
+import { SAVE_KEY, SETTINGS_KEY, Save, Settings, stamp } from '../core/Save.js';
 import { encodeVillage, decodeVillage, dryRun, applyVillage, snapshotKeys, getStore, backupCode, ADMIN_BACKUP_KEY } from '../core/Transfer.js';
 import { getLang } from '../data/strings.js';
 // ---- (v4.3 마을 깃발) the incoming village's flag on the confirm card
@@ -41,9 +41,11 @@ const S = {
     unchanged: '지금 마을은 그대로예요.',
     rank: ['서리마을', '서리읍'],
     header: '[행복한 눈꽃마을 이야기] 마을 옮기기 코드 · {name} {coins}코인 · {d}',
+    // ((v4.3 step B) a village this build cannot read itself (from a newer build, held): no name or coins to show)
+    headerPlain: '[행복한 눈꽃마을 이야기] 마을 옮기기 코드 · {d}',
     err: {
       empty: '먼저 코드를 붙여 넣어 주세요.',
-      notCode: '마을 코드가 아니에요. 「SNOWBLOOM1.」로 시작하는 코드를 통째로 붙여 넣어 주세요.',
+      notCode: '마을 코드가 아니에요. 「SNOWBLOOM」으로 시작하는 코드를 통째로 붙여 넣어 주세요.',
       cut: '코드가 중간에 잘렸어요{part}. 처음부터 끝까지 다시 복사해 붙여 넣어 주세요.',
       damaged: '코드의 글자가 바뀌었거나 빠졌어요. 받은 코드를 그대로 다시 복사해 붙여 넣어 주세요.',
       newer: '더 새 버전의 게임에서 만든 코드예요. 게임을 업데이트한 뒤 다시 해 주세요.',
@@ -78,9 +80,10 @@ const S = {
     unchanged: 'Your current village has not changed.',
     rank: ['Frost Village', 'Frost Town'],
     header: '[Snowbloom Village] village code · {name} {coins} coins · {d}',
+    headerPlain: '[Snowbloom Village] village code · {d}',
     err: {
       empty: 'Paste a code first.',
-      notCode: 'This is not a village code. Paste the whole code that starts with "SNOWBLOOM1.".',
+      notCode: 'This is not a village code. Paste the whole code that starts with "SNOWBLOOM".',
       cut: 'The code is cut off{part}. Copy it again from start to end and paste it.',
       damaged: 'Some characters of the code changed or are missing. Copy the code again exactly as you got it.',
       newer: 'This code comes from a newer version of the game. Update the game and try again.',
@@ -385,7 +388,7 @@ export class MovePanel {
       const dr = dryRun(keys, made);
       const enc = await encodeVillage(keys, { made });
       const sm = dr.ok ? dr.summary : null;
-      const header = fill(L.header, { name: L.rank[sm && sm.rank === 2 ? 1 : 0], coins: num(sm ? sm.coins : 0), d: when(made, this.lang) });
+      const header = sm ? fill(L.header, { name: L.rank[sm.rank === 2 ? 1 : 0], coins: num(sm.coins), d: when(made, this.lang) }) : fill(L.headerPlain, { d: when(made, this.lang) });
       res = { text: header + '\n' + enc.code, code: enc.code, chars: enc.chars, comp: enc.comp, summary: sm, keys: Object.keys(keys) };
     } catch (e) {
       res = null;
@@ -553,11 +556,15 @@ export function openMovePanel(ui, tab) {
   const host = {
     lang: () => (getLang() === 'en' ? 'en' : 'ko'),
     saveNow: () => {
+      // ((v4.3 step B) while the save is held (a village from a newer build, a failed move to the new map) the code holds
+      //  the STORED village, byte for byte: the running game is not that village and its own state is never exported)
+      if (Save.held) { try { return window.localStorage.getItem(SAVE_KEY); } catch (e) { return null; } }
       try { gs.save(true); } catch (e) { /* the stored one, or the one made below */ }
       let raw = null;
       try { raw = window.localStorage.getItem(SAVE_KEY); } catch (e) { raw = null; }
       if (!raw || !Save.lastWriteOk) {
-        try { raw = JSON.stringify(Object.assign({ v: SAVE_VERSION, t: Date.now() }, gs.serialize())); } catch (e) { /* keep the stored one */ }
+        // ((v4.3 step B, map_save G-10) the same stamp as Save.write: { v, lv, t } first)
+        try { raw = JSON.stringify(stamp(gs.serialize())); } catch (e) { /* keep the stored one */ }
       }
       return raw;
     },
@@ -570,10 +577,12 @@ export function openMovePanel(ui, tab) {
     },
     onClose: () => {
       ui.moveOpen = false;
+      if (window.__FV) window.__FV.moveOpen = false;
+      // ((v4.3 step B) opened from a save hold card: the card is still up and keeps the game's input off)
+      if (ui.saveHold && ui.saveHold.blocking) return;
       if (ui.input) ui.input.enabled = true;
       const kb = ui.game.input && ui.game.input.keyboard;
       if (kb) kb.enabled = true;
-      if (window.__FV) window.__FV.moveOpen = false;
     },
     reload: () => window.location.reload(),
   };

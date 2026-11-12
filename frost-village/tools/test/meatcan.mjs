@@ -245,8 +245,9 @@ try {
   });
   const keys0 = Object.keys(JSON.parse(fixture('v41_save_smart_46min.json')));
   step('6 save mid-trip (the 고기 짐꾼 carrying ' + s6.carry + '): v8, saveLost 0, the flag, his load saved on the rack', tTrip >= 0 && s6.v === 8 && s6.lost === 0 && s6.flag && s6.pile >= Math.min(s6.rackNow + s6.carry, 80), { t: tTrip, lost: s6.lost, carry: s6.carry, pile: s6.pile, rackNow: s6.rackNow, ws: s6.ws });
-  // ((v4.3 step B, B0) `v43` is step B's own block (the R43 marker; build_plan.md §2), not a meat-can field)
-  step('6 no new top-level save field', s6.top.filter((k) => keys0.indexOf(k) < 0 && ['v42', 'bank', 'logistics', 'v43'].indexOf(k) < 0).length === 0, s6.top.filter((k) => keys0.indexOf(k) < 0));
+  // ((v4.3 step B, B0) `v43` is step B's own block (the R43 marker; build_plan.md §2), not a meat-can field; (S) so are the
+  //  content level `lv` every save is stamped with and F0's `x` drawer)
+  step('6 no new top-level save field', s6.top.filter((k) => keys0.indexOf(k) < 0 && ['v42', 'bank', 'logistics', 'v43', 'lv', 'x'].indexOf(k) < 0).length === 0, s6.top.filter((k) => keys0.indexOf(k) < 0));
   await boot(s6.save);
   await park();
   const r6 = await ev(() => {

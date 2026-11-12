@@ -527,6 +527,25 @@ export const STRINGS = {
     // <<< v43B:L end
 
     // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
+    hold_newerTitle: '더 새 버전에서 저장된 마을이에요',
+    hold_newerBody: '이 마을은 더 새 버전의 게임에서 저장됐어요. 지금 버전으로 열면 마을의 일부가 사라질 수 있어서, 마을은 저장된 그대로 두었어요. 게임을 업데이트하면 이 마을을 그대로 이어서 할 수 있어요.',
+    hold_newerWhich: '마을 {lv} · 지금 게임 {now}',
+    hold_update: '게임 업데이트하기',
+    hold_updateWeb: '새로 고침',
+    hold_updateHint: 'Play 스토어에서 「행복한 눈꽃마을 이야기」를 업데이트한 뒤 다시 열어 주세요.',
+    hold_code: '마을 코드 만들기',
+    hold_new: '새 마을로 시작',
+    hold_newAsk: '정말 새 마을로 시작할까요? 지금 마을은 예비 사본으로 남겨 둬요. 게임을 업데이트한 뒤 「설정 › 마을 옮기기 › 불러오기」에서 되돌릴 수 있어요.',
+    hold_newAskFail: '정말 새 마을로 시작할까요? 지금 마을은 예비 사본으로 남겨 둬요.',
+    hold_newYes: '네, 새 마을로',
+    hold_cancel: '취소',
+    hold_newWorking: '지금 마을을 예비 사본으로 남기는 중…',
+    hold_newFail: '예비 사본을 남기지 못해서 마을을 그대로 두었어요. 「마을 코드 만들기」로 먼저 보관해 주세요.',
+    hold_failTitle: '마을을 새 지도로 옮기지 못했어요',
+    hold_failBody: '마을을 새 지도로 옮기다가 문제가 생겼어요. 마을은 저장된 그대로 두었어요. 다시 해 보거나, 마을 코드를 만들어 보관해 주세요.',
+    hold_retry: '다시 해 보기',
+    hold_staleText: '새 버전에서 저장된 마을이에요 · 새로 고침해 주세요',
+    hold_reload: '새로 고침',
     // <<< v43B:S end
 
     // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
@@ -1024,6 +1043,25 @@ export const STRINGS = {
     // <<< v43B:L end
 
     // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
+    hold_newerTitle: 'This village was saved by a newer version',
+    hold_newerBody: 'This village was saved by a newer version of the game. Opening it in this version could lose parts of it, so it was left exactly as it was saved. Update the game to carry on with this village.',
+    hold_newerWhich: 'village {lv} · this game {now}',
+    hold_update: 'Update the game',
+    hold_updateWeb: 'Reload',
+    hold_updateHint: 'Update "Snowbloom Village" in the Play Store, then open it again.',
+    hold_code: 'Make a village code',
+    hold_new: 'Start a new village',
+    hold_newAsk: 'Start a new village? Your current village is kept as a spare copy. After updating the game you can bring it back in "Settings › Move village › Import".',
+    hold_newAskFail: 'Start a new village? Your current village is kept as a spare copy.',
+    hold_newYes: 'Yes, a new village',
+    hold_cancel: 'Cancel',
+    hold_newWorking: 'Keeping your village as a spare copy…',
+    hold_newFail: 'Could not keep a spare copy, so your village was left as it is. Please make a village code first.',
+    hold_failTitle: 'Your village could not move to the new map',
+    hold_failBody: 'Something went wrong while moving your village to the new map. It was left exactly as it was saved. Try again, or make a village code to keep it safe.',
+    hold_retry: 'Try again',
+    hold_staleText: 'A newer version saved this village · please reload',
+    hold_reload: 'Reload',
     // <<< v43B:S end
 
     // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)

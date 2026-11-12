@@ -88,7 +88,7 @@ check('the late v4.2 fixture: save v7, 135,000 coins, chat record, settings, tit
 const encZ = await T.encodeVillage(LATE);
 const encJ = await T.encodeVillage(LATE, { compress: false });
 report.lateCodeChars = encZ.chars; report.latePlainChars = encJ.chars; report.lateJsonBytes = encZ.payloadBytes;
-check('late village -> code (deflate-raw)', encZ.comp === 'z' && /^SNOWBLOOM1\.z\.\d+\.[A-Za-z0-9_-]+\.[0-9a-f]{8}$/.test(encZ.code), encZ.code.slice(0, 40));
+check('late village -> code (deflate-raw, format 2 since v4.3 step B)', encZ.comp === 'z' && /^SNOWBLOOM2\.z\.\d+\.[A-Za-z0-9_-]+\.[0-9a-f]{8}$/.test(encZ.code) && T.CODE_FMT === 2, encZ.code.slice(0, 40));
 console.log('       code size: ' + encZ.chars + ' characters compressed, ' + encJ.chars + ' plain (JSON ' + encZ.payloadBytes + ' bytes)');
 for (const [nm, e] of [['compressed', encZ], ['plain', encJ]]) {
   const d = await T.decodeVillage(e.code);
@@ -133,14 +133,15 @@ for (const [nm, e] of [['compressed', encZ], ['plain', encJ]]) {
   const foreign = await T.decodeVillage('안녕하세요! 오늘 날씨 좋네요');
   const json = await T.decodeVillage(JSON.stringify({ keys: LATE }));
   // a well-formed code of another app (right checksum, other app id), a newer format, a code without a village
-  const mk = async (payload) => {
+  const mk = async (payload, tag = 1) => {
     const b64 = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
-    const head = 'SNOWBLOOM1.j.' + b64.length + '.' + b64;
+    const head = 'SNOWBLOOM' + tag + '.j.' + b64.length + '.' + b64;
     return head + '.' + T.crc32(head);
   };
   const other = await T.decodeVillage(await mk({ app: 'otherGame', fmt: 1, keys: { [SAVE_KEY]: '{}' } }));
-  const newerFmt = await T.decodeVillage(await mk({ app: 'snowbloom', fmt: 2, keys: {} }));
-  const newerTag = await T.decodeVillage('SNOWBLOOM2.z.4.abcd.00000000');
+  // ((v4.3 step B) format 2 is this build's: 'newer' is now a format-3 payload / a SNOWBLOOM3 tag)
+  const newerFmt = await T.decodeVillage(await mk({ app: 'snowbloom', fmt: 3, keys: {} }));
+  const newerTag = await T.decodeVillage('SNOWBLOOM3.z.4.abcd.00000000');
   const noVillage = await T.decodeVillage(await mk({ app: 'snowbloom', fmt: 1, keys: { [SETTINGS_KEY]: '{}' } }));
   check('foreign text / plain JSON -> not a code; another app\'s code -> foreign; newer -> newer; no save -> noVillage',
     foreign.error === 'notCode' && json.error === 'notCode' && other.error === 'foreign' && newerFmt.error === 'newer' && newerTag.error === 'newer' && noVillage.error === 'noVillage',
@@ -150,6 +151,23 @@ for (const [nm, e] of [['compressed', encZ], ['plain', encJ]]) {
   const future = T.dryRun({ [SAVE_KEY]: JSON.stringify(Object.assign(JSON.parse(LATE[SAVE_KEY]), { v: 99 })) });
   const junk = T.dryRun({ [SAVE_KEY]: '[1,2,3]' });
   check('a save from a newer game -> newerSave; a broken save -> badSave', future.error === 'newerSave' && junk.error === 'badSave', [future.error, junk.error]);
+  // ---- (v4.3 step B, F0s / N7) the content level `lv` and the code format 2
+  const withV = (o) => T.dryRun({ [SAVE_KEY]: JSON.stringify(Object.assign(JSON.parse(LATE[SAVE_KEY]), { v: 8 }, o)) });
+  const lv46 = withV({ lv: 46 }), v9 = withV({ v: 9 }), lv43 = withV({ lv: 43 }), lvJunk = withV({ lv: 'abc' }), lv44s = withV({ lv: '44' });
+  check('(step B) lv 46 / v 9 / lv "44" -> newerSave; lv 43 and a garbage lv load (summary fromLv 43 / 0)',
+    lv46.error === 'newerSave' && v9.error === 'newerSave' && lv44s.error === 'newerSave' && lv43.ok && lv43.summary.fromLv === 43 && lvJunk.ok && lvJunk.summary.fromLv === 0,
+    [lv46.error, v9.error, lv44s.error, lv43.ok && lv43.summary.fromLv, lvJunk.ok && lvJunk.summary.fromLv]);
+  const v1code = await mk({ app: 'snowbloom', fmt: 1, made: 1, saveV: 7, build: 'v4.3.0-a3.1', keys: LATE });
+  const d1 = await T.decodeVillage(v1code);
+  check('(step B) a format-1 code (SNOWBLOOM1, made by 4.2.x / a1–a3.1) still reads back to the same keys', /^SNOWBLOOM1\./.test(v1code) && d1.ok && same(d1.keys, Object.fromEntries(Object.entries(LATE).sort())), d1.error);
+  const d2 = await T.decodeVillage(encJ.code);
+  check('(step B) this build\'s payload: fmt 2, saveV 8, lv 43', d2.ok && d2.payload.fmt === 2 && d2.payload.saveV === SV.SAVE_VERSION && d2.payload.lv === SV.LV && SV.LV === 43, d2.ok && { fmt: d2.payload.fmt, saveV: d2.payload.saveV, lv: d2.payload.lv });
+  const zero = await T.decodeVillage(await mk({ app: 'snowbloom', fmt: 0, keys: { [SAVE_KEY]: LATE[SAVE_KEY] } }, 0));
+  const fmt2in1 = await T.decodeVillage(await mk({ app: 'snowbloom', fmt: 2, keys: { [SAVE_KEY]: LATE[SAVE_KEY] } }, 1));
+  check('(step B) SNOWBLOOM0 -> foreign; a format-2 payload is read under either tag', zero.error === 'foreign' && fmt2in1.ok, [zero.error, fmt2in1.ok]);
+  const PRE = SV.PRE43_KEY;
+  const stP = memStorage(Object.assign({}, LATE, { [PRE]: LATE[SAVE_KEY] }));
+  check('(step B) the pre-B copy (frostVillage.save.backup.pre43) never travels in a code', PRE === BACKUP_KEY + '.pre43' && !T.isGameKey(PRE) && !(PRE in T.snapshotKeys(stP)), PRE);
 }
 // the dry run is the game's load path
 {
@@ -418,7 +436,7 @@ async function browserPart() {
       ['one character changed', textA.slice(0, 300) + (textA[300] === 'A' ? 'B' : 'A') + textA.slice(301), /바뀌었거나 빠졌어요/],
       ['foreign text', '오늘 저녁 뭐 먹지?', /마을 코드가 아니에요/],
       ['another app\'s code', await (async () => { const b64 = Buffer.from(JSON.stringify({ app: 'other', fmt: 1, keys: {} })).toString('base64url'); const h = 'SNOWBLOOM1.j.' + b64.length + '.' + b64; return h + '.' + T.crc32(h); })(), /이 게임의 마을 코드가 아니에요/],
-      ['a newer game\'s code', 'SNOWBLOOM2.z.4.abcd.12345678', /더 새 버전/],
+      ['a newer game\'s code', 'SNOWBLOOM3.z.4.abcd.12345678', /더 새 버전/],
     ];
     for (const [nm, text, re] of cases) {
       const r = await tryCode(B.page, text);
@@ -503,7 +521,7 @@ async function browserPart() {
     const textD = await exportCode(D.page);
     const dD = await T.decodeVillage(textD);
     report.latePlainInGameChars = textD.length;
-    check('D: a plain code (SNOWBLOOM1.j.), same keys, ' + textD.length + ' characters', /SNOWBLOOM1\.j\./.test(textD) && dD.ok && same(Object.keys(dD.keys), Object.keys(dA.keys)), textD.length);
+    check('D: a plain code (SNOWBLOOM2.j.), same keys, ' + textD.length + ' characters', /SNOWBLOOM2\.j\./.test(textD) && dD.ok && same(Object.keys(dD.keys), Object.keys(dA.keys)), textD.length);
     await D.page.click('#fm-tab-in');
     const rz = await tryCode(D.page, textA);
     check('D: a compressed code opens here too ((v4.3 perf) the built-in decoder: a code from a new phone on an old WebView)', rz.check.ok, rz.check);
