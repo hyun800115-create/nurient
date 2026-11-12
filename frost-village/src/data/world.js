@@ -58,15 +58,22 @@ const MK = (mx, my) => rel(market, Z('plaza', mx, my));
 const STATION_PADS = {
   grill:      { line: [-79, 155, 'lb'],  p2: null },     // ((v4.3) 'lb': 화덕 2단 · 생선 짐꾼 2 이름표는 발판 아래 — 위쪽은 가게 3단 자재 창구)
   sawmill:    { line: [-6, 119],   p2: [168, 112, [100, -62]] },
-  // ((v4.3 밀밭 · 빵집) line = right of the cottage's back-east corner on open snow (the old farmer-hut corner, 1497, 1117);
-  //  p2 = where the farmer's hut stood (1596, 1112). Was line [-272, 93], p2 [-202, 188] at the old oven's left corner)
-  bakery:     { line: [181, -27],  p2: [280, -32, 'lb'] },
+  // ((v4.3 밀밭 · 빵집) line = the open snow between the dog house and the field's top fence corner (1560, 1056), its label
+  //  below the pad (above it the 고기 점원 pad's label hangs down). p2 = null: 빵 짐꾼 2 · 빵집 2단 take the line spot one at a
+  //  time, like the grill — there is no second clear spot: (a3.1 regression, padvis) the first line spot (1497, 1117) lay right
+  //  behind the field's top fence corner (its posts and logs hid 48 % of the pad, 80 % with the wheat tower at the oven door
+  //  I) and the p2 spot (1596, 1112) behind the 농막's roof and the fence (60 %), and the two overlapped when both stood.
+  //  East of the line the land is clear only up to x ≈ 1680 (the east fog's billows before the east tower; the pines).
+  //  Was line [-272, 93], p2 [-202, 188] at the old oven's left corner; a3: line [181, -27], p2 [280, -32, 'lb'])
+  bakery:     { line: [244, -88, 'lb'],  p2: null },
   smelter:    { line: [39, 148],   p2: [199, 128, 'lb'] },
   smokehouse: { line: [-251, -25], p2: [-284, 170] },
 };
 const STC = { grill, sawmill, bakery, smelter, smokehouse };
 /** (v4.2.0.1) the spot of a station's line pads { x, y } */
 const LINE = (id) => ({ x: STC[id][0] + STATION_PADS[id].line[0], y: STC[id][1] + STATION_PADS[id].line[1] });
+// ((a3.1) the bakery line's hire pads carry its label side (below the pad, as its 2단 / 짐꾼 2 offers do)
+const BLINE = () => ({ ...LINE('bakery'), labelAt: [0, 64] });
 
 // ── (v4.3) 낚시 좌대 (그물 대신, docs/redesign_v43/engineering_plan.md §4.1): 좌대 1단의 가운데 = 물 위 (DECK_C)
 //   DK(mx, my) = 좌대 가운데에서 [X m, Y m] 떨어진 화면 자리. +X = 화면 오른쪽 아래, +Y = 오른쪽 위 (바다 쪽)
@@ -230,7 +237,8 @@ export const WORLD = {
   //   walls = 벽 (원 [x, y, 반지름], 그림의 walls 가 있으면 그것): 앞쪽 문 (bx 0.2 ~ 1.1) 은 열려 있어요
   //   stall = 가판대 (가판대 기준 px): shelf = 빵 내려놓는 발판, cash = 빵집 금고, register = 촌장이 서는 계산대 R (= 빵집 짓기 발판),
   //           staff = 판매원 자리 (그림의 staffPoints 가 이겨요), queueStart / queueStep = 줄 (맨 앞 손님은 가판대 왼쪽: 판매원을 가리지 않게)
-  //   decorClear = 장식 나무가 서지 않는 곳 [x, y, 반지름] (오두막, 가판대, 줄, 2단 발판 자리)
+  //   decorClear = 장식 나무가 서지 않는 곳 [x, y, 반지름] (오두막, 가판대, 줄, 줄 발판 자리 — (a3.1) 1596, 1112 와 1497, 1117 은 예전
+  //                발판 자리: 둘레 소나무가 예전 그대로 서도록 남겨 둬요)
   bakery43: {
     x: bakery[0], y: bakery[1], sprite: 'bakery43_back', front: 'bakery43_front', signText: 'sign_bakery43',
     walls: [[9, -45, 30], [50, -25, 30], [91, -5, 30], [-32, -34, 30], [-72, -14, 30], [68, 16, 30], [27, 36, 30], [-91, 5, 30], [-63, 18, 30]],
@@ -240,7 +248,7 @@ export const WORLD = {
       at: BKL(-1.0, -2.1), sprite: 'bakery43_stall_back', shelf: [-10, 30], cash: [9, 90], register: [68, 54], staff: [24, -13],
       queueStart: [-73, -5], queueStep: [0, 40], queueTurn: 99, faceTo: [24, -24], clerk: ['npc_clerk_b', 'npc_clerk_a'],
     },
-    decorClear: [[1316, 1144, 200], [1176, 1169, 150], [1103, 1244, 120], [1596, 1112, 150], [1497, 1117, 110]],
+    decorClear: [[1316, 1144, 200], [1176, 1169, 150], [1103, 1244, 120], [1596, 1112, 150], [1497, 1117, 110], [1560, 1056, 120]],
   },
 
   // ── 자원 ───────────────────────────────────────────────
@@ -299,11 +307,11 @@ export const WORLD = {
     hire_lumberjack: { ...LINE('sawmill'), worker: 'lumberjack', hut: [300, 1010] },
     zone_farm:       { x: 1190, y: 1135, zone: 'farm' },
     // ((v4.3 밀밭 · 빵집) the farmers live in the field's 농막 now (decor farm43_hut): no worker_hut (was hut [1606, 1112])
-    hire_farmer:     { ...LINE('bakery'), worker: 'farmer' },
+    hire_farmer:     { ...BLINE(), worker: 'farmer' },
     // ((v4.3 밀밭 · 빵집) 빵집 짓기: on the stall's register spot R before the bakery stands; then the bakery line's paid pads, one
     //  at a time on its LINE spot (판매원 → 제빵사 → 농부 → 밀 짐꾼 → 빵 짐꾼)
     bld_bakery:      { x: bakery[0] + BKL(0.95, -2.55)[0], y: bakery[1] + BKL(0.95, -2.55)[1] },
-    hire_clerk_bakery: { ...LINE('bakery'), clerk: 'bakery' },
+    hire_clerk_bakery: { ...BLINE(), clerk: 'bakery' },
     zone_mine:       { x: 760,  y: 1760, zone: 'mine' },
     hire_miner:      { ...LINE('smelter'), worker: 'miner',      hut: [236, 1730] },
     zone_hunt:       { x: 1160, y: 1800, zone: 'hunt' },
@@ -323,7 +331,7 @@ export const WORLD = {
     // (v2) 짐꾼 고용: 그 가공소의 일꾼을 고용하면 나타남. 짐꾼이 완성품을 길을 따라 판매대·교역소로 날라 줌
     porter_grill:      { ...LINE('grill'), station: 'grill' },
     porter_sawmill:    { ...LINE('sawmill'), station: 'sawmill' },
-    porter_bakery:     { ...LINE('bakery'), station: 'bakery' },
+    porter_bakery:     { ...BLINE(), station: 'bakery' },
     porter_smelter:    { ...LINE('smelter'), station: 'smelter' },
     porter_smokehouse: { ...LINE('smokehouse'), station: 'smokehouse' },
   },
@@ -337,8 +345,8 @@ export const WORLD = {
     raw_grill:      LINE('grill'),
     op_sawmill:     LINE('sawmill'),
     raw_sawmill:    LINE('sawmill'),
-    op_bakery:      LINE('bakery'),
-    raw_bakery:     LINE('bakery'),
+    op_bakery:      BLINE(),
+    raw_bakery:     BLINE(),
     op_smelter:     LINE('smelter'),
     raw_smelter:    LINE('smelter'),
     op_smokehouse:  LINE('smokehouse'),

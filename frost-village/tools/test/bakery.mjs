@@ -1,6 +1,6 @@
 // (v4.3 밀밭 · 빵집) the wheat field and the bakery as two places, fixed-step clock:
 //   node tools/test/bakery.mjs [--only layout,fresh,shop,save,old] [--quick] [--shots <dir>]
-// 1. layout (read from the running game): the cottage / stall / pads / line / LINE / P2 where world.js puts them (spec §3.3,
+// 1. layout (read from the running game): the cottage / stall / pads / line / LINE (/ P2 when world.js gives the line one) where world.js puts them (spec §3.3,
 //    ±0.4 m), every pad ≥ 1.4 m from the next and on open ground, nothing within 75 px of the main road (x 990), no pad and no
 //    wheat plot's tip under the cottage's or the 농막's opaque pixels, the shop's cash pad / food rack / clerk pad uncovered,
 //    the field fence with its two tl gaps, the farm_link road gone
@@ -114,11 +114,14 @@ try {
           clerkPad: g.progress.pads.hire_clerk_bakery ? { x: g.progress.pads.hire_clerk_bakery.x, y: g.progress.pads.hire_clerk_bakery.y, cost: g.progress.pads.hire_clerk_bakery.cost } : null, done: !!g.progress.done.bld_bakery };
       });
       ok(b.built && b.st && b.stall && b.img && b.front && b.sign && b.walls === 9 && !b.round, 'the cottage and its stall stand (front layer, sign, 9 wall circles, no round collider)', b);
-      ok(b.clerkPad && b.clerkPad.x === 1497 && b.clerkPad.y === 1117 && b.clerkPad.cost === 80, 'the 판매원 pad (80) on the LINE spot (1497, 1117)', b.clerkPad);
+      // ((a3.1 regression) the LINE spot moved to the open snow between the dog house and the field's top fence corner (padvis)
+      ok(b.clerkPad && b.clerkPad.x === 1560 && b.clerkPad.y === 1056 && b.clerkPad.cost === 80, 'the 판매원 pad (80) on the LINE spot (1560, 1056)', b.clerkPad);
       // ---------------------------------------------------------------- 1. layout (the built bakery)
       const L = await ev(page, () => {
         const g = window.__FV.scene, F = window.__FV, W = window.__W, st = g.stations.bakery, S = g.bakery.stall, C = g.collision;
-        const pads = { W: F.where('bakeryDoor'), I: F.where('bakeryIn'), O: F.where('bakeryOut'), R: F.where('bakeryRegister'), shelf: F.where('bakeryShelf'), cash: F.where('bakeryCash'), LINE: { x: 1497, y: 1117 }, P2: { x: st.x + W.stationPads.bakery.p2[0], y: st.y + W.stationPads.bakery.p2[1] } };
+        const pads = { W: F.where('bakeryDoor'), I: F.where('bakeryIn'), O: F.where('bakeryOut'), R: F.where('bakeryRegister'), shelf: F.where('bakeryShelf'), cash: F.where('bakeryCash'), LINE: { x: st.x + W.stationPads.bakery.line[0], y: st.y + W.stationPads.bakery.line[1] } };
+        // ((a3.1) p2 null: 빵 짐꾼 2 · 빵집 2단 take the LINE spot one at a time (no P2 spot of its own)
+        const p2 = W.stationPads.bakery.p2; if (p2) pads.P2 = { x: st.x + p2[0], y: st.y + p2[1] };
         const q = []; for (let i = 0; i < 5; i++) q.push(S.slotPos(i));
         const walk = {}; for (const k in pads) walk[k] = C.inWalk(pads[k].x, pads[k].y) && !C.blocked(pads[k].x, pads[k].y, 8);
         const qWalk = q.map((p) => C.inWalk(p.x, p.y) && !C.blocked(p.x, p.y, 10));
@@ -134,7 +137,7 @@ try {
         return { pads, q, walk, qWalk, cover, plots, shop, farmLink: !!nodes.farm_link, edges: W.roads.edges.filter((e) => e[0] === 'farm_link' || e[1] === 'farm_link').length, stallAt: { x: S.x, y: S.y }, A: { x: st.x, y: st.y }, fence: W.fences.find((f) => f.zone === 'farm'), roads };
       });
       // (spec §3.3; R and the till moved 0.25 / 0.13 m east within its tolerance: R was 1.19 m from the shelf pad)
-      const spec = { W: [1295, 1177], I: [1420, 1182], O: [1352, 1216], R: [1234, 1216], shelf: [1166, 1199], cash: [1185, 1255], LINE: [1497, 1117], P2: [1596, 1112] };
+      const spec = { W: [1295, 1177], I: [1420, 1182], O: [1352, 1216], R: [1234, 1216], shelf: [1166, 1199], cash: [1185, 1255], LINE: [1560, 1056] };
       const off = {}; for (const k in spec) off[k] = +gd(L.pads[k], { x: spec[k][0], y: spec[k][1] }).toFixed(2);
       ok(Object.values(off).every((m) => m <= 0.4) && Math.abs(L.A.x - 1316) <= 2 && Math.abs(L.A.y - 1144) <= 2 && Math.abs(L.stallAt.x - 1176) <= 2 && Math.abs(L.stallAt.y - 1169) <= 2, 'layout: cottage (1316, 1144), stall (1176, 1169) and every pad within 0.4 m of spec §3.3', off);
       const keys = Object.keys(L.pads), close = [];
