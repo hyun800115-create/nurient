@@ -3,10 +3,12 @@
 // localStorage; or the claude.ai artifact <-> the app). Nothing is ever sent over the network: the player copies or
 // shares the code themselves (KakaoTalk '나와의 채팅', a memo, an e-mail) and pastes it into 불러오기.
 //
-//   code = SNOWBLOOM1.<c>.<n>.<data>.<crc>
+//   code = SNOWBLOOM<f>.<c>.<n>.<data>.<crc>
+//     f     the code format: 2 since v4.3 step B (1 before; both are read). A build that knows only format 1 (4.2.x,
+//           v4.3.0-a1 … a3.1) answers 'newer' to a format-2 code instead of loading a step-B village it would cut down
 //     c     'z' = the payload deflate-raw compressed (CompressionStream), 'j' = not compressed (no CompressionStream)
 //     n     the length of <data> (a cut-off paste is told apart from a damaged one)
-//     data  base64url of the payload bytes: UTF-8 JSON { app: 'snowbloom', fmt: 1, made, saveV, build, keys }
+//     data  base64url of the payload bytes: UTF-8 JSON { app: 'snowbloom', fmt, made, saveV, lv, build, keys }
 //     crc   CRC32 (8 hex) of everything before it: any changed, lost or extra character is caught
 //   Whitespace and line breaks inside the code are ignored (chat apps wrap long text; so are soft hyphens and an e-mail
 //   reply's '>' quote marks); text around it (the header line the game puts above it, a greeting) is skipped.
@@ -16,12 +18,16 @@
 // (save.backup, save.backup.2, *.bad) nor this feature's spare (move.backup). A future key with the prefix comes along
 // by itself. Every reader sanitizes its record on load, and the save itself is dry-run through Save.js migrateSave
 // (the same migration + sanitize path as a stored save) before anything is written.
-import { SAVE_KEY, BACKUP_KEY, BAD_KEY, SAVE_VERSION, migrateSave } from './Save.js';
+import { SAVE_KEY, BACKUP_KEY, BAD_KEY, SAVE_VERSION, LV, migrateSave, isNewerSave } from './Save.js';
+// ---- (v4.3 step B, S1 — map_save N7) the code format 2 (codes carry the content level `lv`)
+import { CODE_FMT as FMT43 } from '../data/ids43.js';
 import { VERSION, BUILD_DATE } from '../data/version.js';
 import { inflateRaw } from './inflate.js';
 
 export const CODE_TAG = 'SNOWBLOOM';
-export const CODE_FMT = 1;
+export const CODE_FMT = FMT43;
+/** the oldest code format this build still reads */
+export const CODE_FMT_MIN = 1;
 /** the village that was here before the last 불러오기 (a code like the ones above): 되돌리기 brings it back */
 export const MOVE_BACKUP_KEY = 'frostVillage.move.backup';
 /** ((v4.2.0.2) 관리자 모드, src/systems/Admin.js) the 관리자 사본: the village as it was when the admin panel first opened on it
@@ -110,7 +116,7 @@ async function pump(ts, bytes, limit) {
  * keys -> { code, comp, chars, payloadBytes }. opts: { made (ms), compress (default true when possible) }
  */
 export async function encodeVillage(keys, opts = {}) {
-  const payload = { app: 'snowbloom', fmt: CODE_FMT, made: Math.round(opts.made || Date.now()), saveV: SAVE_VERSION, build: VERSION + ' · ' + BUILD_DATE, keys };
+  const payload = { app: 'snowbloom', fmt: CODE_FMT, made: Math.round(opts.made || Date.now()), saveV: SAVE_VERSION, lv: LV, build: VERSION + ' · ' + BUILD_DATE, keys };
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   let comp = 'j', data = bytes;
   if (opts.compress !== false && canCompress()) {
@@ -151,14 +157,15 @@ export async function decodeVillage(text) {
 async function decodeAt(rest) {
   const ver = /^SNOWBLOOM(\d+)/.exec(rest);
   if (!ver) return fail('notCode');
-  if (+ver[1] > CODE_FMT) return fail('newer');
-  if (+ver[1] !== CODE_FMT) return fail('foreign');
+  const fmt = +ver[1];
+  if (fmt > CODE_FMT) return fail('newer');
+  if (fmt < CODE_FMT_MIN) return fail('foreign');
   const m = /^SNOWBLOOM\d+\.([a-z])\.(\d{1,9})\.([A-Za-z0-9_-]*)(?:\.([0-9a-fA-F]{8}))?/.exec(rest);
   if (!m) return fail(/^SNOWBLOOM\d+\.?[a-z]?\.?\d*$/.test(rest) ? 'cut' : 'damaged');
   const comp = m[1], want = +m[2], data = m[3];
   if (data.length < want) return fail('cut', { have: data.length, want });
   if (data.length > want || !m[4]) return fail(data.length > want ? 'damaged' : 'cut', { have: data.length, want });
-  if (crc32(CODE_TAG + CODE_FMT + '.' + comp + '.' + want + '.' + data) !== m[4].toLowerCase()) return fail('damaged');
+  if (crc32(CODE_TAG + fmt + '.' + comp + '.' + want + '.' + data) !== m[4].toLowerCase()) return fail('damaged');
   let bytes;
   try { bytes = fromB64url(data); } catch (e) { return fail('damaged'); }
   if (comp === 'z') {
@@ -175,7 +182,7 @@ async function decodeAt(rest) {
   try { p = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); } catch (e) { return fail('damaged'); }
   if (!p || typeof p !== 'object' || Array.isArray(p) || p.app !== 'snowbloom') return fail('foreign');
   if (typeof p.fmt === 'number' && p.fmt > CODE_FMT) return fail('newer');
-  if (p.fmt !== CODE_FMT || !p.keys || typeof p.keys !== 'object' || Array.isArray(p.keys)) return fail('foreign');
+  if (typeof p.fmt !== 'number' || Math.floor(p.fmt) !== p.fmt || p.fmt < CODE_FMT_MIN || !p.keys || typeof p.keys !== 'object' || Array.isArray(p.keys)) return fail('foreign');
   const keys = {};
   const dropped = [];
   let n = 0;
@@ -196,7 +203,8 @@ export function dryRun(keys, made) {
   let raw = null;
   try { raw = JSON.parse(keys[SAVE_KEY]); } catch (e) { return fail('badSave'); }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fail('badSave');
-  if (typeof raw.v === 'number' && raw.v > SAVE_VERSION) return fail('newerSave');
+  // ((v4.3 step B, F0s) a village from a newer build: its `v` above SAVE_VERSION, or its content level `lv` above LV)
+  if (isNewerSave(raw)) return fail('newerSave');
   let s = null;
   try { s = migrateSave(raw); } catch (e) { s = null; }
   if (!s) return fail('badSave');
@@ -223,6 +231,7 @@ export function summarize(s, keys, made, raw) {
     savedAt: raw && Number.isFinite(raw.t) ? Math.round(raw.t) : 0,
     made: Number.isFinite(made) ? made : 0,
     fromV: raw && typeof raw.v === 'number' ? raw.v : 0,
+    fromLv: raw && typeof raw.lv === 'number' && raw.lv > 0 ? Math.floor(raw.lv) : 0,      // (v4.3 step B) 0: saved before step B
     flag: s.flag ? { s: s.flag.s, b: s.flag.b, p: s.flag.p, pc: s.flag.pc, e: s.flag.e, ec: s.flag.ec } : null,     // (v4.3) the village flag (the card shows it)
   };
 }

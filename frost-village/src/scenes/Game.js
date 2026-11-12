@@ -4,7 +4,7 @@
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
 import { Input } from '../core/Input.js';
-import { Save, Settings } from '../core/Save.js';
+import { Save, Settings, X43, SLICES43 } from '../core/Save.js';
 import { isoPt, isoRect, gdist, gdist2, inIsoRect } from '../core/Iso.js';
 import { BALANCE } from '../data/balance.js';
 import { WORLD } from '../data/world.js';
@@ -156,6 +156,9 @@ export class Game extends Phaser.Scene {
     this.font = FONT;
     this.ui = new UIProxy(this.game);
     this.saved = this.fresh ? null : Save.load();
+    // ---- (v4.3 step B, S3) a held save (a village from a newer build): this game runs a fresh village that is never
+    //  saved, under the card (UI scene, SaveHoldCard); onboarding and the flag maker stay shut (Save.lastUnreadable)
+    this.saveHold = Save.held ? { why: Save.held, info: Save.newer || Save.failed || null } : null;
     const sv = this.saved || {};
 
     this.collision = new Collision(W, H);
@@ -202,6 +205,9 @@ export class Game extends Phaser.Scene {
     // ---- (v4.3 step B, B0) the v43 block: the saved one, else a new village's (lay 2, letter + tour seen), else { lay: 0 }
     //  (a loaded save without one: R43 still remaps it once S lands). Serialized as `v43`
     this.v43 = v43Holder(sv.v43, this.saved === null);
+    // ---- (v4.3 step B, S2) F0's `x` drawer (later builds' small keys; in v4.3 only the play log writes): written back as it
+    //  came until something sets a key (Save.js X43)
+    this.x43 = new X43(sv.x);
     // ---- (v4-C) the civic buildings + settlers (before the plots and the village life: people() counts settlers)
     this.civic = new Civic(this, sv.c1);
     this.queueLate = this.queueLate || (() => this.queueLateFiles());
@@ -2568,6 +2574,11 @@ export class Game extends Phaser.Scene {
       // ---- (v4.2) the v42 block + the bank (v5 format) / logistics (v8 format) slices
       ...(this.v42 ? this.v42.serialize() : { v42: this.saved && this.saved.v42, bank: this.saved && this.saved.bank, logistics: this.saved && this.saved.logistics }),
     };
+    // ---- (v4.3 step B, S2) the `x` drawer and the later modules' top-level slices (missions, geumbang, haul, demand),
+    //  passed through as they were loaded: a village a same-level build wrote keeps them here
+    const x = this.x43 ? this.x43.serialize() : undefined;
+    if (x) out.x = x;
+    if (this.saved) for (const k in SLICES43) if (this.saved[k]) out[k] = this.saved[k];
     // (robust review M2) loads saved into the restaurant pantry / onto the export dock
     if (out.c1 && out.c1.rest && out.c1.rest.pantry && Object.keys(pantryExtra).length) out.c1.rest.pantry = merge(out.c1.rest.pantry, pantryExtra);
     if (out.v42 && out.v42.freight && Object.keys(exportExtra).length) out.v42.freight.dock = merge(out.v42.freight.dock, exportExtra);
@@ -2578,7 +2589,8 @@ export class Game extends Phaser.Scene {
     if (this.resetting || this._broken || !this.player) return;
     const ok = Save.write(this.serialize());
     if (this.residentChat) this.residentChat.save();        // (v4-C2) only when a chat changed it
-    if (!ok && !this._saveWarned) { this._saveWarned = true; this.ui.toast(t('noSave')); }
+    // ((v4.3 step B) a held save is not "this place cannot save": its card / banner says what happened)
+    if (!ok && !Save.held && !this._saveWarned) { this._saveWarned = true; this.ui.toast(t('noSave')); }
   }
 
   restore(sv) {

@@ -1,15 +1,20 @@
 // Corrupted / odd save variants, fast path: one boot, then for each variant write the raw save into
 // localStorage and restart the Game scene (Game.create is the only reader of the save).
 // A variant that crashes Game.create triggers a full page reload to confirm the crash survives reloads.
+// ((v4.3 step B, S) every variant carries the step-B marker (asStepB: it must hit sanitize, not the R43 remap); the content
+//  level / x variants: a save from a newer build (lv 46, v 9) is held — after the boot, a save and the gathering the stored
+//  text is byte-identical and the newer card is up — and a same-level save with an x drawer / junk x loads. Those rows are
+//  asserted (FAIL lines, exit 1); the rest is the report it always was)
 //   node tools/test/review_robust_save_fast.mjs
 import { newPage, bootToGame, launch, start, sleep, writeJSON, OUT } from './review_robust_lib.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const srv = await start(0, { prefix: '/fv/' });
 const URL = srv.url + 'index.html';
 const browser = await launch();
 const KEY = 'frostVillage.save.v1';
 const base = { v: 1, t: Date.now(), coins: 120, progress: { done: { hire_fisherman: true }, paid: {}, up: { capacity: 0, speed: 0 } }, stations: {}, market: { stock: {}, cash: 0 }, trade: { stock: {}, cash: 0 }, player: { x: 900, y: 1150, stack: [] } };
-const J = (o) => JSON.stringify(o);
+const J = (o) => JSON.stringify(asStepB(o));
 const variants = {
   oldVersion0: J({ ...base, v: 0, coins: 999 }),
   futureVersion2: J({ ...base, v: 2, coins: 999 }),
@@ -38,7 +43,15 @@ const variants = {
   cashHuge: J({ ...base, market: { stock: {}, cash: 1e15 } }),
   stackObject: J({ ...base, player: { x: 900, y: 1150, stack: {} } }),
   marketNull: J({ ...base, market: { stock: null, cash: null }, trade: null }),
+  // ---- (v4.3 step B) the content level and F0's x drawer
+  futureLv46: J({ ...base, v: 8, lv: 46, coins: 999 }),
+  futureV9: J({ ...base, v: 9, coins: 999 }),
+  futureLvString: J({ ...base, v: 8, lv: '46', coins: 999 }),
+  sameLvX: J({ ...base, v: 8, lv: 43, x: { log: [[2, 1, 0, 0, 0]], fest: { last: 20261224 } }, haul: { v: 1, q: [] } }),
+  xJunk: J({ ...base, v: 8, lv: 43, x: { log: 'z'.repeat(5000), Bad: 1, mail: [1, 2], constructor: 5 }, missions: 'nope', geumbang: { big: 'y'.repeat(3000) } }),
+  xArray: J({ ...base, v: 8, x: [1, 2, 3], lv: 'abc' }),
 };
+const NEWER = ['futureLv46', 'futureV9', 'futureLvString'];
 
 const { page, ctx, log } = await newPage(browser);
 await bootToGame(page, URL);
@@ -84,8 +97,13 @@ for (const [name, raw] of Object.entries(variants)) {
     out.coinsAfterCollect = String(gs.economy.coins);
     // what does the next save look like?
     FV.save();
-    try { const sv = JSON.parse(localStorage.getItem(k)); out.savedBack = { v: sv.v, coins: sv.coins, cash: sv.market && sv.market.cash, pos: [sv.player.x, sv.player.y], stackLen: sv.player.stack.length, up: sv.progress.up, paid: sv.progress.paid }; } catch (e) { out.savedBack = 'unreadable ' + e.message; }
+    try { const sv = JSON.parse(localStorage.getItem(k)); out.savedBack = { v: sv.v, lv: sv.lv, coins: sv.coins, cash: sv.market && sv.market.cash, pos: [sv.player.x, sv.player.y], stackLen: sv.player.stack.length, up: sv.progress.up, paid: sv.progress.paid }; } catch (e) { out.savedBack = 'unreadable ' + e.message; }
     out.warnings = FV.warnings();
+    // ((v4.3 step B) the stored text after all of that, and the hold / card)
+    out.storedSame = localStorage.getItem(k) === raw;
+    out.held = window.__FV_SAVE_HELD || null;
+    const hc = document.getElementById('fh-root');
+    out.card = !!(hc && !hc.hidden);
     return out;
   }, [KEY, raw]).catch((e) => ({ evalError: e.message.split('\n')[0] }));
   r.errors = log.errors.slice(errBefore).map((e) => e.slice(0, 220));
@@ -118,4 +136,11 @@ for (const [name, raw] of Object.entries(variants)) {
   console.log(name, JSON.stringify(r));
   writeJSON('save_fast_results.json', results);
 }
+// ((v4.3 step B) the asserted rows)
+let bad = 0;
+const row = (name, ok, info) => { console.log((ok ? '  ok   ' : '  FAIL ') + name + (ok ? '' : '  ' + JSON.stringify(info).slice(0, 300))); if (!ok) bad++; };
+for (const n of NEWER) { const r = results[n]; if (r) row(n + ': held as newer, the card up, the stored text byte-identical after boot + save + play', r.uiActive && r.held === 'newer' && r.card && r.storedSame === true && !(r.errors || []).length, { held: r && r.held, card: r && r.card, same: r && r.storedSame, err: r && r.errors }); }
+for (const n of ['sameLvX', 'xJunk', 'xArray']) { const r = results[n]; if (r) row(n + ': loads and plays (no hold), saved back as lv 43', r.uiActive && !r.held && !r.card && r.savedBack && r.savedBack.v === 8 && r.savedBack.lv === 43 && !(r.errors || []).length, { held: r && r.held, savedBack: r && r.savedBack, err: r && r.errors }); }
+console.log(bad ? '\nsave_fast: ' + bad + ' FAILED' : '\nsave_fast: step-B rows ok');
 await browser.close(); await srv.close();
+process.exit(bad ? 1 : 0);

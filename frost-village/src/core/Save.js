@@ -1,12 +1,14 @@
 // Save / settings persistence. Every localStorage access is wrapped in try/catch
 // (private mode, sandboxed iframes and full quotas must never crash the game).
 
-import { ITEMS, FOODS, GOODS, TOOLS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } from '../data/items.js';
+import { ITEMS, FOODS, GOODS, STORE_GOODS, MINER_FOOD, MATERIALS, FISH } from '../data/items.js';
 // ---- (v4-B) the v4 block is checked against the lots and the shops it may name
 import { WORLD } from '../data/world.js';
 import { BALANCE } from '../data/balance.js';
 // ---- (v4.3 마을 깃발) the flag's keep-rule
 import { sanitizeFlag } from '../flag/design.js';
+// ---- (v4.3 step B, S) the content level and the pre-B copy's key (plain data: src/data/ids43.js)
+import { LV, PRE43_KEY } from '../data/ids43.js';
 
 export const SAVE_KEY = 'frostVillage.save.v1';
 export const SETTINGS_KEY = 'frostVillage.settings.v1';
@@ -41,6 +43,31 @@ export function removeKey(key) {
 export const SAVE_VERSION = 8;
 export const BACKUP_KEY = 'frostVillage.save.backup';
 export const BAD_KEY = 'frostVillage.save.v1.bad';
+
+// ---- (v4.3 step B, S1 — docs/redesign_v43/stepB/map_save.md §4.1, §4.7) the content level. SAVE_VERSION stays 8 (the
+//  shape of the save); `lv` says which content the village was saved with: 43 in every step-B build, 44–46 in v4.4–v4.6,
+//  50 in v5.0. Every write is stamped { v, lv, t } in that order (stamp), so the head of a stored save tells its level
+//  without parsing it (storedIsNewer). A save from a newer build (v > 8, or lv > 43; a missing lv counts as ≤ 43) is never
+//  loaded, never written over and never moved aside: the game holds every writer and says so (Save.hold, SaveHoldCard).
+//  PRE43_KEY (frostVillage.save.backup.pre43, written by R43 before the first remap) is under BACKUP_KEY: it never travels
+//  in a 마을 옮기기 code and 불러오기 never removes it (Transfer.isGameKey)
+export { LV, PRE43_KEY };
+/** a save object from a newer build (V-N8: v > SAVE_VERSION or lv > LV; numeric strings count, garbage counts as 0) */
+export function isNewerSave(o) { return isObj(o) && (num(o.v, 0) > SAVE_VERSION || num(o.lv, 0) > LV); }
+/** the save as written: { v, lv, t } first (in that order), then the game's state */
+export function stamp(state) { return Object.assign({ v: SAVE_VERSION, lv: LV, t: Date.now() }, state); }
+// the head every Save.write since step B writes ('{"v":8,"lv":43,"t":…'), and every older one ('{"v":7,"t":…'). An `lv`
+// right after `v` that is not a plain 1–4 digit number ("46", 43.5, 12345) does not match: the whole text is parsed, so
+// the write guard and Save.load (isNewerSave) always agree
+const HEAD_RE = /^\{"v":(\d{1,4})(?:,"lv":(\d{1,4})[,}]|,(?!"lv")|\})/;
+/** (S1) is this stored save text from a newer build? The head decides when it is there; otherwise the whole text is
+ *  parsed (a save written by hand or by a test). Text that is not a save is not newer. Never throws */
+export function storedIsNewer(raw) {
+  if (typeof raw !== 'string' || !raw) return false;
+  const m = HEAD_RE.exec(raw);
+  if (m) return +m[1] > SAVE_VERSION || (m[2] !== undefined && +m[2] > LV);
+  try { return isNewerSave(JSON.parse(raw)); } catch (e) { return false; }
+}
 
 // (v3) what a construction site may hold, and the land
 // (v4-A) + the repaired station (plot r_station) and the rail strip / neighbour town
@@ -172,7 +199,9 @@ export function sanitizeSave(raw) {
     celebrated3: pr.celebrated3 === true,
     got: {},
   };
-  if (isObj(pr.got)) for (const id in pr.got) if (/^[a-z0-9_]{1,40}$/.test(id) && isObj(pr.got[id])) s.progress.got[id] = counts(pr.got[id], TOOLS);
+  // ((v4.3 step B, S1 — map_save G-4) a pad's delivered items: every ITEMS kind, not tools only (the 3단 / 빵집 / 4단 pads
+  //  take planks and ingots; before B a reload lost them)
+  if (isObj(pr.got)) for (const id in pr.got) if (/^[a-z0-9_]{1,40}$/.test(id) && isObj(pr.got[id])) s.progress.got[id] = counts(pr.got[id], ITEMS);
   s.stations = {};
   if (isObj(raw.stations)) for (const id in raw.stations) { const st = raw.stations[id]; if (isObj(st)) s.stations[id] = { i: count(st.i, 1000), o: count(st.o, 1000) }; }
   const shop = (o, types) => (isObj(o) ? { stock: counts(o.stock, types), cash: count(o.cash, 1e9) } : null);
@@ -253,9 +282,13 @@ export function sanitizeSave(raw) {
   if (bank) s.bank = bank;
   const lgx = keepLogistics(raw.logistics);
   if (lgx) s.logistics = lgx;
-  // ---- (v4.3 step B, B0) the v43 block (the R43 marker `lay`, `seen`, `refunds43`): minimal keep-rule until S's sanitizeV43
-  const v43 = keepV43(raw.v43);
+  // ---- (v4.3 step B, S2 — map_save §4.8-4.10) the v43 block (the R43 marker `lay`, `toggles`, `seen`, `refunds43`, `src`),
+  //  F0's `x` drawer (later builds' small keys, each under its cap) and the later modules' top-level slices, copied as they
+  //  are when within their caps (a same-level build's village keeps them through this build)
+  const v43 = sanitizeV43(raw.v43);
   if (v43) s.v43 = v43;
+  if (raw.x !== undefined) { const x = keepX(raw.x); if (x) s.x = x; }
+  for (const k in SLICES43) { const v = keepSlice(raw[k], SLICES43[k], k); if (v) s[k] = v; }
   // the boathouse catch never comes back above its cap (v4.1 saves restored it to 103 %)
   if (s.v3 && s.v3.dock && s.v3.dock.catch) {
     let left = 30;
@@ -322,6 +355,8 @@ export function sanitizeV42(raw) {
     o.seen = {};
     for (const k of ['whatsNew', 'pickupTip', 'trainNew', 'halo']) if (sn[k]) o.seen[k] = 1;
     o.seen.cheer = count(sn.cheer, 99);
+    // ((v4.3 step B, S1 — map_save G-5) the ×1.25 tip's count (ChiefAura: 3 times ever, not 3 times a session)
+    if (sn.boost !== undefined) { const b = count(sn.boost, 3); if (b > 0) o.seen.boost = b; }
     for (const k of ['p2', 'up', 'big', 'p34', 'sl2', 'tb']) if (isObj(sn[k])) { o.seen[k] = {}; for (const q in sn[k]) if (/^[a-z0-9_]{1,16}$/.test(q) && sn[k][q]) o.seen[k][q] = 1; }
     if (isObj(raw.full)) { o.full = {}; for (const k of LINES8) if (k in raw.full) o.full[k] = Math.max(0, Math.min(3600, Math.round(num(raw.full[k], 0)))); }
     if (raw.sleighWait !== undefined) { const w = Math.max(0, Math.min(3600, Math.round(num(raw.sleighWait, 0)))); if (w > 0) o.sleighWait = w; }
@@ -433,16 +468,41 @@ export function keepLogistics(raw) {
   } catch (e) { return null; }
 }
 
+// ===================================================================== (v4.3 step B, S2) map_save §4.8-4.10
+/** what the keep-rules below trimmed or dropped (tests and the play log read it; the last 40): { k, what, n } with
+ *  what 'trim' (n items shifted off) | 'drop' (the key or slice is gone) | 'keys' (n keys over the key limit) */
+export const saveWarnings = [];
+function warn(k, what, n) {
+  saveWarnings.push({ k, what, n: Math.max(0, Math.floor(num(n, 0))) });
+  if (saveWarnings.length > 40) saveWarnings.splice(0, saveWarnings.length - 40);
+}
+const jlen = (v) => { const t = JSON.stringify(v); return typeof t === 'string' ? t.length : 0; };
+
 /**
- * (v4.3 step B, B0) a MINIMAL keep-rule for the v43 block, so a reload keeps what B0's Game writes: `lay` an int 0..9
- * (kept exactly: it is the R43 marker), `seen` keys /^[a-z0-9_]{1,24}$/ set to 1 / true -> 1 (≤ 32 keys), `refunds43` a
- * plain object of ≤ 512 B JSON (copied). Anything else is dropped. S replaces it with sanitizeV43 (map_save §4.10).
- * Idempotent; never throws.
+ * the v43 block: { lay, toggles?, seen?, refunds43?, src? } in that order, anything else dropped. Idempotent; never throws.
+ *   lay        int 0..9, kept exactly (the R43 marker: < 2 = the pre-B layout, remapped once)
+ *   toggles    { counters?: { id: false }, stations?: { id: false } } — only "off" entries (false / 0), ids
+ *              /^[a-z0-9_]{1,16}$/, ≤ 12 counters / 16 stations (accepted from step B, written from v4.4)
+ *   seen       { key: 1 } (1 / true), ≤ 32 keys /^[a-z0-9_]{1,24}$/ (letter43, tour43, s4offer …)
+ *   refunds43  { coins ≤ 1e9, items, wh (ITEMS counts), moved ≤ 16, kept ≤ 16 } (all five, as R43 writes them)
+ *   src        { v, lv } of the save R43 remapped (BP-23; the play log reports it)
  */
-export function keepV43(raw) {
+export function sanitizeV43(raw) {
   try {
     if (!isObj(raw)) return null;
     const o = { lay: Math.max(0, Math.min(9, Math.floor(num(raw.lay, 0)))) };
+    if (isObj(raw.toggles)) {
+      const off = (q, max) => {
+        const r = {};
+        let n = 0;
+        if (isObj(q)) for (const k of Object.keys(q)) { if (n >= max) break; if (/^[a-z0-9_]{1,16}$/.test(k) && (q[k] === false || q[k] === 0)) { r[k] = false; n++; } }
+        return n ? r : null;
+      };
+      const tg = {}, c = off(raw.toggles.counters, 12), st = off(raw.toggles.stations, 16);
+      if (c) tg.counters = c;
+      if (st) tg.stations = st;
+      if (c || st) o.toggles = tg;
+    }
     if (isObj(raw.seen)) {
       const seen = {};
       let n = 0;
@@ -453,11 +513,129 @@ export function keepV43(raw) {
       if (n) o.seen = seen;
     }
     if (isObj(raw.refunds43)) {
-      const txt = JSON.stringify(raw.refunds43);
-      if (typeof txt === 'string' && txt.length <= 512) o.refunds43 = JSON.parse(txt);
+      const r = raw.refunds43, n16 = (v) => count(Array.isArray(v) ? v.length : v, 16);
+      o.refunds43 = { coins: count(r.coins, 1e9), items: itemCounts(r.items, 1e6), wh: itemCounts(r.wh, 1e6), moved: n16(r.moved), kept: n16(r.kept) };
     }
+    if (isObj(raw.src)) o.src = { v: count(raw.src.v, 999), lv: count(raw.src.lv, 9999) };
     return o;
   } catch (e) { return null; }
+}
+
+/**
+ * F0's `x` drawer: small keys that later builds write (v4.4–v4.6 at their own `lv`; a later build at THIS `lv` may add one:
+ * an unknown key passes through under its own 512 cap). Caps are characters of JSON.stringify(value); the whole drawer
+ * stays ≤ X_TOTAL. A key over its cap is trimmed oldest first (an array: shift; an object: shift its longest array
+ * member), dropped only when it still does not fit; each trim / drop goes to saveWarnings. Values are deep copies in
+ * their stored order, so a drawer within its caps is written back byte for byte. Never throws; never drops the save.
+ */
+export const X_CAPS = Object.freeze({ log: 512, mgmt: 256, needs: 1024, daily: 512, rewards: 512, money: 896, book: 1024, mail: 512, wk: 1024 });
+export const X_UNKNOWN_CAP = 512;
+export const X_TOTAL = 6400;
+export const X_MAX_KEYS = 24;
+const X_KEY = /^[a-z][a-z0-9_]{0,15}$/;
+// (a key of the drawer: lower-case, ≤ 16 characters, never a name every object already has: constructor, __proto__ …)
+const xKeyOk = (k) => typeof k === 'string' && X_KEY.test(k) && !(k in Object.prototype);
+const xCap = (k) => (Object.prototype.hasOwnProperty.call(X_CAPS, k) ? X_CAPS[k] : X_UNKNOWN_CAP);
+
+/** `v` (a deep copy, changed in place) trimmed oldest first until JSON.stringify(v).length ≤ cap -> { v, n } or null */
+function fitX(v, cap) {
+  let size = jlen(v);
+  if (size <= cap) return { v, n: 0 };
+  let n = 0;
+  if (Array.isArray(v)) {
+    const lens = v.map((e) => (e === undefined ? 4 : jlen(e)));
+    while (v.length && size > cap) { size -= lens.shift() + (v.length > 1 ? 1 : 0); v.shift(); n++; }
+    return size <= cap ? { v, n } : null;
+  }
+  if (isObj(v)) {
+    // (each array member's element sizes, measured once; the longest member gives up its oldest element each round)
+    const arr = {};
+    for (const k of Object.keys(v)) if (Array.isArray(v[k])) arr[k] = { lens: v[k].map((e) => (e === undefined ? 4 : jlen(e))), size: jlen(v[k]) };
+    while (size > cap) {
+      let best = null;
+      for (const k in arr) if (v[k].length && (!best || arr[k].size > arr[best].size)) best = k;
+      if (!best) break;
+      const d = arr[best].lens.shift() + (v[best].length > 1 ? 1 : 0);
+      v[best].shift();
+      arr[best].size -= d; size -= d; n++;
+    }
+    return size <= cap ? { v, n } : null;
+  }
+  return null;
+}
+
+export function keepX(raw) {
+  try {
+    if (!isObj(raw)) { if (raw !== undefined && raw !== null) warn('x', 'drop', 1); return null; }
+    const out = {};
+    let keys = 0, over = 0;
+    for (const k of Object.keys(raw)) {
+      if (!xKeyOk(k)) continue;
+      if (keys >= X_MAX_KEYS) { over++; continue; }
+      try {
+        const v0 = raw[k];
+        if (v0 === undefined || typeof v0 === 'function') continue;
+        const txt = JSON.stringify(v0);
+        if (typeof txt !== 'string') continue;
+        const f = fitX(JSON.parse(txt), xCap(k));
+        if (!f) { warn('x.' + k, 'drop', 1); continue; }
+        if (f.n) warn('x.' + k, 'trim', f.n);
+        out[k] = f.v;
+        keys++;
+      } catch (e) { warn('x.' + k, 'drop', 1); }
+    }
+    if (over) warn('x', 'keys', over);
+    // the whole drawer: unknown keys give way first (the newest first), then the table backwards
+    let total = jlen(out);
+    if (total > X_TOTAL) {
+      const known = Object.keys(X_CAPS);
+      const order = Object.keys(out).filter((k) => known.indexOf(k) < 0).reverse().concat(known.slice().reverse().filter((k) => k in out));
+      for (const k of order) {
+        if (total <= X_TOTAL) break;
+        const was = jlen(out[k]);
+        const f = fitX(out[k], Math.max(0, was - (total - X_TOTAL)));
+        if (f) { out[k] = f.v; warn('x.' + k, 'trim', f.n); } else { delete out[k]; warn('x.' + k, 'drop', 1); }
+        total = jlen(out);
+      }
+    }
+    return Object.keys(out).length ? out : null;
+  } catch (e) { warn('x', 'drop', 1); return null; }
+}
+
+/**
+ * the later modules' top-level slices (v4.4–v4.6 write them; their saves are refused by `lv`, but a same-level build may
+ * carry one): each kept verbatim (a deep copy) when it is a plain object within its module's cap, else dropped with a
+ * warning (N10). Caps: src/missions/save.js MISSIONS_SLICE.cap, src/geumbang/save.js GEUMBANG_SLICE.cap, logistics LD21
+ */
+export const SLICES43 = Object.freeze({ missions: 3072, geumbang: 1400, haul: 768, demand: 1024 });
+export function keepSlice(v, cap, k) {
+  if (v === undefined) return null;
+  try {
+    if (isObj(v)) { const txt = JSON.stringify(v); if (typeof txt === 'string' && txt.length <= cap) return JSON.parse(txt); }
+  } catch (e) { /* dropped below */ }
+  warn(k || 'slice', 'drop', 1);
+  return null;
+}
+
+/**
+ * (map_save §4.8) the game's holder of the `x` drawer (gs.x43). serialize() gives the loaded drawer back as it came (the
+ * same object) until something sets a key; set() fits the whole drawer again (the caps above), so a key that does not fit
+ * is trimmed or left out, never the save. In v4.3 only the play log (P1) writes (x.log).
+ */
+export class X43 {
+  constructor(saved) { this.base = isObj(saved) ? saved : null; this.o = null; }
+  get(k) { const src = this.o || this.base; return src && Object.prototype.hasOwnProperty.call(src, k) ? src[k] : undefined; }
+  /** set (or, with undefined, remove) one key; returns whether the key is now held as given (false: trimmed or left out) */
+  set(k, v) {
+    if (!xKeyOk(k)) return false;
+    const next = Object.assign({}, this.o || this.base || {});
+    if (v === undefined) delete next[k];
+    else next[k] = v;
+    this.o = keepX(next) || {};
+    if (v === undefined) return !(k in this.o);
+    try { return k in this.o && JSON.stringify(this.o[k]) === JSON.stringify(v); } catch (e) { return false; }
+  }
+  serialize() { const src = this.o || this.base; return src && Object.keys(src).length ? src : undefined; }
 }
 
 /** (v4-C) the civic block: counts clamped, unknown foods dropped (the restaurant's pantry holds cooked food only) */
@@ -584,15 +762,39 @@ function keepCopy(st, raw) {
  *  save inside a code loads and migrates exactly like a stored one. */
 export function migrateSave(s) {
   if (!s || typeof s !== 'object') return null;
+  // ((v4.3 step B, F0s) a save from a newer build (lv > 43 at v 8) is a future version too: this build would cut it down,
+  //  so it is not "readable" here (Save.load and dryRun hold / refuse it first; Admin.adminBackup must not count it as a
+  //  readable copy it may write over)
+  if (isNewerSave(s)) return null;
   let v = typeof s.v === 'number' ? s.v : -1;
   while (v !== SAVE_VERSION && MIGRATE[v]) { try { s = MIGRATE[v](s); v = s.v; } catch (e) { break; } }
   if (v !== SAVE_VERSION) return null;
   return sanitizeSave(s);
 }
 
+const win = () => (typeof window !== 'undefined' ? window : null);
+
 export const Save = {
+  // ---- (v4.3 step B, S3 — map_save §4.6, §4.7) the save hold. While held, nothing writes the stored village: Save.write,
+  //  ChatSave.write, Settings.save and the admin backup are refused (window.__FV_NO_SAVE), Save.quarantine moves nothing,
+  //  Save.clear keeps a copy first, and the crash card's 「처음부터 하기」 leaves the save alone (window.__FV_SAVE_HELD).
+  //    'newer'     Save.load found a village from a newer build (Save.newer = { v, lv }): the game runs a fresh village
+  //                that is never saved, under the newer-save card (SaveHoldCard)
+  //    'stale'     Save.write found that a newer build (a second tab, the updated app) wrote the save meanwhile: the
+  //                banner asks for a reload
+  //    'failed43'  (S4) the R43 remap could not be proven lossless (Save.failed): the failure card
+  //  A hold lasts until the page reloads (Save.load decides again), 「새 마을로 시작」 / 「처음부터」 (Save.clear), or release().
+  held: null,
+  newer: null,
+  failed: null,
+  _hold: null,
+  _listeners: [],
   /** the saved game (sanitized), or null for a fresh start. Other versions are migrated or backed up first. */
   load() {
+    // ((v4.3 step B) a load decides again from what is stored now: an earlier load's or a second tab's hold is lifted)
+    this.release();
+    this.newer = null;
+    this.failed = null;
     // ((v4.2.0.1) lastUnreadable: a save WAS there but could not be used (cut off, a newer build) — an existing player, not a
     //  new one: the first-run tutorial does not start for them)
     this.lastUnreadable = false;
@@ -601,6 +803,14 @@ export const Save = {
       // (v3.5 review) a save that is there but cannot be read (cut off, not JSON): keep a copy before the
       // next autosave overwrites it
       try { const st = getStore(); const raw = st && st.getItem(SAVE_KEY); if (raw) { keepCopy(st, raw); this.lastUnreadable = true; } } catch (e) { /* ignore */ }
+      return null;
+    }
+    // ---- (v4.3 step B, F0s) a village from a newer build (v > 8 or lv > 43): not loaded (this build would drop what it does
+    //  not know), not copied aside (it is not broken), never written over: the game holds every writer and shows the card
+    if (isNewerSave(s)) {
+      this.newer = { v: Math.floor(num(s.v, 0)), lv: Math.floor(num(s.lv, 0)) };
+      this.lastUnreadable = true;
+      this.hold('newer', this.newer);
       return null;
     }
     const out = migrateSave(s);
@@ -614,16 +824,75 @@ export const Save = {
   },
   write(state) {
     // "Start over" on the crash card: the page is reloading and the crashed game's autosave
-    // (pagehide / visibilitychange) must not put the old progress back
-    if (typeof window !== 'undefined' && window.__FV_NO_SAVE) return false;
-    const ok = writeJSON(SAVE_KEY, Object.assign({ v: SAVE_VERSION, t: Date.now() }, state));
+    // (pagehide / visibilitychange) must not put the old progress back. ((v4.3 step B) also every save hold)
+    const W = win();
+    if (W && W.__FV_NO_SAVE) return false;
+    // ---- (v4.3 step B, S1) a newer build saved this village meanwhile (a second tab, the updated app next to an old
+    //  page): its save is never written over — the write is refused, the hold starts and the banner says so once
+    const st = getStore();
+    if (st) {
+      let raw = null;
+      try { raw = st.getItem(SAVE_KEY); } catch (e) { raw = null; }
+      if (raw && storedIsNewer(raw)) { this.hold('stale'); return false; }
+    }
+    const ok = writeJSON(SAVE_KEY, stamp(state));
     this.lastWriteOk = ok;
     return ok;
   },
   lastWriteOk: true,
-  clear() { removeKey(SAVE_KEY); ChatSave.clear(); },
-  /** move a save that crashed the game aside (kept for debugging) */
+  /** (v4.3 step B) hold every writer (see `held` above); the listeners hear (why, info) once per hold */
+  hold(why, info) {
+    if (!why || this.held === why) return;
+    const W = win();
+    if (!this._hold) this._hold = { guard0: W ? W.__FV_NO_SAVE : undefined, chat0: ChatSave.blocked };
+    this.held = why;
+    if (W) { W.__FV_NO_SAVE = true; W.__FV_SAVE_HELD = why; }
+    ChatSave.blocked = true;
+    for (const fn of this._listeners.slice()) {
+      try { fn(why, info || null); } catch (e) { try { console.error('[FrostVillage] save hold listener failed:', e); } catch (x) { /* */ } }
+    }
+  },
+  /** lift the hold: the writers work again as they did before it */
+  release() {
+    if (!this.held) return;
+    const W = win(), h = this._hold || {};
+    this.held = null;
+    this._hold = null;
+    if (W) { W.__FV_NO_SAVE = h.guard0; W.__FV_SAVE_HELD = null; }
+    // (a newer chat record found while held stays protected: ChatSave.newer)
+    ChatSave.blocked = !!(h.chat0 || ChatSave.newer);
+  },
+  /** listen for holds (fn(why, info)); returns the function that stops listening */
+  onHold(fn) {
+    if (typeof fn !== 'function') return () => {};
+    if (this._listeners.indexOf(fn) < 0) this._listeners.push(fn);
+    return () => { const i = this._listeners.indexOf(fn); if (i >= 0) this._listeners.splice(i, 1); };
+  },
+  /** 처음부터 / 새 마을로 시작. ((v4.3 step B, map_save G-11) while held, the stored village is copied aside first
+   *  (keepCopy) and the hold is lifted, so the new village saves again; when the copy cannot be made nothing is removed and
+   *  the hold stays. A stale hold's village belongs to the newer build: it is left as it is (the hold is lifted, and the
+   *  new village's first write finds it and holds again)) */
+  clear() {
+    const why = this.held;
+    if (why === 'stale') { this.release(); return; }
+    if (why) {
+      try {
+        const st = getStore();
+        const raw = st && st.getItem(SAVE_KEY);
+        if (raw) {
+          keepCopy(st, raw);
+          if (st.getItem(BACKUP_KEY) !== raw && st.getItem(BACKUP_KEY + '.2') !== raw) return;
+        }
+      } catch (e) { return; }
+      this.release();
+    }
+    removeKey(SAVE_KEY);
+    ChatSave.clear();
+  },
+  /** move a save that crashed the game aside (kept for debugging). ((v4.3 step B) not while held: the running game is not
+   *  the stored village then, so the stored one did not crash it) */
   quarantine() {
+    if (this.held) return;
     try { const st = getStore(); if (!st) return; const raw = st.getItem(SAVE_KEY); if (raw) st.setItem(BAD_KEY, raw); st.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
     // (the chat record is tied to the save by its id: the fresh game gets a new id and never reads it)
   },
@@ -640,6 +909,7 @@ export const CHAT_RECORD_VERSION = 1;
 const CHAT_MAX_CHARS = 600000;       // a damaged / foreign record bigger than this is not read
 export const ChatSave = {
   blocked: false,           // a record from a newer game version is there: never overwritten
+  newer: false,             // ((v4.3 step B) that record was seen: a lifted save hold leaves `blocked` on)
   load(cid) {
     let raw = null;
     try { const st = getStore(); raw = st && st.getItem(CHAT_KEY); } catch (e) { raw = null; }
@@ -647,16 +917,19 @@ export const ChatSave = {
     let o = null;
     try { o = JSON.parse(raw); } catch (e) { return null; }
     if (!isObj(o)) return null;
-    if (num(o.v, 0) > CHAT_RECORD_VERSION) { this.blocked = true; return null; }
+    if (num(o.v, 0) > CHAT_RECORD_VERSION) { this.blocked = true; this.newer = true; return null; }
     if (o.v !== CHAT_RECORD_VERSION || typeof o.cid !== 'string' || o.cid !== cid || !isObj(o.chat)) return null;
     return o.chat;
   },
   write(cid, chat) {
     if (this.blocked || (typeof window !== 'undefined' && window.__FV_NO_SAVE)) return false;
     if (typeof cid !== 'string' || !isObj(chat)) return false;
+    // ((v4.3 step B, S1) a newer build saved the village meanwhile (a second tab): its chat record is not written over
+    //  either — a chat closed before the next autosave would otherwise do it; the stale hold starts here then)
+    try { const st = getStore(); if (st && storedIsNewer(st.getItem(SAVE_KEY))) { Save.hold('stale'); return false; } } catch (e) { /* */ }
     return writeJSON(CHAT_KEY, { v: CHAT_RECORD_VERSION, cid, t: Date.now(), chat });
   },
-  clear() { removeKey(CHAT_KEY); this.blocked = false; },
+  clear() { removeKey(CHAT_KEY); this.blocked = false; this.newer = false; },
   bytes() { try { const st = getStore(); const r = st && st.getItem(CHAT_KEY); return r ? r.length : 0; } catch (e) { return 0; } },
 };
 
