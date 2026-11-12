@@ -360,17 +360,18 @@ try {
     await page.evaluate(() => window.__FV.camera());
 
     // ---- plot -> build menu -> foundation; porters deliver planks + ingots; builders finish it
-    await walkTo(page, await where('plot:e_m1'), { tol: 12, teleport: true });
+    //  ((v4.3 step B, plot table v2) the toolsmith's own plot d_tool (60, 1530), open with the east watchtower (was e_m1))
+    await walkTo(page, await where('plot:d_tool'), { tol: 12, teleport: true });
     await waitFor(page, () => window.__FV.buildMenuOpen, 8000).catch(() => {});
     await shot('19d_v3_build_menu');
     const menu = await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); const r = { open: !!window.__FV.buildMenuOpen, cards: (ui.buildCards || []).map((c) => c.ch.key + (c.ch.locked ? '(locked)' : '')) }; ui.selectCard('toolsmith'); r.ok = !!(ui.buildBtn && ui.buildBtn.ok); if (r.ok) ui.confirmBuild(); else ui.closeBuildMenu(true); return r; });
     step('(v3) build menu on a plot (cards, picks the toolsmith)', menu.open && menu.ok && menu.cards.includes('toolsmith'), JSON.stringify(menu));
     await standAside();
     await pushOut('sawmill', 'item_plank', 10); await pushOut('smelter', 'item_ingot', 6);
-    await waitFor(page, () => { const s = window.__FV.state().sites.e_m1; return s && s.state !== 'foundation'; }, 120000).catch(() => {});
+    await waitFor(page, () => { const s = window.__FV.state().sites.d_tool; return s && s.state !== 'foundation'; }, 120000).catch(() => {});
     s = await st();
-    step('(v3) foundation filled by porters (chief empty-handed)', s.sites.e_m1 && s.sites.e_m1.state !== 'foundation' && s.sites.e_m1.state !== 'plot', JSON.stringify(s.sites.e_m1));
-    await page.evaluate(() => window.__FV.camera(2040, 1150, 0.9));
+    step('(v3) foundation filled by porters (chief empty-handed)', s.sites.d_tool && s.sites.d_tool.state !== 'foundation' && s.sites.d_tool.state !== 'plot', JSON.stringify(s.sites.d_tool));
+    await page.evaluate(() => window.__FV.camera(60, 1490, 0.9));
     await sleep(1500);
     await shot('19e_v3_scaffold_builders');
     await waitFor(page, () => window.__FV.state().built.toolsmith, 60000).catch(() => {});
@@ -423,7 +424,9 @@ try {
     step('(v3) mine food box: hungry miners eat the bread the chief brings', hungry > 0 && s.hungry === 0 && s.food.eaten > 0, `hungry ${hungry}->${s.hungry} food=${JSON.stringify(s.food)}`);
 
     // ---- the rest of the buildings (instant), then a boat trip, the cannery and the store
-    await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3(); window.__FV.teleport(2200, 900); });
+    //  ((v4.3 step B, plot table v2) the other workshops on their own plots: the hook's default plan still names the old
+    //   generic plots (e_m1 …: L2 moves it) and would put a second toolsmith on e_m1 beside the one on d_tool)
+    await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3({ e_dock: 'boathouse', d_wh: 'warehouse', d_cannery: 'cannery', d_store: 'store', v_house1: 'house_a', v_house2: 'house_b' }); window.__FV.teleport(2200, 900); });
     await sleep(1500);
     await waitFor(page, () => window.__FV.state().pads.includes('boat_rowboat'), 10000).catch(() => {});
     await walkPad('boat_rowboat', { tol: 14 });

@@ -288,8 +288,11 @@ try {
   const tVd = await until(() => window.__FV.scene.civic.restaurant.served > 0, 60, 1);
   step('10 (v4-C) ... and pay for the meal', tVd >= 0, await ev(() => ({ served: window.__FV.civic().rest.served, cash: window.__FV.civic().rest.cash })));
   await ev(() => { window.__FV.scene.civic.C.restaurant.visitorChance = window.__c1vc; });
-  const ven = await ev(() => { const gs = window.__FV.scene, a = gs.padSpot({ type: 'rank', id: 'rank_eup' }), b = gs.civic.hall.venue('rank'); return { a, b, happy: gs.v4.growth.happiness(), bonus: gs.civic.happyBonus() }; });
-  step('10 (v4-C) with the town hall the ceremony spot is in front of it; the hall adds happiness', ven.a && ven.a.x === ven.b.x && ven.a.y === ven.b.y && ven.bonus >= 8, ven);
+  // ((v4.3 step B, L1) since 4.2.0.1 the 승격식 pay pad stands a little left of the venue (TownHall SPOT.rankPad: off the tax
+  //  box's coin pile), so the pad is the hall's rankPadPos and the venue is in front of the hall (below its centre); this row
+  //  still asked for pad === venue and failed on every build since 4.2.0.1)
+  const ven = await ev(() => { const gs = window.__FV.scene, H = gs.civic.hall, a = gs.padSpot({ type: 'rank', id: 'rank_eup' }), b = H.venue('rank'), r = H.rankPadPos ? H.rankPadPos() : b; return { a, b, r, hall: { x: H.x, y: H.y }, happy: gs.v4.growth.happiness(), bonus: gs.civic.happyBonus() }; });
+  step('10 (v4-C) with the town hall the ceremony spot is in front of it (its pay pad beside the venue); the hall adds happiness', ven.a && ven.a.x === ven.r.x && ven.a.y === ven.r.y && Math.hypot(ven.a.x - ven.b.x, (ven.a.y - ven.b.y) * 2) < 90 && ven.b.y > ven.hall.y && ven.bonus >= 8, ven);
   // §16.4 save gate: a full v4 save (5 shops, 3 houses, 읍) stays small and quick (best of 5: a shared machine)
   const sv = await ev(() => {
     const gs = window.__FV.scene; let ms = 1e9;

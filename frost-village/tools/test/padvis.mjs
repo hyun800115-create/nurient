@@ -31,7 +31,11 @@ const ROOT = arg('--root') ? path.resolve(arg('--root')) : undefined;
 const N = Math.max(3, Number(arg('--samples')) || 8);
 const ONLY = arg('--only') ? arg('--only').split(',') : null;
 const LATE = ['v35_save_21min', 'v35_save_38min', 'v41_save_pure_25min', 'v41_save_pure_45min', 'v41_save_smart_25min', 'v41_save_smart_35min', 'v41_save_smart_46min', 'v42_save_office_ttal', 'v42_village_late'];
-const SCEN = ['fresh'].concat(LATE, ['wait']).filter((s) => !ONLY || ONLY.includes(s));
+// ((v4.3 step B, L1 — BP-20) 'd43': a new game with every land open and the workshops on their own plots (plot table v2:
+//  d_tool, d_wh, d_cannery, d_store), the hall on w_hall beside the office: the hire pads the d_* plots name (line, 짐꾼 2,
+//  the 고기 통조림 machine), the store clerk's pad by the store at d_store, the office's hire pad beside the hall's east side)
+const D43 = { d_tool: 'toolsmith', d_wh: 'warehouse', d_cannery: 'cannery', d_store: 'store', e_dock: 'boathouse', v_house1: 'house_a', v_house2: 'house_b', w_hall: 'town_hall', v42_office: 'chief_office' };
+const SCEN = ['fresh'].concat(LATE, ['d43', 'wait']).filter((s) => !ONLY || ONLY.includes(s));
 // (the mean cover counts passers-by too: reported above meanWarn, never a failure — a lane crossing a pad is allowed,
 //  its price and label stay on top)
 const LIMIT = { decalWorst: 0.25, labelWorst: 0, priceWorst: 0, meanWarn: 0.15, gap: 16 };
@@ -165,9 +169,15 @@ const PAGE = () => {
     if (gs.padSpots) gs.padSpots.length = n0;     // (the spots they added to the residents' no-stand list: gone again)
     const ov = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
     const out = [];
+    // ((v4.3 step B, L1 verify) a line's 짐꾼 2 pad (p2_<line>) and its first porter's hire pad (porter_<line>) never stand
+    //  together: LineUpgrades offers 짐꾼 2 only once the line has its porter (hasPorter), and that hire pad is gone by then.
+    //  The d43 scenario has both on the boathouse (porter_dock live, p2_dock to come) — a pair the game never shows)
+    const base = (id) => id.split('+')[0];
+    const apart = (a, b) => { const x = base(a), y = base(b); return (/^p2_/.test(x) && y === 'porter_' + x.slice(3)) || (/^p2_/.test(y) && x === 'porter_' + y.slice(3)); };
     for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
       const a = boxes[i], b = boxes[j];
       if (Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) < 3) continue;
+      if (apart(a.id, b.id)) continue;
       const ll = ov(a.lab, b.lab), lp = ov(a.lab, b.price) + ov(a.price, b.lab);
       if (ll > 60 || lp > 0) out.push(`${a.id} ~ ${b.id}: label on label ${Math.round(ll)} px², label on price ${Math.round(lp)} px²`);
     }
@@ -443,7 +453,7 @@ try {
     console.log(`\n== ${sc}`);
     const t0 = Date.now();
     if (sc === 'wait') { await waitRules(); continue; }
-    const save = sc === 'fresh' ? null : JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures', sc + '.json'), 'utf8'));
+    const save = sc === 'fresh' || sc === 'd43' ? null : JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures', sc + '.json'), 'utf8'));
     const { page, log } = await boot(save);
     const out = report.scenarios[sc] = { stages: {} };
     if (sc === 'fresh') {
@@ -493,6 +503,29 @@ try {
         await advance(page, 3);
         out.stages.shop3 = await measure(page, 'fresh/15 가게 3단 · 고기 점원 발판', false);
       }
+    } else if (sc === 'd43') {
+      const put = await page.evaluate((plan) => {
+        const F = window.__FV, gs = F.scene;
+        F.give(50000);
+        F.unlockV3(plan);
+        for (const id of ['boat_rowboat', 'op_toolsmith', 'op_cannery']) F.doneStep(id);
+        gs.refreshSites();
+        return Object.fromEntries(Object.keys(plan).map((id) => [id, gs.sites[id] ? gs.sites[id].state + (gs.sites[id].shown ? '' : ' (hidden)') : 'none']));
+      }, D43);
+      await advance(page, 3);
+      ok(Object.values(put).every((v) => v === 'done'), 'd43: the workshops stand on d_tool / d_wh / d_cannery / d_store, the hall on w_hall, the office on v42_office (all shown)', put);
+      out.stages.all = await measure(page, 'd43', true);
+      const spots = await page.evaluate(() => {
+        const gs = window.__FV.scene;
+        const at = (id, k) => { const st = gs.sites[id], o = st && st.cfg.pads && st.cfg.pads[k]; return o ? [st.x + o[0], st.y + o[1]] : null; };
+        const LU = gs.v42 && gs.v42.lines, MC = gs.v42 && gs.v42.meatcan;
+        const tool = gs.sourceById('toolsmith'), can = gs.sourceById('cannery');
+        const p2t = LU && LU.spotOf('p2', 'toolsmith'), p2c = LU && LU.spotOf('p2', 'cannery'), mc = MC && MC.padPos ? MC.padPos() : null;
+        const opT = gs.padSpot({ type: 'operator', station: 'toolsmith' }), opC = gs.padSpot({ type: 'porter', station: 'cannery' });
+        return { line_tool: [at('d_tool', 'line'), opT && [opT.x, opT.y]], p2_tool: [at('d_tool', 'p2'), p2t && [p2t.x, p2t.y]], line_can: [at('d_cannery', 'line'), opC && [opC.x, opC.y]], p2_can: [at('d_cannery', 'p2'), p2c && [p2c.x, p2c.y]], mcan: [at('d_cannery', 'mcan'), mc && [mc.x, mc.y]], src: !!(tool && can) };
+      });
+      const same = (a) => a[0] && a[1] && Math.abs(a[0][0] - a[1][0]) < 1 && Math.abs(a[0][1] - a[1][1]) < 1;
+      ok(spots.src && ['line_tool', 'p2_tool', 'line_can', 'p2_can', 'mcan'].every((k) => same(spots[k])), 'd43: the game puts the line, 짐꾼 2 and 고기 통조림 pads where the d_* plots name them (Game.plotPad)', spots);
     } else {
       out.stages.all = await measure(page, sc, true);
     }

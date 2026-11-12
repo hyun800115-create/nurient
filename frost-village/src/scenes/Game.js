@@ -77,6 +77,8 @@ import { VillageFlags } from '../flag/VillageFlags.js';
 // ---- (v4.3 step B, B0) the step-B seams: hidden plots get no Site; gs.v43 (the save's v43 block); the after-load hooks
 import { isHidden } from '../systems/plotRules.js';
 import { runAfterLoad, v43Holder } from '../systems/v43/index.js';
+/** (v4.3 step B, L1) is (x, y) inside polygon P ([[x, y], …], screen px)? (the reserves' ground) */
+const inPoly43 = (P, x, y) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) { const [xa, ya] = P[a], [xb, yb] = P[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) c = !c; } return c; };
 
 // obstacle radius (ground space px) for static decor
 const DECOR_R = {
@@ -760,10 +762,16 @@ export class Game extends Phaser.Scene {
     for (const d of WORLD.decor) if (/lodge|tent|pier|flag|campfire/.test(d[0])) spots.push([d[1], d[2], d[0] === 'chief_lodge' ? 230 : 120]);
     // (v3) building plots, watchtowers, pads of the new chains: room for the building and its pads
     const PR = { S: 190, M: 250, L: 310 };
+    // ((v4.3 step B, plot table v2) a hidden plot (w_civic, d_school, d_clinic, d_labour: no Site, no pad) keeps only its own
+    //  ground diamond (+ 20 px) and its `clear` spots free: the land is kept, the forest round it does not move)
+    const FPH = { S: [181, 91], M: [272, 136], L: [362, 181], XL: [525, 262] };
     // (a pine in front of a plot would hide its pad and label behind its canopy)
     for (const id in WORLD.plots || {}) {
       const p = WORLD.plots[id];
-      spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); spots.push([p.x, p.y + 220, 200]);
+      if (isHidden(p)) {
+        const f = FPH[p.size] || FPH.M;
+        if (Math.abs(x - p.x) / (f[0] / 2 + 20) + Math.abs(y - p.y) / (f[1] / 2 + 10) < 1) return true;
+      } else { spots.push([p.x, p.y, PR[p.size] || 250]); spots.push([p.x, p.y + 100, 150]); spots.push([p.x, p.y + 220, 200]); }
       // ((v4 review) world.js plots.<id>.clear: more room in front of a plot — the town hall's little square)
       for (const c of Array.isArray(p.clear) ? p.clear : []) if (Array.isArray(c) && c.length >= 3) spots.push([p.x + c[0], p.y + c[1], c[2]]);
     }
@@ -773,6 +781,11 @@ export class Game extends Phaser.Scene {
     for (const q of pileSpots()) spots.push(q);
     // ((v4.3 밀밭 · 빵집) the bakery cottage, its stall, the line and its LINE / P2 pads keep clear (world.js bakery43.decorClear)
     for (const q of (WORLD.bakery43 && WORLD.bakery43.decorClear) || []) spots.push(q);
+    // ((v4.3 step B, 광장 1) the 한마당 reserve (world.js WORLD.reserves): no new pine there, its trunk or its canopy)
+    for (const id in WORLD.reserves || {}) {
+      const P = WORLD.reserves[id].poly;
+      if (Array.isArray(P) && (inPoly43(P, x, y) || inPoly43(P, x, y - 90))) return true;
+    }
     for (const [sx, sy, r] of spots) if (gdist(x, y, sx, sy) < r) return true;
     return false;
   }
@@ -1054,7 +1067,11 @@ export class Game extends Phaser.Scene {
       if (st.kind !== 'plot') continue;
       // ((v4.2) `also`: more conditions (a step / 'b:' / 'r:' / 'f:' or a list of them))
       const also = st.cfg.also ? [].concat(st.cfg.also) : [];
-      const want = this.territory.isOpen(st.region) && this.progress.met(st.cfg.after) && also.every((c) => this.progress.met(c));
+      // ((v4.3 step B, BP-17) a site that holds a building (a foundation, a scaffold or a finished one) is never hidden: it shows
+      //  once its land is open, whatever its plot's `after` / `also` say now — an old village's buildings moved onto plot table v2
+      //  (or a plot whose condition changed, v42_office: 'zone_mine') must not vanish)
+      const held = st.state !== 'plot';
+      const want = held ? (st.shown || this.territory.isOpen(st.region)) : this.territory.isOpen(st.region) && this.progress.met(st.cfg.after) && also.every((c) => this.progress.met(c));
       if (want === st.shown || (onlyShow && !want)) continue;
       st.setShown(want);
       if (want && st.state === 'plot' && this.isOnScreen(st.x, st.y, 200) && st.img) {
@@ -1322,6 +1339,9 @@ export class Game extends Phaser.Scene {
       // ((v4.2.1) once meat cans exist the guests come every meatcan.storeGuestK × the spawn time: new buyers for them)
       spawnK: () => (this.meatCansOn() ? Math.max(0.4, Math.min(1, Number(BALANCE.meatcan && BALANCE.meatcan.storeGuestK) || 0.75)) : 1),
     };
+    // ((v4.3 step B, L1 — BP-20) a plot that names the store's line (world.js plots.d_store.storeLine: its queue start / steps / bend)
+    const SL = site.cfg && site.cfg.storeLine;
+    if (SL) for (const k of ['queueStart', 'queueStep', 'queueTurn', 'queueStep2']) if (SL[k] !== undefined) cfg[k] = SL[k];
     cfg.maxQueue0 = cfg.maxQueue;
     cfg.maxQueue += this.storeQueueAdd();
     const m = new Market(this, cfg);

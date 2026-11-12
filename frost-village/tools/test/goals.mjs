@@ -166,6 +166,9 @@ try {
       ok(w.navEnd && wt && w.navEnd[0] === wt.x && w.navEnd[1] === wt.y && w.marker && w.ring && w.ring[0] === wt.x && w.ring[1] === wt.y && w.routeOk, '  …the 길 안내 route reached the exact spot by itself, the line and its marker end there', { navEnd: w.navEnd, ring: w.ring, target: wt, marker: w.marker, routeBad: w.routeBad });
       ok(w.camOff < 260, '  …the camera\'s view followed him (' + Math.round(w.camOff) + ' px off at most)', w.camOff);
       ok(w.arrowElse === 0, '  …the yellow arrow stepped aside while he walked elsewhere', w.arrowElse);
+      // ((v4.3 step B, L1) a walk can end on a plot's drop pad (the new d_wh spot): its build menu opens and pauses the walks
+      //  that follow — close it before the next goal)
+      await page.evaluate(() => { const ui = window.__FV.game.scene.getScene('UI'); if (ui.buildOpen) ui.closeBuildMenu(true); });
     }
     ok(far >= 1200, 'one of them was far (' + far + ' px)');
     // a joystick input stops a walk at once (a walk to the place farthest from where he stands now)
