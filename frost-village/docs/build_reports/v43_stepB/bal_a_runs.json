@@ -1,0 +1,435 @@
+{
+ "W0 a3.1 (3.2 s, 빵집 150, a3 house rule, wantMax 3)": {
+  "dir": "scratchpad/v43/stepB/w0",
+  "pace": [
+   {
+    "seed": 1,
+    "complete": 22.16,
+    "bakery": 7.15,
+    "farmer": 11.4,
+    "mine": 15.57,
+    "hunt": 20.28,
+    "housesBefore": [
+     "house_c@17.71",
+     "house_a@20.56"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 2,
+    "complete": 21.96,
+    "bakery": 7.19,
+    "farmer": 11.48,
+    "mine": 15.51,
+    "hunt": 20.11,
+    "housesBefore": [
+     "house_a@17.68",
+     "house_c@20.26"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 3,
+    "complete": 21.77,
+    "bakery": 7.16,
+    "farmer": 11.5,
+    "mine": 15.36,
+    "hunt": 20.02,
+    "housesBefore": [
+     "house_c@17.51",
+     "house_a@20.21"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": null,
+    "botopts": null
+   }
+  ],
+  "fresh": [
+   {
+    "seed": 1,
+    "complete": 22,
+    "earned20": 8769,
+    "errors": 0,
+    "rows": 150,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 2,
+    "complete": 21.67,
+    "earned20": 8812,
+    "errors": 0,
+    "rows": 150,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 3,
+    "complete": 22,
+    "earned20": 8757,
+    "errors": 0,
+    "rows": 150,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 4,
+    "complete": 22.17,
+    "earned20": 8640,
+    "errors": 0,
+    "rows": 150,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 5,
+    "complete": 21.33,
+    "earned20": 9318,
+    "errors": 0,
+    "rows": 150,
+    "bal": null,
+    "botopts": null
+   }
+  ],
+  "medPace": 21.96,
+  "medFresh": 22,
+  "medEarned20": 8769,
+  "passPace": false,
+  "passFresh": false
+ },
+ "T1 knob 1: spawnEvery 2.2 (seed 1 only)": {
+  "dir": "scratchpad/v43/stepB/bal/t1_se22",
+  "pace": [
+   {
+    "seed": 1,
+    "complete": 21.48,
+    "bakery": 7.18,
+    "farmer": 11.71,
+    "mine": 15.05,
+    "hunt": 19.48,
+    "housesBefore": [
+     "house_c@17.21",
+     "house_a@19.58"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2}}",
+    "botopts": null
+   }
+  ],
+  "fresh": [],
+  "medPace": 21.48,
+  "medFresh": null,
+  "medEarned20": null,
+  "passPace": false,
+  "passFresh": false
+ },
+ "T2 knobs 1 + 2: + 빵집 70 (stopped)": {
+  "dir": "scratchpad/v43/stepB/bal/t2_se22b70",
+  "pace": [
+   {
+    "seed": 1,
+    "complete": 21.74,
+    "bakery": 7.42,
+    "farmer": 11.65,
+    "mine": 15.43,
+    "hunt": 20.1,
+    "housesBefore": [
+     "house_c@17.50",
+     "house_a@20.19"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": null
+   },
+   {
+    "seed": 2,
+    "complete": 21.64,
+    "bakery": 7.14,
+    "farmer": 11.46,
+    "mine": 15.22,
+    "hunt": 19.76,
+    "housesBefore": [
+     "house_c@17.33",
+     "house_a@19.98"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": null
+   }
+  ],
+  "fresh": [
+   {
+    "seed": 1,
+    "complete": 21.17,
+    "earned20": 9613,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": null
+   }
+  ],
+  "medPace": 21.69,
+  "medFresh": 21.17,
+  "medEarned20": 9613,
+  "passPace": false,
+  "passFresh": false
+ },
+ "T3 knobs 1 + 2 + 3: + first houses wait (stopped)": {
+  "dir": "scratchpad/v43/stepB/bal/t3_se22b70hint",
+  "pace": [
+   {
+    "seed": 1,
+    "complete": 21.25,
+    "bakery": 6.92,
+    "farmer": 11.59,
+    "mine": 15.21,
+    "hunt": 19.63,
+    "housesBefore": [
+     "house_c@17.31"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 2,
+    "complete": 20.7,
+    "bakery": 7.12,
+    "farmer": 11.43,
+    "mine": 14.89,
+    "hunt": 19.03,
+    "housesBefore": [],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 3,
+    "complete": 21.5,
+    "bakery": 6.94,
+    "farmer": 11.29,
+    "mine": 15.23,
+    "hunt": 19.77,
+    "housesBefore": [
+     "house_c@19.82"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   }
+  ],
+  "fresh": [
+   {
+    "seed": 1,
+    "complete": 21.33,
+    "earned20": 8938,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 2,
+    "complete": 21.17,
+    "earned20": 9519,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 3,
+    "complete": 21.17,
+    "earned20": 9547,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   }
+  ],
+  "medPace": 21.25,
+  "medFresh": 21.17,
+  "medEarned20": 9519,
+  "passPace": false,
+  "passFresh": false
+ },
+ "**T4** T3 + wantMax 4 (adopted)": {
+  "dir": "scratchpad/v43/stepB/bal/t4_se22b70w4hint",
+  "pace": [
+   {
+    "seed": 1,
+    "complete": 20.89,
+    "bakery": 6.98,
+    "farmer": 11.62,
+    "mine": 15.22,
+    "hunt": 19.32,
+    "housesBefore": [
+     "house_c@19.37"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 2,
+    "complete": 20.71,
+    "bakery": 6.92,
+    "farmer": 11.42,
+    "mine": 14.94,
+    "hunt": 18.91,
+    "housesBefore": [
+     "house_c@18.97"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 3,
+    "complete": 20.8,
+    "bakery": 7.21,
+    "farmer": 11.63,
+    "mine": 15.05,
+    "hunt": 19.15,
+    "housesBefore": [
+     "house_c@19.20"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   }
+  ],
+  "fresh": [
+   {
+    "seed": 1,
+    "complete": 20.83,
+    "earned20": 9557,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 2,
+    "complete": 20.67,
+    "earned20": 9894,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 3,
+    "complete": 20.83,
+    "earned20": 9636,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 4,
+    "complete": 21.5,
+    "earned20": 8993,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   },
+   {
+    "seed": 5,
+    "complete": 20.67,
+    "earned20": 9910,
+    "errors": 0,
+    "rows": 150,
+    "bal": "{\"bakery43\":{\"spawnEvery\":2.2,\"spawnEveryLate\":2.2,\"wantMax\":4,\"build\":{\"coins\":70,\"item_plank\":4}}}",
+    "botopts": "{\"side43\":\"hint\"}"
+   }
+  ],
+  "medPace": 20.8,
+  "medFresh": 20.83,
+  "medEarned20": 9636,
+  "passPace": true,
+  "passFresh": true
+ },
+ "BAL-a from the file (no --bal / --botopts)": {
+  "dir": "scratchpad/v43/stepB/bal/final",
+  "pace": [
+   {
+    "seed": 1,
+    "complete": 21.12,
+    "bakery": 6.91,
+    "farmer": 11.48,
+    "mine": 15.28,
+    "hunt": 19.58,
+    "housesBefore": [],
+    "stuck": 0,
+    "errors": 0,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 2,
+    "complete": 20.97,
+    "bakery": 7.32,
+    "farmer": 11.85,
+    "mine": 15.01,
+    "hunt": 19.28,
+    "housesBefore": [
+     "house_c@19.34"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": null,
+    "botopts": null
+   },
+   {
+    "seed": 3,
+    "complete": 20.91,
+    "bakery": 7.19,
+    "farmer": 11.42,
+    "mine": 14.91,
+    "hunt": 19.16,
+    "housesBefore": [
+     "house_c@19.21"
+    ],
+    "stuck": 0,
+    "errors": 0,
+    "bal": null,
+    "botopts": null
+   }
+  ],
+  "fresh": [
+   {
+    "seed": 1,
+    "complete": 20.67,
+    "earned20": 9803,
+    "errors": 0,
+    "rows": 150,
+    "bal": null,
+    "botopts": null
+   }
+  ],
+  "medPace": 20.97,
+  "medFresh": 20.67,
+  "medEarned20": 9803,
+  "passPace": true,
+  "passFresh": false
+ }
+}

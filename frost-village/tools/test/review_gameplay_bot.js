@@ -110,7 +110,9 @@
 
   // ------------------------------------------------------------------ bot
   const bot = window.__bot = {
-    opts: { policy: 'smart', upg: 'greedy', minBatch: 3 },
+    // ((v4.3 step B, BAL-a) side43 'hint': the first houses wait as the game's own hint does (wantBuild below); any other
+    //  value (e.g. --botopts '{"side43":"old"}') is the a3 rule, a house as soon as its price + 100 is in hand)
+    opts: { policy: 'smart', upg: 'greedy', minBatch: 3, side43: 'hint' },
     task: null, path: null, pathT: 0, tgt: null,
     t: 0, decideT: 0, events: [], samples: [], taskTime: {}, log: [], noGuide: 0, noGuideRuns: [], curNoGuide: 0,
     lastPos: { x: 0, y: 0 }, stuckT: 0, stuckEvents: 0, blockedT: 0, idleT: 0, waitRuns: [], curWait: 0,
@@ -213,7 +215,13 @@
         const pl = plotFor(k);
         if (!pl) continue;
         const c = gs.buildChoices(pl).find((q) => q.key === k);
-        if (c && !c.locked && coins >= costOf(k) + 100) return { site: pl, bkey: k };
+        // ((v4.3 step B, BAL-a knob 3) opts.side43 'hint' (the default): a first house (world.js plots side43, a side goal at its own
+        //  price balance.js houses43) only when the coins pay for it without holding up the next main pad — what the
+        //  game's own hint does (Tutorial.house43Hint); otherwise the old rule: its price + 100 in hand)
+        const side = bot.opts.side43 === 'hint' && pl.cfg && pl.cfg.side43;
+        const nx = side ? gs.progress.nextPad() : null;
+        const price = side && c && c.cost && Number.isFinite(c.cost.coins) ? c.cost.coins : costOf(k);
+        if (c && !c.locked && coins >= price + (side ? (nx ? nx.remaining : 0) : 100)) return { site: pl, bkey: k };
       }
     }
     return null;

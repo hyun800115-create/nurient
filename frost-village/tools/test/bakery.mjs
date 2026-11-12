@@ -5,7 +5,8 @@
 //    wheat plot's tip under the cottage's or the 농막's opaque pixels, the shop's cash pad / food rack / clerk pad uncovered,
 //    the field fence with its two tl gaps, the farm_link road gone
 // 2. fresh flow (a new game up to the lumberjack): the field pad opens the field (농막, scarecrow, sled, sacks; no bakery yet);
-//    빵집 짓기 at R asks 150 + 4 planks and pops the cottage + stall; the chief carries wheat to the oven door through the gate,
+//    빵집 짓기 at R asks balance.js bakery43.build (70 + 4 planks since step B BAL-a) and pops the cottage + stall;
+//    the chief carries wheat to the oven door through the gate,
 //    bakes standing in the doorway (batches of 3 land on the stall's case: none / bread_1 / bread_2), a line forms, he
 //    sells at R (the bakery till, firstBreadSale + hints.farm); the 판매원 (80) walks to her post and sells; the 제빵사 (260)
 //    goes in by the doorway and loops knead → oven_in → oven_out; 1 loaf / 1.1 s; a full case sends loaves to the rack; the
@@ -98,11 +99,12 @@ try {
         const pl = g.piles.wheat;
         return { zone: g.zones.farm.unlocked, hut: shown('farm43_hut'), scare: shown('farm43_scarecrow'), sled: shown('farm43_sledcart'), sacks: pl.props.length && pl.props[0].frame ? pl.props[0].frame.name : null,
           bakery: g.bakery.built, stEnabled: g.stations.bakery.enabled, bldPad: g.progress.pads.bld_bakery ? { x: g.progress.pads.bld_bakery.x, y: g.progress.pads.bld_bakery.y, cost: g.progress.pads.bld_bakery.cost, items: g.progress.pads.bld_bakery.items } : null,
-          oldHut: g.statics.filter((o) => o.visible && o.frame && o.frame.name === 'worker_hut' && Math.abs(o.x - 1606) < 4).length, art: A.has('farm43_hut') };
+          oldHut: g.statics.filter((o) => o.visible && o.frame && o.frame.name === 'worker_hut' && Math.abs(o.x - 1606) < 4).length, art: A.has('farm43_hut'),
+          want: window.__BAL.bakery43.build };
       });
       ok(f.zone && f.hut === 1 && f.scare === 1 && f.sled === 1 && f.sacks === 'farm43_sacks', 'the field: 농막, scarecrow, sled cart, grain sacks by the pile', f);
       ok(!f.bakery && !f.stEnabled && f.oldHut === 0, 'no bakery inside the field; the old farmer hut is gone', f);
-      ok(f.bldPad && Math.abs(f.bldPad.x - 1244) <= 2 && Math.abs(f.bldPad.y - 1223) <= 2 && f.bldPad.cost === 150 && f.bldPad.items && f.bldPad.items.item_plank === 4, '빵집 짓기 at R (1244, 1223): 150 + 4 planks', f.bldPad);
+      ok(f.bldPad && Math.abs(f.bldPad.x - 1244) <= 2 && Math.abs(f.bldPad.y - 1223) <= 2 && f.bldPad.cost === f.want.coins && f.bldPad.items && f.bldPad.items.item_plank === f.want.item_plank, '빵집 짓기 at R (1244, 1223): ' + f.want.coins + ' + ' + f.want.item_plank + ' planks (balance.js bakery43.build)', f.bldPad);
       await shot(page, 'field_open');
       // ---------------------------------------------------------------- 2b. 빵집 짓기
       await ev(page, () => window.__FV.completeStep('bld_bakery'));
