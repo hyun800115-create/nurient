@@ -184,7 +184,11 @@ try {
     S.overT.set(ore, 999);
     // (the ore pile's surplus may leave: its line's 가공소 2단 had its chance; nobody else on its raw run)
     const f5 = S.f5Chance; S.f5Chance = () => true;
-    const busy = gs.porters.filter((p) => p !== wp && p.job && (p.job.kind === 'raw' || p.job.kind === 'in'));
+    // ((a3.1 regression) also whoever is on the ore pile's run right now: a 역 짐꾼 (StationPorter) carrying the pile's
+    //  surplus to the dock holds it with a job that has no kind, and rawJob rightly skips a pile someone already runs —
+    //  the check then saw raw null (or passed on the fish pile instead of the ore pile) depending on that timing)
+    const oreSrc = S.pileSource(ore);
+    const busy = gs.porters.filter((p) => p !== wp && p.job && (p.job.kind === 'raw' || p.job.kind === 'in' || p.job.src === oreSrc));
     const keep = busy.map((p) => [p, p.job]); for (const p of busy) p.job = null;
     // (the fish link off for this check: an urgent link comes before both — section 5 checks it)
     const LK = window.__BAL.logistics.link, lk = LK.fishToCannery; LK.fishToCannery = false;
@@ -192,9 +196,9 @@ try {
     LK.fishToCannery = lk;
     for (const [p, jj] of keep) p.job = jj;
     S.f5Chance = f5;
-    return { raw: raw ? { kind: raw.kind, long: raw.long, n: raw.n } : null, job: j ? { kind: j.kind, src: j.src && (j.src.id || (j.src.pile && j.src.pile.id)) } : null };
+    return { raw: raw ? { kind: raw.kind, long: raw.long, n: raw.n, src: raw.src && raw.src.id } : null, job: j ? { kind: j.kind, src: j.src && (j.src.id || (j.src.pile && j.src.pile.id)) } : null, freed: keep.filter(([p]) => p.role === 'stationPorter').length };
   });
-  step('4 a full output and a long-full pile: the crew takes the overflow / direct run first, not the raw run', J4.raw && J4.raw.long && J4.job && J4.job.kind === 'in', J4);
+  step('4 a full output and a long-full pile: the crew takes the overflow / direct run first, not the raw run', J4.raw && J4.raw.long && J4.raw.src === 'pile_item_ore' && J4.job && J4.job.kind === 'in', J4);
 
   // ---- 5. the fish link: the crew carries fish from the pile to the cannery when it runs low
   const L5 = await ev(() => {

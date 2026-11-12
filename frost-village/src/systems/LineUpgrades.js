@@ -223,10 +223,14 @@ export class LineUpgrades {
     let n = Object.keys(this.pads).filter((id) => !APART_KINDS.has(kindOf(id)) && kindOf(id) !== 'p2').length;
     let n2 = Object.keys(this.pads).filter((id) => kindOf(id) === 'p2').length;
     due.sort((a, b) => ((this.paid[b.id] > 0) ? 1 : 0) - ((this.paid[a.id] > 0) ? 1 : 0));
+    // ((a3.1) the spots taken in this pass: two offers due in the same frame on a shared line spot (p2: null — the grill,
+    //  the bakery: 짐꾼 2 and 가공소 2단 after a load) both found the spot free and stood on top of each other)
+    const taken = [], R2 = 45.25 * 1.9 * 2 + 16;
     for (const o of due) {
       if (this.pads[o.id]) continue;
       const apart = APART_KINDS.has(o.kind), slot = apart || (o.kind === 'p2' ? n2 < MAX_P2 : n < MAX_OFFERS);
       if (!slot) continue;
+      if (taken.some((q) => Math.abs(q.x - o.x) + 2 * Math.abs(q.y - o.y) < R2)) { if (!apart && (this.paid[o.id] || 0) > 0) { if (o.kind === 'p2') n2++; else n++; } continue; }
       // ((v4.2.0.1) one live paid pad per spot: an offer whose spot is taken (a hire step of the same line, another
       //  offer) waits until that pad is bought, then appears here (looked at again every second; its part payment kept).
       //  ((final review F1) a tool-gated side hire there with nothing paid gives the spot up (Progression.yields);
@@ -238,6 +242,7 @@ export class LineUpgrades {
       if (!apart) { if (o.kind === 'p2') n2++; else n++; }
       if (blk && !yielder) continue;
       out.push({ o, yielder });
+      taken.push(o);
     }
     return out;
   }
