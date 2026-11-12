@@ -439,6 +439,14 @@ export class ChiefPilot {
         const nt = workTarget(gs);
         if (nt && (!cur.target || nt.x !== cur.target.x || nt.y !== cur.target.y)) { cur.target = nt; this.planTo(nt.x, nt.y); this.arrived = false; }
       }
+      else if (cur && cur.act === 'collect' && this.arrived && cur.target && cur.target.till && !(cur.target.till.value > 0)) {
+        // ((v4.3 a3.1) the till he stands on is taken (the coins are his the moment he steps on it): 수금 goes on to the next
+        //  till worth the walk, a new leg with the act's own time — he stood on the empty pad until the act ran out while
+        //  another till held 200+ (~4 min of 30). Since the bakery split his 업무 / 저녁 walks no longer pass over the tills
+        //  (~18k → ~1k picked up on the way), so 수금 has to bring it all: 관망 fell to ~80 % of the arrow-only bot)
+        const nt = cashTarget(gs, 200);
+        if (nt && nt.till !== cur.target.till && !isPayTarget(gs, nt.x, nt.y)) { cur.target = nt; cur.t = 0; this.planTo(nt.x, nt.y); this.arrived = false; }
+      }
     }
     // move
     const a = this.act;
