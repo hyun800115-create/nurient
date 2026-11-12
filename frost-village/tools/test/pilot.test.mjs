@@ -6,7 +6,8 @@
 // a chore is always waiting still changes activity ≥ 6 times with ≥ 4 different ones (the chore break + AGAIN
 // cool-downs); ((v4.3) 둘러보기) a touch / key on the village no longer ends 관망 — a finger past the slop and the keys
 // look around (Input.pan / panKeys → CameraDirector: detached, clamped to the camera bounds incl. 150 px over the sea's top,
-// no cut while detached, attach() glides back), only the button (toggle) hands control back; never Math.random.
+// no cut while detached, attach() glides back), only the button (toggle) hands control back; ((v4.3 a3.1) 수금 on an
+// emptied till goes on to the next till ≥ 200 in the same act, never to one on a pay pad); never Math.random.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -324,6 +325,37 @@ console.log('a train watch and a game with 누리 last once begun');
   const d2 = P.context();
   ok(!d2.dog && d2.dogIdle < 600, 'after the game: 누리 1,100 px away is out of range again');
   P.destroy();
+}
+
+// ((v4.3 a3.1) 수금: the till he steps on is emptied at once (CashPad); the same act goes on to the next till ≥ 200 worth
+//  the walk, never one on a pay pad — he stood on the empty pad until the act ran out)
+console.log('수금: an emptied till sends him on to the next one');
+{
+  Settings.data.observeSpend = 'none';
+  const day = (tills, secs, each) => {
+    const { gs } = village();
+    gs.tills = tills; gs.stationList = []; gs.life.residents = []; gs.dog = null;      // nothing but 수금 to do
+    const P = new ChiefPilot(gs, gs.v42, { cid: 4242 });
+    P.start('test');
+    for (let k = 0; k < secs * 10; k++) {
+      gs.time.now += 100;
+      P.update(0.1);
+      const v = Input.pilot();
+      if (v) { gs.player.x += v.x * 220 * 0.1; gs.player.y += v.y * 220 * 0.1; }
+      for (const c of tills) if (c.value > 0 && Math.hypot(gs.player.x - c.x, 2 * (gs.player.y - c.y)) < 20) { gs.economy.coins += c.value; c.value = 0; }
+      each(P);
+    }
+    P.destroy();
+    return gs;
+  };
+  const a = { x: 300, y: 200, value: 900 }, b = { x: -400, y: -300, value: 600 }, seq = [], acts = new Set();
+  const g1 = day([a, b], 14, (P) => { const c = P.act; if (c && c.act === 'collect') { acts.add(c); const q = c.target && c.target.till; if (q && seq[seq.length - 1] !== q) seq.push(q); } });
+  ok(seq[0] === a && seq[1] === b && acts.size === 1, 'the near full till, then — in the same 수금 — the next till ≥ 200', { seq: seq.map((q) => (q === a ? 'a' : 'b')), acts: acts.size });
+  ok(a.value === 0 && b.value === 0 && g1.economy.coins === 6500, 'both tills taken (' + g1.economy.coins + ')');
+  const a2 = { x: 300, y: 200, value: 900 }, onPad = { x: 900, y: 310, value: 700 };    // up_a's upgrade pad (900, 300)
+  let toPad = 0;
+  day([a2, onPad], 40, (P) => { const tg = P.act && P.act.target; if (tg && tg.till === onPad) toPad++; });
+  ok(a2.value === 0 && onPad.value === 700 && toPad === 0, 'never on to a till on a pay pad (' + toPad + ' frames)');
 }
 
 Math.random = realRandom;
