@@ -111,11 +111,15 @@ const resetS = () => { S.taps = []; S.wrong = 0; S.lockUntil = 0; S.unlocked = f
 {
   const SV = await import('../../src/core/Save.js');
   const FIX = path.join(HERE, 'fixtures');
-  const files = fs.readdirSync(FIX).filter((f) => f.endsWith('.json')).sort();
+  // ((v4.3 step B, S5) not the fixtures made to be refused: a newer build's village (v43_newer_*) and the hand-made one R43
+  //  cannot move (_expect 'fail', save_v43.mjs checks them); a fixture exported after its admin panel was used
+  //  (v4202_46min_admin) is compared without its own admin keys)
+  const files = fs.readdirSync(FIX).filter((f) => f.endsWith('.json') && !/^v43_newer_/.test(f) && JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'))._expect !== 'fail').sort();
   const issues = [];
   for (const f of files) {
     const d = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'));
     const raw = d.keys ? JSON.parse(d.keys[SV.SAVE_KEY]) : d;
+    delete raw.adminUses; delete raw.adminInf;
     const base = SV.migrateSave(JSON.parse(JSON.stringify(raw)));
     if (!base) { issues.push(f + ': not readable'); continue; }
     if ('adminUses' in base || 'adminInf' in base) issues.push(f + ': admin keys appeared');

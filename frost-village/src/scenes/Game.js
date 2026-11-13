@@ -76,7 +76,9 @@ import { buildV42 } from '../systems/v42/index.js';
 import { VillageFlags } from '../flag/VillageFlags.js';
 // ---- (v4.3 step B, B0) the step-B seams: hidden plots get no Site; gs.v43 (the save's v43 block); the after-load hooks
 import { isHidden } from '../systems/plotRules.js';
-import { runAfterLoad, v43Holder } from '../systems/v43/index.js';
+import { runAfterLoad, v43Holder, emit as emit43 } from '../systems/v43/index.js';
+// ---- (v4.3 step B, S4) R43's after-build decision (the remap's event on the v43 bus)
+import { EV43 } from '../data/ids43.js';
 /** (v4.3 step B, L1) is (x, y) inside polygon P ([[x, y], …], screen px)? (the reserves' ground) */
 const inPoly43 = (P, x, y) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) { const [xa, ya] = P[a], [xb, yb] = P[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) c = !c; } return c; };
 
@@ -142,7 +144,10 @@ export class Game extends Phaser.Scene {
       // a save that cannot be restored must never brick the game: keep a copy aside and start fresh
       console.error('[FrostVillage] could not restore the saved game, starting fresh:', e);
       if (this.fresh) throw e;
-      Save.quarantine();
+      // ((v4.3 step B, S4 — V-N11) an old village R43 had just moved onto the new map: nothing was stored since the load,
+      //  so the stored village is still the one from before — it is held as it is under the failure card, never put aside)
+      if (Save.pending43 || Save.remapped) Save.failWith('restore', e);
+      else Save.quarantine();
       this.time.delayedCall(0, () => this.scene.restart({ fresh: true, broken: true }));
     }
   }
@@ -281,9 +286,12 @@ export class Game extends Phaser.Scene {
     // ((v4.3 review CD-1) every wall stands now (the hut / the office on the moved plot): a chief saved where they stand
     //  (an old village's beach campfire, the 관망 rest spot) goes out to the yard instead of staying stuck in the walls
     if (okPos) this.unstickChief();
+    // ---- (v4.3 step B, S4 — map_save §4.2, V-N11) an old village R43 moved onto plot table v2 is stored only now, when every
+    //  one of its sites found its plot (restoreV3 skipped none): else the failure card, and the stored village stays as it was
+    const remapped = this.afterRemap43();
     // ---- (v4.3 step B, B0) the after-load hooks (src/systems/v43/index.js: N's letter, P1), once per build; a hook that
-    //  throws is logged and skipped. S fills `remapped` / `refunds43`
-    runAfterLoad(this, { fresh: this.saved === null, remapped: false, refunds43: null });
+    //  throws is logged and skipped. remapped / refunds43: R43 moved this village at this load (S4)
+    runAfterLoad(this, { fresh: this.saved === null, remapped, refunds43: remapped && this.v43 ? this.v43.refunds43 || null : null });
     // ((v4.2 final) everything that stands is solid now: the store's line once more (plot e_m1 / the farm fence))
     if (this.store) this.refreshStoreLine();
     this.events.on('built', (k) => { if (k !== 'store' && this.store) this.refreshStoreLine(); });
@@ -1103,17 +1111,44 @@ export class Game extends Phaser.Scene {
   /** (v3) restore construction sites, buildings and their stock from the save (before the steps are applied) */
   restoreV3(sv) {
     const sites = sv.sites || {};
+    // ((v4.3 step B, S4) the saved sites that found no plot or tower here (they would be gone at the next autosave): for a
+    //  village R43 just moved this turns into the failure card (afterRemap43)
+    this.restoreSkipped = [];
     for (const id in sites) {
       const d = sites[id];
       if (!d || !d.b) continue;
       let site = this.sites[id];
       if (!site && WORLD.towers && WORLD.towers[id]) site = this.makeTowerSite(id);
-      if (!site) continue;
+      if (!site) { this.restoreSkipped.push(id); continue; }
       site.start(d.b, { instant: true, got: d.got, t: d.t });
       if (d.st === 'done') site.finish(true);
       else if (d.st === 'scaffold' && site.state !== 'scaffold') site.beginScaffold(true, d.t);
     }
     this.refreshSites();
+  }
+
+  /** (v4.3 step B, S4 — V-N11) at the end of Game.build: a village R43 moved at this load (Save.pending43) is confirmed —
+   *  its saves reach storage from now on — when restoreV3 found a plot for every site; otherwise the failure card holds the
+   *  stored (pre-B) village as it is. Says so on the v43 bus (EV43.remap { ok, refunds43 }). -> whether it was remapped and
+   *  confirmed. Test switch (V-N12, window.__FV_TEST_FAIL43): 'restore' throws here (Game.create's catch), 'skip' adds a skip */
+  afterRemap43() {
+    const W = typeof window !== 'undefined' ? window : {};
+    if (!Save.pending43) {
+      if (Save.held === 'failed43' && Save.failed && Save.failed.at === 'load') emit43(EV43.remap, { ok: false, refunds43: null, reason: Save.failed.reason });
+      return false;
+    }
+    if (W.__FV_TEST_FAIL43 === 'restore') throw new Error('test switch: restore');
+    const skipped = (this.restoreSkipped || []).slice();
+    if (W.__FV_TEST_FAIL43 === 'skip') skipped.push('test_skip');
+    if (skipped.length) {
+      Save.failWith('skip', skipped.join(','));
+      this.saveHold = { why: Save.held, info: Save.failed };
+      emit43(EV43.remap, { ok: false, refunds43: null, reason: Save.failed && Save.failed.reason });
+      return false;
+    }
+    Save.confirm43();
+    emit43(EV43.remap, { ok: true, refunds43: (this.v43 && this.v43.refunds43) || null });
+    return true;
   }
 
   /** (v3) what lies in the new buildings (after the steps: the boat exists by now) */
@@ -2602,7 +2637,7 @@ export class Game extends Phaser.Scene {
     const ok = Save.write(this.serialize());
     if (this.residentChat) this.residentChat.save();        // (v4-C2) only when a chat changed it
     // ((v4.3 step B) a held save is not "this place cannot save": its card / banner says what happened)
-    if (!ok && !Save.held && !this._saveWarned) { this._saveWarned = true; this.ui.toast(t('noSave')); }
+    if (!ok && !Save.held && !Save.pending43 && !this._saveWarned) { this._saveWarned = true; this.ui.toast(t('noSave')); }
   }
 
   restore(sv) {

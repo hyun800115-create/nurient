@@ -12,8 +12,10 @@
 //            a spare (되돌리기), writes the new one with the running game's saves blocked (window.__FV_NO_SAVE) and
 //            reloads the page.
 // The Android app (tools/apk) adds window.SnowbloomAndroid { copy(text), share(text), paste() } for its own pages only.
-import { SAVE_KEY, SETTINGS_KEY, Save, Settings, stamp } from '../core/Save.js';
-import { encodeVillage, decodeVillage, dryRun, applyVillage, snapshotKeys, getStore, backupCode, ADMIN_BACKUP_KEY } from '../core/Transfer.js';
+import { SAVE_KEY, SETTINGS_KEY, Save, Settings, stamp, isNewerSave, PRE43_SLOTS } from '../core/Save.js';
+import { encodeVillage, decodeVillage, dryRun, applyVillage, snapshotKeys, getStore, backupCode, ADMIN_BACKUP_KEY, CODE_FMT_MIN } from '../core/Transfer.js';
+// ---- (v4.3 step B, S4) a village saved before step B (no v43.lay marker) is exported as a format-1 code
+import { needsRemap } from '../core/Remap43.js';
 import { getLang } from '../data/strings.js';
 // ---- (v4.3 마을 깃발) the incoming village's flag on the confirm card
 import { drawFlag } from '../flag/design.js';
@@ -43,6 +45,11 @@ const S = {
     header: '[행복한 눈꽃마을 이야기] 마을 옮기기 코드 · {name} {coins}코인 · {d}',
     // ((v4.3 step B) a village this build cannot read itself (from a newer build, held): no name or coins to show)
     headerPlain: '[행복한 눈꽃마을 이야기] 마을 옮기기 코드 · {d}',
+    // ((v4.3 step B, S4) the confirm card of an old village (it moves onto the new map when it loads), the 「새 단장 전 마을」 rows)
+    remap: '새 지도로 옮겨요: 건물 {n}채가 새 자리로', remap0: '새 지도로 옮겨요', remapCoins: ' · {c}코인을 돌려받아요',
+    pre43Title: '새 단장 전 마을', pre43Row: '{d}에 저장한 마을 (예전 지도)', pre43NoDate: '저장한 때를 모르는 마을 (예전 지도)', pre43Btn: '이 마을 코드 만들기',
+    pre43Lead: '마을이 새 지도로 옮겨 가기 전 그대로의 모습이에요. 불러오면 다시 새 지도로 옮겨 가요. 예전 버전의 게임에서도 열 수 있어요.',
+    pre43Header: '[행복한 눈꽃마을 이야기] 새 단장 전 마을 코드 · {d}', pre43Back: '지금 마을 코드 보기',
     err: {
       empty: '먼저 코드를 붙여 넣어 주세요.',
       notCode: '마을 코드가 아니에요. 「SNOWBLOOM」으로 시작하는 코드를 통째로 붙여 넣어 주세요.',
@@ -55,6 +62,7 @@ const S = {
       tooBig: '코드가 너무 커서 열 수 없어요.',
       newerSave: '더 새 버전의 게임에서 만든 마을이에요. 게임을 업데이트한 뒤 다시 해 주세요.',
       badSave: '코드 안의 마을을 읽을 수 없어요.',
+      migrateFail: '이 마을을 새 지도로 옮기지 못했어요. 코드는 그대로 보관해 두고, 게임을 업데이트한 뒤 다시 해 주세요.',
       noStorage: '이 화면에서는 저장을 할 수 없어서 마을을 불러올 수 없어요.',
       noRoom: '저장 공간이 모자라서 바꾸지 못했어요.',
     },
@@ -81,6 +89,10 @@ const S = {
     rank: ['Frost Village', 'Frost Town'],
     header: '[Snowbloom Village] village code · {name} {coins} coins · {d}',
     headerPlain: '[Snowbloom Village] village code · {d}',
+    remap: 'Moves onto the new map: {n} buildings to their new spots', remap0: 'Moves onto the new map', remapCoins: ' · {c} coins back',
+    pre43Title: 'Village before the renewal', pre43Row: 'Village saved {d} (old map)', pre43NoDate: 'Village from the old map (date unknown)', pre43Btn: 'Make a code of this village',
+    pre43Lead: 'This is your village exactly as it was before it moved onto the new map. Importing it moves it onto the new map again. Older versions of the game can open it too.',
+    pre43Header: '[Snowbloom Village] village code from before the renewal · {d}', pre43Back: 'Show the code of my village now',
     err: {
       empty: 'Paste a code first.',
       notCode: 'This is not a village code. Paste the whole code that starts with "SNOWBLOOM".',
@@ -93,6 +105,7 @@ const S = {
       tooBig: 'This code is too big to open.',
       newerSave: 'This village comes from a newer version of the game. Update the game and try again.',
       badSave: 'The village in this code cannot be read.',
+      migrateFail: 'This village could not be moved onto the new map. Keep the code as it is, update the game and try again.',
       noStorage: 'Saving is not possible here, so a village cannot be imported.',
       noRoom: 'Not enough storage space to replace the village.',
     },
@@ -167,6 +180,8 @@ function clipboardReadAllowed() {
   try { const p = document.permissionsPolicy || document.featurePolicy; if (p && typeof p.allowsFeature === 'function') return p.allowsFeature('clipboard-read'); } catch (e) { /* */ }
   return true;
 }
+/** (v4.3 step B, S4) a save text from before step B (no v43.lay marker, not from a newer build): its code is format 1 */
+function preB(raw) { try { const o = JSON.parse(raw); return !!o && typeof o === 'object' && !Array.isArray(o) && !isNewerSave(o) && needsRemap(o); } catch (e) { return false; } }
 /** the Android app's bridge (tools/apk MainActivity, only on its own origin) */
 function bridge() { try { const b = window.SnowbloomAndroid; return b && typeof b === 'object' ? b : null; } catch (e) { return null; } }
 
@@ -242,7 +257,15 @@ export class MovePanel {
     r1.append(this.copyBtn, this.shareBtn, this.retryBtn);
     this.msgOut = h('div', 'fm-msg'); this.msgOut.id = 'fm-msg-out'; this.msgOut.setAttribute('role', 'status');
     this.tipEl = h('p', 'fm-tip');
-    out.append(this.outLead, this.codeOut, this.metaOut, r1, this.msgOut, this.tipEl);
+    // ((v4.3 step B, S4 — BP-15 / BP-34) 「새 단장 전 마을」: one row per kept pre-B copy (Save.keepPre43), with its save time
+    this.outSrc = null;           // null = the village now; else the PRE43 slot whose code is shown
+    this.pre43Box = h('div', 'fm-undo'); this.pre43Box.id = 'fm-pre43'; this.pre43Box.hidden = true;
+    this.pre43Title = h('div', null); this.pre43Title.style.fontWeight = '800';
+    this.pre43List = h('div', null);
+    this.pre43BackBtn = h('button', 'fm-link'); this.pre43BackBtn.type = 'button'; this.pre43BackBtn.id = 'fm-pre43-back'; this.pre43BackBtn.hidden = true;
+    this.pre43BackBtn.addEventListener('click', () => { this.outSrc = null; this.exported = null; this.makeCode(); });
+    this.pre43Box.append(this.pre43Title, this.pre43List, this.pre43BackBtn);
+    out.append(this.outLead, this.codeOut, this.metaOut, r1, this.msgOut, this.tipEl, this.pre43Box);
 
     // ---- 불러오기
     const inn = this.inView = h('div', 'fm-view'); inn.id = 'fm-view-in'; inn.setAttribute('role', 'tabpanel');
@@ -340,6 +363,7 @@ export class MovePanel {
     this.metaOut.textContent = '';
     this.copyBtn.disabled = true; this.shareBtn.disabled = true;
     this.exported = null;
+    this.outSrc = null;
     this.cancelPending(true);
     if (this.host.onClose) this.host.onClose();
     try { if (this.returnFocus && this.returnFocus.focus) this.returnFocus.focus({ preventScroll: true }); } catch (e) { /* */ }
@@ -353,6 +377,7 @@ export class MovePanel {
     this.outView.hidden = !out; this.inView.hidden = out;
     this.body.scrollTop = 0;
     if (out && !this.exported && !this.making) this.makeCode();
+    if (out) this.showPre43();
     if (!out) this.showUndo();
   }
 
@@ -381,14 +406,20 @@ export class MovePanel {
     this.copyBtn.disabled = true; this.shareBtn.disabled = true; this.retryBtn.hidden = true;
     this.setMsg(this.msgOut, '');
     let res = null;
+    const src = this.outSrc;
+    this.outLead.textContent = src ? L.pre43Lead : L.outLead;
     try {
       const keys = this.currentKeys();
+      // ((v4.3 step B, S4) a 「새 단장 전 마을」 code: the village keys now, with the save as it was kept before the move
+      //  (same chat id: the residents' chat memory still matches it))
+      if (src) { const pre = getStore() && getStore().getItem(src); if (typeof pre !== 'string' || !pre) throw new Error('no pre43'); keys[SAVE_KEY] = pre; }
       if (!keys[SAVE_KEY]) throw new Error('no save');
       const made = Date.now();
       const dr = dryRun(keys, made);
-      const enc = await encodeVillage(keys, { made });
+      const enc = await encodeVillage(keys, { made, fmt: preB(keys[SAVE_KEY]) ? CODE_FMT_MIN : undefined });
       const sm = dr.ok ? dr.summary : null;
-      const header = sm ? fill(L.header, { name: L.rank[sm.rank === 2 ? 1 : 0], coins: num(sm.coins), d: when(made, this.lang) }) : fill(L.headerPlain, { d: when(made, this.lang) });
+      const header = src ? fill(L.pre43Header, { d: when(made, this.lang) })
+        : sm ? fill(L.header, { name: L.rank[sm.rank === 2 ? 1 : 0], coins: num(sm.coins), d: when(made, this.lang) }) : fill(L.headerPlain, { d: when(made, this.lang) });
       res = { text: header + '\n' + enc.code, code: enc.code, chars: enc.chars, comp: enc.comp, summary: sm, keys: Object.keys(keys) };
     } catch (e) {
       res = null;
@@ -396,6 +427,8 @@ export class MovePanel {
     }
     this.making = false;
     if (!this.isOpen) return;
+    if (src !== this.outSrc) { this.makeCode(); return; }
+    this.showPre43();
     if (!res) {
       this.metaOut.textContent = '';
       this.setMsg(this.msgOut, L.makeFail, true);
@@ -408,7 +441,7 @@ export class MovePanel {
     //  to keep it where it cannot be cut)
     this.metaOut.textContent = fill(L.size, { n: num(res.text.length) }) + (res.text.length > LONG_CODE ? L.long : '');
     this.copyBtn.disabled = false; this.shareBtn.disabled = false;
-    if (window.__FV) window.__FV.lastMoveCode = { chars: res.text.length, codeChars: res.chars, comp: res.comp, keys: res.keys };
+    if (window.__FV) window.__FV.lastMoveCode = { chars: res.text.length, codeChars: res.chars, comp: res.comp, keys: res.keys, src: src || null };
   }
 
   async copy() {
@@ -484,6 +517,7 @@ export class MovePanel {
     li.push(L.rank[sm.rank === 2 ? 1 : 0] + ' · ' + fill(L.coins, { n: num(sm.coins) }));
     li.push(fill(L.residents, { n: num(sm.residents) }) + (sm.day ? ' · ' + fill(L.day, { n: sm.day }) : '') + (sm.sites ? ' · ' + fill(L.sites, { n: sm.sites }) : ''));
     if (sm.office) li.push(L.office);
+    if (sm.remap43) li.push((sm.remap43.moved > 0 ? fill(L.remap, { n: num(sm.remap43.moved) }) : L.remap0) + (sm.remap43.coins > 0 ? fill(L.remapCoins, { c: num(sm.remap43.coins) }) : ''));
     if (sm.chat) li.push(L.chat);
     if (sm.made || sm.savedAt) li.push(sm.made ? fill(L.made, { d: when(sm.made, this.lang) }) : fill(L.saved, { d: when(sm.savedAt, this.lang) }));
     this.cardTitle.textContent = L.found;
@@ -524,6 +558,30 @@ export class MovePanel {
   }
 
   showUndo() { this.showSpare(this.spareRow); this.showSpare(this.adminRow); }
+
+  /** (v4.3 step B, S4) the 「새 단장 전 마을」 rows: each kept pre-B copy with the time it was saved (its own `t`) */
+  showPre43() {
+    const L = this.L, st = getStore();
+    const rows = [];
+    for (const k of PRE43_SLOTS) { let raw = null; try { raw = st && st.getItem(k); } catch (e) { raw = null; } if (typeof raw === 'string' && raw) rows.push([k, raw]); }
+    this.pre43Box.hidden = !rows.length;
+    if (!rows.length) return;
+    this.pre43Title.textContent = L.pre43Title;
+    this.pre43List.textContent = '';
+    for (const [k, raw] of rows) {
+      let t = 0;
+      try { const o = JSON.parse(raw); t = o && Number.isFinite(o.t) ? o.t : 0; } catch (e) { t = 0; }
+      const row = h('div', null);
+      const txt = h('div', null, t ? fill(L.pre43Row, { d: when(t, this.lang) }) : L.pre43NoDate);
+      const b = h('button', 'fm-link', L.pre43Btn); b.type = 'button'; b.id = 'fm-pre43-' + (k === PRE43_SLOTS[0] ? '1' : '2');
+      b.disabled = this.outSrc === k;
+      b.addEventListener('click', () => { if (this.making || this.outSrc === k) return; this.outSrc = k; this.exported = null; this.makeCode(); });
+      row.append(txt, b);
+      this.pre43List.appendChild(row);
+    }
+    this.pre43BackBtn.textContent = L.pre43Back;
+    this.pre43BackBtn.hidden = !this.outSrc;
+  }
 
   /** one spare row: shown while its slot holds a code; the date shown is when that village was last saved, read from the
    *  code itself — ((v4.2.0.2) remembered per code and language: a slot written again (the admin panel) shows its own) */
