@@ -21,7 +21,8 @@ export class Rank {
     this.gs = nb.gs;
     const s = saved && typeof saved === 'object' ? saved : {};
     this.level = s.rank === 2 || nb.gs.progress.flags.rankEup ? 2 : 1;
-    this.ceremonyOn = false;
+    this.cerOn = false;          // the 승격식 itself is running (Rank's own clock: tickCeremony / endCeremony)
+    this.hold = null;            // ((v4.3 step B, BP-51) another scene holds the village as for the 승격식 ('taste'); memory only
     this.lights = [];
     this.applied = false;
   }
@@ -45,6 +46,15 @@ export class Rank {
   }
   ready() { return this.level < 2 && this.bars().every((x) => x.full); }
 
+  // ((v4.3 step B, B0b — postdepot_addendum.md BP-51) every reader of `ceremonyOn` (goal window, 관망 pilot and camera,
+  //  navigator, carry pill, follow, flag card, 금방, focusCamera …) pauses for the 승격식 OR a hold (T's 읍장 취임 맛보기
+  //  sets hold = 'taste'), with no edit to their files. Rank's own clock and end run on `cerOn` only: a hold never ticks
+  //  or ends the ceremony, and state().ceremony stays false for it. A write to ceremonyOn sets cerOn (as before)
+  get ceremonyOn() { return this.cerOn || !!this.hold; }
+  set ceremonyOn(v) { this.cerOn = !!v; }
+  /** the camera point that frames the hall and its little square for a scene at `venue` (TownHall.venue('rank')); H tunes it */
+  static hallFrame(venue) { return { x: venue.x + 60, y: venue.y - 200 }; }
+
   update(dt) {
     const gs = this.gs;
     this.checkT = (this.checkT || 0) - dt;
@@ -54,7 +64,7 @@ export class Rank {
       if (this.level < 2 && !gs.progress.flags.rankReady && this.ready()) gs.progress.setFlag('rankReady');
     }
     if (this.level >= 2 && !this.applied && this.nb.ready) this.applyRewards(true);
-    if (this.ceremonyOn) this.tickCeremony(dt);
+    if (this.cerOn) this.tickCeremony(dt);
   }
 
   // ------------------------------------------------------------------ the ceremony (§9.3)
@@ -67,7 +77,7 @@ export class Rank {
     if (instant) { this.applyRewards(true); return; }
     const Q = WORLD.v4.square;
     const C = BALANCE.v4.ceremony;
-    this.ceremonyOn = true;
+    this.cerOn = true;
     this.cT = 0;
     this.cLen = Math.max(3, Number(C.length) || 12);
     this.cSkip = Math.max(0, Number(C.skipAfter) || 3);
@@ -78,7 +88,7 @@ export class Rank {
     this.steps = [];
     this.inputAtStart = !!(Input.joy && Input.joy.active);
     // ((v4 review) at the hall: the hall and its little square fill the screen (not the pines in front of it))
-    if (this.atHall) gs.focusCamera(this.cx + 60, this.cy - 160, this.cLen * 1000);
+    if (this.atHall) { const f = Rank.hallFrame(venue); gs.focusCamera(f.x, f.y, this.cLen * 1000); }
     else gs.focusCamera(this.cx + 120, this.cy + 80, this.cLen * 1000);
     // everyone comes: the village (the party ring around the chief; the far ones come in from just off screen), the
     // townsfolk visiting our village and the townsfolk near the square
@@ -131,12 +141,12 @@ export class Rank {
     // a touch on the joystick after `skipAfter` s jumps to the end state
     const moving = !!(Input.joy && Input.joy.active) || !!Input.override;
     if (!moving) this.inputAtStart = false;
-    if (this.cT > this.cSkip && moving && !this.inputAtStart && this.ceremonyOn) this.endCeremony(true);
+    if (this.cT > this.cSkip && moving && !this.inputAtStart && this.cerOn) this.endCeremony(true);
   }
 
   endCeremony(skipped) {
-    if (!this.ceremonyOn) return;
-    this.ceremonyOn = false;
+    if (!this.cerOn) return;
+    this.cerOn = false;
     const gs = this.gs;
     // (skipped: the steps that change the world still happen, at once; banners / toasts / fx are dropped)
     for (const st of this.steps) if (!st.done && st.essential) { st.done = true; try { st.fn(); } catch (e) { console.error(e); } }
@@ -222,5 +232,5 @@ export class Rank {
     this.gs.events.emit('v4:rank', 2);
   }
 
-  state() { return { level: this.level, bars: this.bars().map((b) => [b.key, b.v, b.need]), ready: this.ready(), ceremony: this.ceremonyOn }; }
+  state() { return { level: this.level, bars: this.bars().map((b) => [b.key, b.v, b.need]), ready: this.ready(), ceremony: this.cerOn, hold: this.hold || null }; }
 }

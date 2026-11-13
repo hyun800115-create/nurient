@@ -28,7 +28,7 @@ const OPTIONAL = new Set(['player.trashDelay', 'customers.shelfMax', 'customers.
   'camera.zoomMin', 'camera.zoomMax', 'camera.zoomStep', 'camera.zoomSmooth']);
 // (v3.5) operator / raw-porter costs, third workers, labour and dog settings are filled in silently too
 // (v4-C) the town hall / big restaurant / decor and the civic settings too
-const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan|market43|bakery43)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
+const isOptional = (path) => OPTIONAL.has(path) || /^(register|population|life|labour|dog|hire3|costs3|v4|v42|civic|warehouse\.crew|logistics|meatcan|market43|bakery43|goals43)\./.test(path) || path === 'prices3.item_can_meat' || /^costs\.(op|raw)_/.test(path) || /^buildings\.(town_hall|big_restaurant|deco_)/.test(path);
 
 function fixList(arr, path, min, max, int) {
   if (!Array.isArray(arr)) return;
@@ -198,6 +198,7 @@ export function checkBalance() {
   checkMeatCan(B);
   // ---- (v4.3) 마을 새 단장
   checkV43(B);
+  checkGoals43(B);
 }
 
 // ---- (v4.3) 마을 새 단장: 낚시 좌대, 오두막 → 사무실, 첫 집 두 채 (docs/redesign_v43/engineering_plan.md §7.1)
@@ -219,6 +220,33 @@ function checkV43(B) {
     fixNum(q, 'coins', 'houses43[' + i + '].coins', 1, 1e9, DEF[i].coins, true);
     fixNum(q, 'item_plank', 'houses43[' + i + '].item_plank', 0, 999, DEF[i].item_plank, true);
   }
+}
+
+// ---- (v4.3 step B, B0b) 물류창고 다음 목표 (G) and the 읍장 취임 맛보기 (T), docs/redesign_v43/stepB/postdepot_addendum.md §6.1.
+//  Inert until G / T read them; a missing block is filled silently (an older balance.js)
+const G43_NEED = { staff: [1, 3, 2], st2: [1, 5, 1], deco: [1, 6, 2], dlv: [1, 10, 3], train: [1, 10, 3] };
+const G43_REWARD = { staff: 300, fork: 300, st2: 150, deco: 100, house: 100, dlv: 200, train: 200, shop: 150 };
+const G43_REWARD_SUM = 2000;
+function checkGoals43(B) {
+  const obj = (o, k) => {
+    if (!o[k] || typeof o[k] !== 'object' || Array.isArray(o[k])) { if (o[k] !== undefined) warn('goals43.' + k, o[k], '{…}'); o[k] = {}; }
+    return o[k];
+  };
+  const G = B.goals43 = B.goals43 && typeof B.goals43 === 'object' && !Array.isArray(B.goals43) ? B.goals43 : {};
+  const N = obj(G, 'need');
+  for (const k in G43_NEED) fixNum(N, k, 'goals43.need.' + k, G43_NEED[k][0], G43_NEED[k][1], G43_NEED[k][2], true);
+  const R = obj(G, 'reward');
+  for (const k in G43_REWARD) fixNum(R, k, 'goals43.reward.' + k, 0, 500, G43_REWARD[k], true);
+  // (the whole chain pays at most 2,000 coins: above that every reward is scaled down)
+  let sum = 0;
+  for (const k in G43_REWARD) sum += R[k];
+  if (sum > G43_REWARD_SUM) for (const k in G43_REWARD) { const v = Math.floor(R[k] * G43_REWARD_SUM / sum); if (v !== R[k]) { warn('goals43.reward.' + k, R[k], v); R[k] = v; } }
+  if (typeof G.s4Early !== 'boolean') { if (G.s4Early !== undefined) warn('goals43.s4Early', G.s4Early, false); G.s4Early = false; }
+  const T = obj(G, 'taste');
+  fixNum(T, 'standS', 'goals43.taste.standS', 0.1, 5, 0.6);
+  fixNum(T, 'len', 'goals43.taste.len', 8, 30, 21);
+  fixNum(T, 'skipAfter', 'goals43.taste.skipAfter', 1, 5, 3);          // (always below len: len ≥ 8)
+  fixNum(T, 'cardAuto', 'goals43.taste.cardAuto', 1, T.len, Math.min(20, T.len));
 }
 
 // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민 (docs/기획서_v4_추가요청.md)
