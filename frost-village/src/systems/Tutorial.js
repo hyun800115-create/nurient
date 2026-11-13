@@ -322,7 +322,8 @@ export class Tutorial {
 
   /** (v4.2) the next v4.2 thing to pay for once the v4 goals are done: { x, y, h, key, text, cost, pay, pad } or null.
    *  Order: the 촌장 사무실 plot, its hire pad, the 서리 은행 plot, the 서리 물류창고 plot, then the line offers on the map
-   *  (짐꾼 2, 가공소 2단, 역 짐꾼 3/4, 화물칸 크게). Nothing here gates 읍 (they come after it). */
+   *  (짐꾼 2, 가공소 2단, 역 짐꾼 3/4, 화물칸 크게). Nothing here gates 읍 (they come after it).
+   *  ((v4.3 step B) a post-depot row with a place comes before the line offers, one without after them: { key, text }) */
   v42Goal() {
     const gs = this.gs, v = gs.v42;
     if (!v) return null;
@@ -336,8 +337,12 @@ export class Tutorial {
     const O = v.office;
     const hp = O && O.hirePad;
     const hire = hp ? padGoal(hp, t('staff_' + hp.role)) : null;
-    let c = plot('v42_office', 'chief_office') || hire || plot('v42_bank', 'bank42') || plot('v42_depot', 'depot42');
+    // ((v4.3 step B, BP-55) then the post-depot chain (gs.goals43, G): a current row with a place → the line offers (as
+    //  before) → a current row's text only (a counter or a wait), so a waiting row never hides the line-offer arrow
+    const G43 = gs.goals43;
+    let c = plot('v42_office', 'chief_office') || hire || plot('v42_bank', 'bank42') || plot('v42_depot', 'depot42') || (G43 ? G43.objective(this, 'place') : null);
     if (!c && v.lines) for (const id in v.lines.pads) { const u = v.lines.pads[id]; const lab = u.opts && u.opts.labelFn ? u.opts.labelFn() : id; c = padGoal(u, lab); if (c) break; }
+    if (!c && G43) c = G43.objective(this, 'text');
     return c;
   }
 

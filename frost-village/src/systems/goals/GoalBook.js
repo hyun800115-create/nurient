@@ -2,7 +2,8 @@
 //   main   the main road in order: the first loop's and the four zones' steps (Progression STEPS without side / v3 / v4 /
 //          c1 rows and the ones that come with another), then the v4 GOALS after village complete (passive ones come by
 //          themselves), then the three v4.2 buildings (사무실 · 은행 · 물류창고). One is "now" (Progression.nextGoal() /
-//          the first one not done), the others "next" (locked: the one before comes first) or "wait" (passive, in progress)
+//          the first one not done), the others "next" (locked: the one before comes first) or "wait" (passive, in progress);
+//          (v4.3 step B) then the post-depot chain GOALS43 from gs.goals43 (src/systems/goals/Goals43.js, package G)
 //   side   the optional purchases standing in the village now (every paid pad that is not the main one: clerks, porters,
 //          2nd / 3rd workers, bench upgrades, line offers, the office hire, the restaurant staff) + the first houses'
 //          plots; what the coins pay for first, then the cheapest
@@ -196,6 +197,9 @@ export class GoalBook {
       if (r.state === 'now') cur = r;
       rows.push(r);
     }
+    // 4. (v4.3 step B, G/T — BP-49) after the 물류창고: GOALS43 (src/systems/goals/Goals43.js; none until G lands)
+    const G43 = gs.goals43;
+    if (G43) for (const r of G43.rows(after && !cur, this) || []) { if (r.state === 'now' && !cur) cur = r; rows.push(r); }
     return { rows, cur };
   }
 
@@ -203,8 +207,12 @@ export class GoalBook {
   sideRows(cur) {
     const gs = this.gs, coins = gs.economy ? gs.economy.coins : 0, out = [];
     const curRef = cur && cur.place ? cur.place.ref : null;
+    // ((v4.3 step B, BP-52) the places of the post-depot rows not done yet — the forklift pad, a 2단 pad, a first-house
+    //  plot, the mkt_s4 pad — are main rows (in 「다음」), never side rows too)
+    const G43 = gs.goals43, g43refs = G43 ? G43.refs() : null;
     for (const pad of gs.paidPads ? gs.paidPads() : []) {
       if (!pad || !pad.active || pad.done || pad.maxed || pad === curRef || !(pad.remaining > 0 || pad.items)) continue;
+      if (g43refs && g43refs.has(pad)) continue;
       const s = STEPS.find((q) => q.id === pad.id);
       // (a main-road pad that is not the current one yet — e.g. the next zone already showing — is not a side goal)
       if (s && !s.side && MAIN_STEPS.indexOf(s) >= 0) continue;
@@ -224,7 +232,7 @@ export class GoalBook {
       const st = gs.sites[id];
       if (!st.cfg || !st.cfg.side43) continue;
       hn++;
-      if (st.state !== 'plot' || !st.shown) continue;
+      if (st.state !== 'plot' || !st.shown || (g43refs && g43refs.has(st))) continue;
       const c = buildCost(st.only, id);
       const r = { id: 'plot:' + id, kind: 'plot', name: gt('g_house43', { n: hn }), icon: pick('ui_icon_house', 'ui_icon_hammer'), coins: c.coins || 0, items: null, state: 'side', place: { x: st.dropX, y: st.dropY, pad: st.pad, ref: st }, why: null };
       const it = {};
@@ -233,6 +241,8 @@ export class GoalBook {
       r.afford = coins >= r.coins;
       out.push(r);
     }
+    // ((v4.3 step B, BP-52) G's own side rows: the depot pads (not in paidPads) that no not-done G row uses as its place)
+    if (G43) for (const r of G43.sideRows(cur, coins) || []) out.push(r);
     out.sort((a, b) => (b.afford ? 1 : 0) - (a.afford ? 1 : 0) || a.coins - b.coins);
     return out;
   }
@@ -252,6 +262,8 @@ export class GoalBook {
 
   /** the line under a row's name */
   sub(r) {
+    // ((v4.3 step B, BP-52) a post-depot row's own line first (Goals43.sub); null = the generic lines below)
+    if (r.kind === 'g43' && this.gs.goals43) { const s = this.gs.goals43.sub(r); if (s != null) return s; }
     if (r.state === 'done') return '';
     if (r.building) return gt('g_building', r.building);
     // ((review M1) no free plot first: the 창고 "waits" for a plot, it does not come by itself)

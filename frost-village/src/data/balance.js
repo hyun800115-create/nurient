@@ -718,4 +718,18 @@ export const BALANCE = {
   hut: { office: { coins: 400, item_plank: 8, item_ingot: 0, time: 8 } },
   // 첫 집 두 채 (숲을 열면, 옆 목표): world.js 부지 h43_1 (뾰족집) / h43_2 (통나무집) 의 값. 사는 사람 수와 짓는 시간은 그 집 그대로
   houses43: [{ coins: 80, item_plank: 4 }, { coins: 160, item_plank: 6 }],
+
+  // ── (v4.3 둘째 걸음) 물류창고 다음 목표 (목표 창에서 차례대로) 와 읍장 취임 맛보기. 서리 은행과 서리 물류창고를 다 지으면 열려요
+  //    (아직은 쓰이지 않아요: 목표와 맛보기가 들어오면 이 값이 쓰여요)
+  //    need   = 목표마다 몇 번·몇 개: 물류창고 직원 몇 명, 가공소 2단 몇 곳 더, 꾸미기 몇 곳 더, 정기 납품 몇 번, 기차로 짐 보내기 몇 번
+  //    reward = 목표를 끝내면 받는 코인 (하나에 0 ~ 500, 모두 합쳐 2,000 이하). 4단 가게와 맛보기는 코인이 없어요
+  //    s4Early = true 면 4단 「눈꽃마을 시장」 발판이 읍이 되자마자 생겨요 (예전 방식). false = 차례가 오면 (가게 키우기 다음)
+  //    taste  = 읍장 취임 맛보기: standS = 발판에 서 있으면 시작하는 시간(초), len = 가장 긴 길이(초),
+  //             skipAfter = 이만큼(초) 지나면 건너뛸 수 있어요, cardAuto = 안내 카드가 저절로 닫히는 때(초, len 이하)
+  goals43: {
+    need: { staff: 2, st2: 1, deco: 2, dlv: 3, train: 3 },
+    reward: { staff: 300, fork: 300, st2: 150, deco: 100, house: 100, dlv: 200, train: 200, shop: 150 },
+    s4Early: false,
+    taste: { standS: 0.6, len: 21, skipAfter: 3, cardAuto: 20 },
+  },
 };

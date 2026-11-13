@@ -41,11 +41,18 @@ export const HALL_UNLOCK = 'hire_hunter';                // BUILD_UNLOCK.town_ha
 // ---- progress.flags (true) and v43.seen keys (1)
 export const FLAG43 = Object.freeze({
   s4half: 's4half',        // set by R43 for a village that was already 읍: stage 4 at market43.stage4Old × the price
+  g43s4: 'g43s4',          // (B0b) G: the mkt_s4 pad may show (GOALS43 row 9 became current, or 읍 with goals43.s4Early)
 });
 export const SEEN43 = Object.freeze({
   letter: 'letter43',      // the 「마을 새 단장」 letter was read (N)
   tour: 'tour43',          // the 「새 지도 보기」 tour was done or skipped (N)
   s4offer: 's4offer',      // the stage-4 offer banner after the ceremony was shown (H)
+  // (B0b, postdepot_addendum.md §5.5) the post-depot chain (G) and the 읍장 취임 맛보기 (T). The row markers are the
+  //  G43 ids of rows 1–8 themselves (v43.seen.g43_staff …); seen keys are lower case only (sanitizeV43 drops the rest, BP-46)
+  g43open: 'g43open',      // G: the chain opened (every V42_BUILDS building stands; baselines taken)
+  g43all: 'g43all',        // G: rows 1–8 all marked; replaces the eight row keys (BP-54)
+  g43ready: 'g43ready',    // G: the taste pad was shown once (its banner); the pad stays from then on (BP-43)
+  taste: 'eup_taste',      // T: the 읍장 취임 맛보기 was seen (End or Skip). Never part of v4.4's ceremony predicate (§5.6)
 });
 
 // ---- the v43 bus (src/systems/v43/hooks.js emit / on, BP-25). Emitters: P, H, M, N, S; P1 only listens.
@@ -59,4 +66,26 @@ export const EV43 = Object.freeze({
   tour: 'tour',            // N: the 「새 지도 보기」 tour              { state: 'start' | 'step' | 'done' | 'skip', n }
   hold: 'hold',            // S: a save hold card shown               { kind: 'fail' | 'newer' | 'stale' }
   remap: 'remap',          // S: a pre-B village was remapped         { ok, refunds43 }
+  goal43: 'goal43',        // (B0b) G: a post-depot row               { id, state: 'pre' | 'now' | 'done' | 'open' }
+  taste: 'taste',          // (B0b) T: the 읍장 취임 맛보기            { state: 'pad' | 'start' | 'title' | 'teaser' | 'end' | 'skip' }
+});
+
+// ---- (v4.3 step B, B0b — postdepot_addendum.md §3, §5, §6.1) the post-depot chain GOALS43 (package G, after the v4.2
+//  buildings on the main road) and the 읍장 취임 맛보기 (package T, its row 10). Row ids 1–8 are also their v43.seen
+//  markers (/^[a-z0-9_]{1,24}$/); row 9 is the mkt_s4 step itself (STEP43.shop4); row 10's marker is SEEN43.taste
+export const G43 = Object.freeze({
+  staff: 'g43_staff',      // 1 물류창고 직원 {n}명 뽑기 (depot hires ≥ goals43.need.staff)
+  fork: 'g43_fork',        // 2 물류창고에 지게차 들이기
+  st2: 'g43_st2',          // 3 가공소 2단 하나 더 (against the baseline x.g43.u; soft)
+  deco: 'g43_deco',        // 4 마을 꾸미기 {n}곳 더 (against the baseline x.g43.k; soft)
+  house: 'g43_house',      // 5 첫 집 두 채 짓기 (soft: lockVacant)
+  dlv: 'g43_dlv',          // 6 이웃 마을 정기 납품 {n}번 (counter x.g43.d)
+  train: 'g43_train',      // 7 기차로 짐 {n}번 보내기 (counter x.g43.t; passive, never gates rows 9–10)
+  shop: 'g43_shop',        // 8 가게 키우기: mkt_s3 + hire_clerk_s3 (soft)
+  s4: 'mkt_s4',            // 9 가게 4단 「눈꽃마을 시장」 (= STEP43.shop4; only when STEPS has it, BP-53)
+  taste: 'g43_taste',      // 10 읍장 취임 맛보기 (only when EupTaste.enabled, BP-53)
+});
+// ---- the `x` drawer keys of step B (Save.js keepX: /^[a-z][a-z0-9_]{0,15}$/). S adds the named cap X_CAPS.g43 = 48 (BP-47)
+export const X43KEY = Object.freeze({
+  goals: 'g43',            // G: { d, t, k, u } deliveries, trains, decor baseline, 2단 baseline (removed once rows 3, 4, 6, 7 are marked)
 });

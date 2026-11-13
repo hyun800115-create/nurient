@@ -565,6 +565,12 @@ export const STRINGS = {
 
     // >>> v43B:P1 start (play log: settings row, export screen)
     // <<< v43B:P1 end
+
+    // >>> v43B:G start (post-depot goals: GOALS43 objective lines obj_g43_*; postdepot_addendum.md §3.7)
+    // <<< v43B:G end
+
+    // >>> v43B:T start (읍장 취임 맛보기: pad label, banner, title and teaser cards taste_*; postdepot_addendum.md §5.3)
+    // <<< v43B:T end
   },
 
   en: {
@@ -1084,6 +1090,12 @@ export const STRINGS = {
 
     // >>> v43B:P1 start (play log: settings row, export screen)
     // <<< v43B:P1 end
+
+    // >>> v43B:G start (post-depot goals: GOALS43 objective lines obj_g43_*; postdepot_addendum.md §3.7)
+    // <<< v43B:G end
+
+    // >>> v43B:T start (읍장 취임 맛보기: pad label, banner, title and teaser cards taste_*; postdepot_addendum.md §5.3)
+    // <<< v43B:T end
   },
 };
 

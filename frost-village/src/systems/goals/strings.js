@@ -54,6 +54,10 @@ export const GOAL_STR = {
     g_already: '벌써 여기 있어요 · {place}',
     g_tutorial: '튜토리얼을 마치면 볼 수 있어요',
     g_busy: '지금은 걸어갈 수 없어요',
+
+    // ==== (v4.3 step B, B0b) ko: G adds its keys ONLY between its start / end lines (the same pair in en)
+    // >>> v43B:G start (post-depot goals: GOALS43 row names, banners, sub lines g43_*; postdepot_addendum.md §3.7)
+    // <<< v43B:G end
   },
   en: {
     g_btn: 'Goals',
@@ -101,6 +105,10 @@ export const GOAL_STR = {
     g_already: 'Already here: {place}',
     g_tutorial: 'Available after the tutorial',
     g_busy: "Can't walk there right now",
+
+    // ==== (v4.3 step B, B0b) en: G adds its keys ONLY between its start / end lines (the same pair in ko)
+    // >>> v43B:G start (post-depot goals: GOALS43 row names, banners, sub lines g43_*; postdepot_addendum.md §3.7)
+    // <<< v43B:G end
   },
 };
 
