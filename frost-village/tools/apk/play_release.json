@@ -64,6 +64,12 @@
       "name": "4.3.0-a3.2",
       "date": "2026-11-12",
       "commit": "9cf67065eb"
+    },
+    {
+      "code": 4316,
+      "name": "4.3.0-a3.3",
+      "date": "2026-11-13",
+      "commit": "f3014375be"
     }
   ],
   "previewCodes": [
@@ -100,6 +106,12 @@
       "name": "4.3.0-a3.2",
       "date": "2026-11-12",
       "commit": "9cf67065eb"
+    },
+    {
+      "code": 4308,
+      "name": "4.3.0-a3.3",
+      "date": "2026-11-13",
+      "commit": "f3014375be"
     }
   ],
   "troubleshooting": {
