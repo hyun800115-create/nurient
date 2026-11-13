@@ -342,17 +342,17 @@ const strip2 = (o) => JSON.parse(JSON.stringify(o));
   const kept = keepSeen({ lay: 2, seen: seenIn });
   const keptKeys = Object.keys((kept && kept.seen) || {});
   ok(keptKeys.length === 15 && !('eupTaste' in kept.seen) && kept.seen.eup_taste === 1 && keptKeys.length <= 32, 'the save keeps all 15 chain + B0 seen keys (≤ 32) and drops eupTaste (BP-46)', keptKeys);
-  // the x key: passes the drawer's key rule; G's value fits the future named cap (BP-47: X_CAPS.g43 = 48, S adds it)
+  // the x key: passes the drawer's key rule; G's value fits its named cap (BP-47: X_CAPS.g43 = 48, S6 added it)
   const XK = ids.X43KEY && ids.X43KEY.goals;
   ok(XK === 'g43' && /^[a-z][a-z0-9_]{0,15}$/.test(XK) && !(XK in Object.prototype), 'X43KEY.goals = g43 passes the x key rule', ids.X43KEY);
   const big = { d: 10, t: 10, k: 9999, u: 5 };
   ok(JSON.stringify(big).length <= 48, 'x.g43 at its largest (' + JSON.stringify(big) + ', ' + JSON.stringify(big).length + ' B) fits 48 B');
   if (typeof SaveM.keepX === 'function') {
     const x = SaveM.keepX({ [XK]: { d: 2, t: 1, k: 3, u: 0 } });
-    ok(!!x && same(x[XK], { d: 2, t: 1, k: 3, u: 0 }), 'keepX keeps x.g43 byte for byte (as an unknown key until S names its cap)', x);
+    ok(!!x && same(x[XK], { d: 2, t: 1, k: 3, u: 0 }), 'keepX keeps x.g43 byte for byte (under its named cap)', x);
   }
-  if (SaveM.X_CAPS && SaveM.X_CAPS.g43 !== undefined) ok(SaveM.X_CAPS.g43 === 48, 'X_CAPS.g43 = 48 (S)', SaveM.X_CAPS.g43);
-  else skipped.push('X_CAPS.g43 (S adds it in S6)');
+  // ((S6) the named cap is in Save.js: a hard row from here on (it was skipped while S had not added it)
+  ok(!!SaveM.X_CAPS && SaveM.X_CAPS[XK] === 48 && Object.isFrozen(SaveM.X_CAPS), 'X_CAPS.g43 = 48 (S, BP-47)', SaveM.X_CAPS && SaveM.X_CAPS[XK]);
 }
 {
   // ---- balance: goals43 keys (inert until G / T) and their repairs

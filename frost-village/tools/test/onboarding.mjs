@@ -26,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance, render } from './fv_step.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -495,7 +496,10 @@ try {
   // ================================================================== D: fixtures, 관망, robots
   console.log('— D: old villages, 관망 and the replay tour, an automated browser');
   {
-    const late = JSON.parse(fs.readFileSync(path.join(FIX, 'v42_village_late.json'), 'utf8')).keys;
+    // ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB for part D) the old villages carry the step-B marker: these rows
+    //  are about the tutorial, 관망 and the tour, and the R43 remap's chief restart would only be noise (save_v43's B1 checks
+    //  that every remapped old village gets no tutorial and no `onb`)
+    const late = asStepB(JSON.parse(fs.readFileSync(path.join(FIX, 'v42_village_late.json'), 'utf8')).keys);
     const { page, ctx, log } = await boot({ viewport: { width: 412, height: 915 }, keys: late });
     await advance(page, 2);
     let s = await st(page);
@@ -547,7 +551,7 @@ try {
     await ctx.close();
   }
   for (const f of ['v41_save_smart_46min.json', 'v35_save_0_5min.json']) {
-    const { page, ctx, log } = await boot({ viewport: { width: 390, height: 844 }, save: fs.readFileSync(path.join(FIX, f), 'utf8') });
+    const { page, ctx, log } = await boot({ viewport: { width: 390, height: 844 }, save: asStepB(fs.readFileSync(path.join(FIX, f), 'utf8')) });
     await advance(page, 2);
     const s = await st(page);
     const sv = await page.evaluate(() => { window.__FV.save(); return JSON.parse(localStorage.getItem('frostVillage.save.v1')); });

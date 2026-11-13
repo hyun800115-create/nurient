@@ -6,6 +6,10 @@
 // pad does not stay full · saved done, no part-payment left · reload: one porter, no second refund · the 46-min save
 // (fishing boat, tuna) without him: the pier pile drains · a new game: buying the rowboat brings him, the banner says so,
 // no 600-coin pad ever appears · 0 page errors.
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap, never asStepB) the old saves load as they are, through the real R43
+//  remap (the cannery on d_cannery, the chief back at the hut door); the boathouse on e_dock does not move. Each old-save
+//  boot asserts that load (lay 2) and that R43 gave no coins back here (no unfinished hall / office), so the 250-coin refund
+//  check below is the dock porter's alone
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +52,8 @@ try {
   // ---------------------------------------------------------------- 1. the 35-min save: rowboat, no 생선 짐꾼
   {
     const { page, log } = await boot(save35);
+    const r35 = await page.evaluate(() => { const v = window.__FV.scene.v43 || {}; return { lay: v.lay, refund: v.refunds43 ? v.refunds43.coins : null, moved: v.refunds43 ? v.refunds43.moved : null }; });
+    ok(r35.lay === 2 && r35.refund === 0, '(step B) the 35-min save loads through R43 (lay 2, ' + r35.moved + ' moved, no coins back from R43)', r35);
     const s0 = await page.evaluate(dockState);
     ok(s0.done && s0.dockPorters === 1 && !s0.pad, 'an older save with the boat but not the 생선 짐꾼: he is there after loading', s0);
     ok(s0.coins === save35.coins + 250 && s0.paid === 0, 'the 250 coins paid on his pad come back', { before: save35.coins, after: s0.coins });
@@ -69,6 +75,8 @@ try {
   // ---------------------------------------------------------------- 2. the 46-min save: fishing boat (tuna), no 생선 짐꾼
   {
     const { page, log } = await boot(save46);
+    const r46 = await page.evaluate(() => { const v = window.__FV.scene.v43 || {}; return { lay: v.lay, moved: v.refunds43 ? v.refunds43.moved : null }; });
+    ok(r46.lay === 2 && r46.moved > 0, '(step B) the 46-min save loads through R43 (lay 2, ' + r46.moved + ' moved)', r46);
     const s0 = await page.evaluate(dockState);
     ok(s0.done && s0.dockPorters === 1, 'the 46-min save (fishing boat) without him: he is there after loading', s0);
     const rows = [];

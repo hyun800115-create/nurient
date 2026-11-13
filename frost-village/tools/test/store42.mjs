@@ -19,6 +19,9 @@
 //    bakery's LINE pad (a3.2: 1560, 1056; no P2), its price and its label below it (a customer covers 40 × 100 px above his
 //    feet), off the dog house and clear of the east road (the 큰길's east half: ≥ 45 px, outside its paint). The generic
 //    plots above stay in the list: an old village's store stands there until S's remap moves it to d_store
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap + rewrite) the 46-min save loads as it is, through the real R43 remap:
+//    its 잡화점 (on w_m2 in the save) stands on d_store with 6 places and its stock (sections 3–6 run there); section 6 no
+//    longer moves it by hand — the remap does)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -162,6 +165,10 @@ try {
   // ---------------------------------------------------------------- 3 + 4. the 46-min save
   {
     const { page, log } = await boot(SAVE);
+    // ((S6) R43 moved the old store from w_m2 to d_store, its stock with it
+    const R43 = await page.evaluate(() => { const gs = window.__FV.scene, v = gs.v43 || {}, S = gs.store; return { lay: v.lay, at: Object.keys(gs.sites).filter((k) => gs.sites[k].building === 'store'), w_m2: gs.sites.w_m2 ? gs.sites.w_m2.building || null : 'none', n: S ? S.maxQueue : null, stock: S ? S.stock.count : null }; });
+    const st46 = JSON.parse(SAVE).v3.store || {}, stock46 = Object.values(st46.stock || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+    ok(R43.lay === 2 && R43.at.join() === 'd_store' && !R43.w_m2 && R43.n === 6 && R43.stock >= Math.min(1, stock46), '(R43) the old store on w_m2 now stands on d_store with 6 places and its stock (' + R43.stock + ' of the saved ' + stock46 + ')', R43);
     // the chief parked away from every pad; the 도구 짐꾼's loads counted as he sets out
     await page.evaluate(() => {
       const F = window.__FV, gs = F.scene, K = gs.workshops.find((w) => w.kind === 'toolsmith');
@@ -246,16 +253,15 @@ try {
     for (const e of log.errors) errors.push('s46: ' + e);
     await page.context().close();
     const again = await boot(sv);
-    const R2 = await again.page.evaluate(() => { const S = window.__FV.scene.store; return { n: S.maxQueue, bent: !!S.cfg.slots, stock: S.stock.count }; });
-    ok(R2.n === 6 && R2.bent && R2.stock >= 1, 'reload: the w_m2 store keeps its 6 places (bent) and its stock', R2);
+    const R2 = await again.page.evaluate(() => { const gs = window.__FV.scene, S = gs.store; return { n: S.maxQueue, bent: !!S.cfg.slots, stock: S.stock.count, at: Object.keys(gs.sites).filter((k) => gs.sites[k].building === 'store').join() }; });
+    // ((S6) d_store's line is its plot's storeLine (straight north-west from the counter, L2): not bent as the w_m2 one was
+    ok(R2.n === 6 && R2.stock >= 1 && R2.at === 'd_store', 'reload: the store (on d_store since R43) keeps its 6 places and its stock', R2);
     for (const e of again.log.errors) errors.push('reload: ' + e);
     await again.page.context().close();
   }
-  // ---------------------------------------------------------------- 6. d_store after a load ((L2) was e_m1)
+  // ---------------------------------------------------------------- 6. d_store after a load ((L2) was e_m1; (S6) R43 moves it there)
   {
-    const sv = JSON.parse(SAVE);
-    const o = sv.sites.w_m2; delete sv.sites.w_m2; sv.sites.d_store = o;
-    const { page, log } = await boot(JSON.stringify(sv));
+    const { page, log } = await boot(SAVE);
     const L6 = await page.evaluate(() => {
       const gs = window.__FV.scene, m = gs.store, C = gs.collision, P = [];
       const places = [];

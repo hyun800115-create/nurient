@@ -10,7 +10,9 @@
 // plot, a site that holds a building is never hidden by refreshSites (BP-17)); 5 decor makes the village happier and the
 // residents come by; 6 the town hall (on w_hall beside the hut, 180, 760): more room, the tax box fills per resident and
 // the chief collects it, the notice board opens, the rank ceremony moves in front of the hall; 7 the build menu (tabs,
-// cards, a new-region plot with buildable houses); 8 save + reload keeps it; a real v3.5 save keeps every position;
+// cards, a new-region plot with buildable houses); 8 save + reload keeps it; a real v3.5 save keeps every building and
+// every fixture loads ((v4.3 step B, S6) through the real R43 remap: the workshops on their d_* plots, the hall on w_hall,
+// the chief at the hut door — each as Save.migrateSave (the game's load path) says, every restored site shown);
 // 0 page errors / placeholders.
 import path from 'node:path';
 import fs from 'node:fs';
@@ -18,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance, render } from './fv_step.mjs';
+import { migrateSave } from '../../src/core/Save.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'docs', 'previews', 'screens_v4');
@@ -279,22 +282,40 @@ try {
     await boot(raw);
     tw8[1] = log.warnings.length;
     const s8 = await ev(() => { const gs = window.__FV.scene; return { p: { x: Math.round(gs.player.x), y: Math.round(gs.player.y) }, sites: Object.fromEntries(Object.keys(gs.sites).filter((k) => gs.sites[k].state !== 'plot').map((k) => [k, { b: gs.sites[k].building, x: gs.sites[k].x, y: gs.sites[k].y }])), west: gs.territory.isOpen('west'), coins: window.__FV.state().coins }; });
-    const posOk = !j.player || j.player.x === undefined || (Math.abs(s8.p.x - j.player.x) <= 2 && Math.abs(s8.p.y - j.player.y) <= 2);
-    const sitesOk = Object.keys(j.sites || {}).every((k) => s8.sites[k] && s8.sites[k].b === j.sites[k].b);
+    // ((v4.3 step B, S6 — the B0 suite audit: remap) the save has no step-B marker, so the game moves it with R43 at this
+    //  load: the chief restarts where R43 puts him (the hut door, WORLD.v43.oldStart) and each building stands where R43
+    //  says (a workshop on its d_* plot, everything else on its saved plot) — Save.migrateSave, the game's load path, is the
+    //  oracle; the count of buildings is the save's own
+    const m8 = migrateSave(JSON.parse(raw));
+    const posOk = !!m8 && Math.abs(s8.p.x - m8.player.x) <= 2 && Math.abs(s8.p.y - m8.player.y) <= 2;
+    const sitesOk = !!m8 && Object.keys(m8.sites || {}).every((k) => s8.sites[k] && s8.sites[k].b === m8.sites[k].b) && Object.keys(m8.sites || {}).length === Object.keys(j.sites || {}).length;
     const again = await ev(() => { window.__FV.save(); return JSON.parse(localStorage.getItem('frostVillage.save.v1')); });
-    step('8 ' + f + ': the chief and every building stay where they were (v' + j.v + ' -> v6+)', posOk && sitesOk && s8.west && again.v >= 6 && s8.coins >= j.coins - 5, { player: s8.p, was: j.player && { x: j.player.x, y: j.player.y }, sites: Object.keys(j.sites || {}).length });
+    step('8 ' + f + ': (R43) the chief at the hut door, every building kept where R43 puts it (v' + j.v + ' -> v6+, lay 2)', posOk && sitesOk && s8.west && again.v >= 6 && again.v43 && again.v43.lay === 2 && s8.coins >= j.coins - 5, { player: s8.p, r43: m8 && m8.player && { x: m8.player.x, y: m8.player.y }, sites: Object.keys(j.sites || {}).length, moved: m8 && m8.v43 && m8.v43.refunds43 && m8.v43.refunds43.moved });
   }
-  // ---- 8b. ((v4.3 step B, L1) every fixture (v3.5 … the a2 bread village) still loads on plot table v2 — no remap yet (S's
-  //      R43 moves the workshops onto the d_* plots later): each saved building stands on its saved plot id and is shown
-  //      (BP-17: refreshSites never hides a site that holds a building, whatever its plot's `after` says now — v42_office
-  //      opens at zone_mine, w_hall at hire_hunter), an old hall on w_hall stands at the hall's new plot (180, 760), and
-  //      no step-B hidden plot gets a Site. Page errors: step 0 below)
+  // ---- 8b. ((v4.3 step B, L1) every fixture (v3.5 … the a2 bread village) loads on plot table v2 — ((S6) through the real
+  //      R43 remap: each building stands where Save.migrateSave (the game's load path) puts it — the toolsmith / 창고 /
+  //      cannery / 잡화점 on d_tool / d_wh / d_cannery / d_store, the hall on w_hall, the restaurant on w_rest, the rest on
+  //      its saved plot id — and is shown (BP-17: refreshSites never hides a site that holds a building, whatever its plot's
+  //      `after` says now — v42_office opens at zone_mine, w_hall at hire_hunter), an old hall stands at the hall's new plot
+  //      (180, 760), and no step-B hidden plot gets a Site. The fixtures the game holds instead of loading (a newer build's
+  //      village: v43_newer_*; the one R43 cannot move: _expect 'fail') are save_v43's (B2 / B4); they are skipped here.
+  //      Page errors: step 0 below)
   const fx8 = {};
+  const HOME43 = { toolsmith: 'd_tool', warehouse: 'd_wh', cannery: 'd_cannery', store: 'd_store', town_hall: 'w_hall', big_restaurant: 'w_rest' };
   for (const f of fs.readdirSync(FIX).filter((q) => /\.json$/.test(q)).sort()) {
     const j0 = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'));
     const raw = j0 && j0.keys ? j0.keys['frostVillage.save.v1'] : JSON.stringify(j0);
     const j = typeof raw === 'string' ? JSON.parse(raw) : null;
     if (!j) { fx8[f] = 'no save'; continue; }
+    if (/^v43_newer_/.test(f) || j0._expect === 'fail') continue;
+    const m8 = migrateSave(JSON.parse(raw));
+    if (!m8) { fx8[f] = 'migrateSave refused it'; continue; }
+    // (R43 keeps a mover where it was only when its home is taken: refunds43.kept; then the by-kind rule is not asked. A
+    //  fixture that is a step-B save already (v43.lay 2: v43_samelv_x, made for the same-level pass-through) is not remapped:
+    //  its buildings stay on their saved plots, as migrateSave says)
+    const kept = m8.v43 && m8.v43.refunds43 ? m8.v43.refunds43.kept : 0;
+    const wasB = !!(j.v43 && Math.floor(Number(j.v43.lay)) >= 2);
+    const homeBad = kept || wasB ? [] : Object.entries(m8.sites || {}).filter(([k, d]) => d && HOME43[d.b] && HOME43[d.b] !== k).map(([k, d]) => d.b + ' on ' + k);
     const tw8 = [log.warnings.length, 1e9];
     titleWins.push(tw8);
     await boot(raw);
@@ -311,11 +332,13 @@ try {
       const hidden = ['w_civic', 'd_labour', 'd_school', 'd_clinic'].filter((id) => !!gs.sites[id]);
       const hall = gs.sites.w_hall && gs.sites.w_hall.state !== 'plot' ? [gs.sites.w_hall.x, gs.sites.w_hall.y, gs.sites.w_hall.shown] : null;
       return { bad, hidden, hall, n: Object.keys(saved).length };
-    }, Object.fromEntries(Object.entries(j.sites || {}).filter(([, d]) => d && d.b).map(([k, d]) => [k, d.b])));
+    }, Object.fromEntries(Object.entries(m8.sites || {}).filter(([, d]) => d && d.b).map(([k, d]) => [k, d.b])));
+    r.bad.push(...homeBad);
+    if (Object.keys(m8.sites || {}).length !== Object.keys(j.sites || {}).length) r.bad.push('R43 changed the number of buildings');
     fx8[f] = r;
   }
   const fxBad = Object.entries(fx8).filter(([, r]) => typeof r === 'string' || r.bad.length || r.hidden.length || (r.hall && !(r.hall[0] === 180 && r.hall[1] === 760 && r.hall[2])));
-  step('8 every fixture (' + Object.keys(fx8).length + ') loads on plot table v2 with no remap: each saved building on its saved plot, shown (BP-17); an old hall stands on w_hall at (180, 760); no hidden plot gets a Site', Object.keys(fx8).length >= 12 && !fxBad.length, fxBad.length ? Object.fromEntries(fxBad) : Object.fromEntries(Object.entries(fx8).map(([f, r]) => [f, r.n + (r.hall ? ' +hall' : '')])));
+  step('8 every fixture (' + Object.keys(fx8).length + ') loads on plot table v2 through R43: each building where migrateSave puts it (the workshops on d_*, the hall on w_hall, the restaurant on w_rest), shown (BP-17); an old hall stands on w_hall at (180, 760); no hidden plot gets a Site', Object.keys(fx8).length >= 12 && !fxBad.length, fxBad.length ? Object.fromEntries(fxBad) : Object.fromEntries(Object.entries(fx8).map(([f, r]) => [f, r.n + (r.hall ? ' +hall' : '')])));
 } catch (e) { fatal = e; console.log('FATAL', e.stack || e.message); }
 const errs = log.errors.filter((e) => !/AudioContext|play\(\) request/i.test(e));
 step('0 no page errors', !errs.length && !fatal, errs.slice(0, 5));

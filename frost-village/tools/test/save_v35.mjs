@@ -3,6 +3,10 @@
 //   node tools/test/save_v35.mjs --browser (also boots the game with v3 saves and checks the lines still run)
 // Never wipe progress: every machine that ran on its own in v3 keeps running (operators and raw porters
 // come with it); new things (piles, dog affection) start empty.
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap) the browser part boots the hand-built v3 save as it is, so the real
+//  R43 remap moves it onto plot table v2: the toolsmith (e_m1) and the cannery scaffold (e_m2) are asserted by kind on their
+//  fixed plots d_tool / d_cannery (D6 / D19), the cannery finishing there; the saved village carries the marker (lay 2,
+//  two buildings moved). The Node part checks sanitize itself (no remap there), so its e_m2 row stays)
 import { MIGRATE, sanitizeSave, SAVE_VERSION } from '../../src/core/Save.js';
 
 const fail = [];
@@ -104,6 +108,11 @@ if (process.argv.includes('--browser')) {
     check('v3 save boots: five raw porters + five goods porters', st.rawPorters.length === 5 && st.porters.filter((p) => !/warehouse/.test(p.role || '')).length >= 5, `raw=${st.rawPorters.length} porters=${st.porters.length}`);
     check('v3 save boots: the forge has its operator', ops.toolsmith && ops.toolsmith.hired, JSON.stringify(ops.toolsmith));
     check('v3 save boots: coins, land, residents kept', st.coins >= 4321 && st.territory.east === true && st.residents >= 17, `coins=${st.coins} residents=${st.residents}`);
+    // ((S6) R43: the workshops stand on their own plots; the old e_m1 / e_m2 hold nothing
+    const kindAt = (sites, b) => Object.keys(sites).filter((k) => sites[k].b === b);
+    check('v3 save boots (R43): the toolsmith on d_tool (done), the cannery (a scaffold in the save) on d_cannery, shown although its plot waits for the rowboat; e_m1 / e_m2 empty',
+      JSON.stringify(kindAt(st.sites, 'toolsmith')) === '["d_tool"]' && JSON.stringify(kindAt(st.sites, 'cannery')) === '["d_cannery"]' && st.sites.d_tool.state === 'done' && ['scaffold', 'done'].includes(st.sites.d_cannery.state) && st.sites.d_cannery.shown && !(st.sites.e_m1 && st.sites.e_m1.b) && !(st.sites.e_m2 && st.sites.e_m2.b),
+      JSON.stringify({ d_tool: st.sites.d_tool, d_cannery: st.sites.d_cannery, e_m1: st.sites.e_m1 && st.sites.e_m1.b, e_m2: st.sites.e_m2 && st.sites.e_m2.b }));
     // the lines keep running with the chief away: something gets cooked and sawn
     const before = await page.evaluate(() => { const gs = window.__FV.scene; return { fish: gs.stations.grill.made || 0, plank: gs.stations.sawmill.made || 0, out: gs.stations.grill.outStack.count + gs.stations.sawmill.outStack.count }; });
     await page.evaluate(() => { const gs = window.__FV.scene; for (let i = 0; i < 6; i++) { gs.piles.fish.stack.push('item_fish_raw', null, gs.effects); gs.piles.log.stack.push('item_log', null, gs.effects); } });
@@ -113,10 +122,13 @@ if (process.argv.includes('--browser')) {
     // the cannery scaffold finishes -> its operator walks in by itself (it came with the v3 save)
     await advance(page, 30);
     st = await page.evaluate(() => window.__FV.state());
-    check('v3 save: the cannery finishes and has its operator', st.built.cannery === 1 && st.ops.cannery && st.ops.cannery.hired, JSON.stringify({ built: st.built.cannery, op: st.ops.cannery, site: st.sites.e_m2 }));
+    check('v3 save: the cannery finishes (on d_cannery) and has its operator', st.built.cannery === 1 && st.sites.d_cannery && st.sites.d_cannery.state === 'done' && st.ops.cannery && st.ops.cannery.hired, JSON.stringify({ built: st.built.cannery, op: st.ops.cannery, site: st.sites.d_cannery }));
     await page.evaluate(() => window.__FV.save());
     const raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
     check('saved again as the current version with piles + dog', raw.v === SAVE_VERSION && raw.labour && raw.labour.piles && raw.dog && typeof raw.dog.love === 'number', JSON.stringify({ v: raw.v, l: raw.labour, d: raw.dog }));
+    check('saved on plot table v2 (R43): d_tool / d_cannery, no e_m1 / e_m2 site, the marker lay 2 with two buildings moved',
+      raw.sites.d_tool && raw.sites.d_tool.b === 'toolsmith' && raw.sites.d_cannery && raw.sites.d_cannery.b === 'cannery' && !raw.sites.e_m1 && !raw.sites.e_m2 && raw.v43 && raw.v43.lay === 2 && raw.v43.refunds43 && raw.v43.refunds43.moved === 2,
+      JSON.stringify({ sites: Object.keys(raw.sites), v43: raw.v43 }));
 
     // 2. the v4 round trip keeps piles and affection
     // (no meat porter in this save, so nobody empties the meat rack while the game boots)

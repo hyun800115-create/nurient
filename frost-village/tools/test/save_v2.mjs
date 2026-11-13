@@ -1,6 +1,8 @@
 // v1 -> v2 save migration test (the chain goes on to the current version: see save_v3.mjs for v2 -> v3).
 //   node tools/test/save_v2.mjs           (Node part only: migration + sanitize)
 //   node tools/test/save_v2.mjs --browser (also boots the game with an old v1 save)
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap) the browser part boots the v1 save as it is: the real R43 remap runs
+//  on it (no building to move, no refund) and the village saved back carries the marker (v43.lay 2)
 import { MIGRATE, sanitizeSave, SAVE_VERSION } from '../../src/core/Save.js';
 
 const fail = [];
@@ -56,6 +58,7 @@ if (process.argv.includes('--browser')) {
     await page.evaluate(() => window.__FV.save());
     const raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
     check('saved again as the current version with life', raw.v === SAVE_VERSION && raw.life && raw.life.moved.length >= 15);
+    check('(step B) saved on plot table v2: the R43 marker lay 2, nothing moved, no coins back', !!raw.v43 && raw.v43.lay === 2 && !!raw.v43.refunds43 && raw.v43.refunds43.moved === 0 && raw.v43.refunds43.coins === 0 && raw.v43.src && raw.v43.src.v === 1, JSON.stringify(raw.v43));
     check('no page errors', log.errors.length === 0, log.errors.slice(0, 3).join(' | '));
   } catch (e) { check('browser part ran', false, e.message); }
   await browser.close(); await srv.close();

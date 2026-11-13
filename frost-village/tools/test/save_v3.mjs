@@ -3,6 +3,9 @@
 //   node tools/test/save_v3.mjs           (Node part only: migration + sanitize)
 //   node tools/test/save_v3.mjs --browser (also boots the game with a finished v2 village, then a mid-v3 save)
 // Never wipe progress: everything a v2 player had stays; the new land, plots and chains start fresh.
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap) the browser part boots these hand-built saves as they are, so the
+//  real R43 remap moves them onto plot table v2: the v3 toolsmith built on e_m1 stands on its fixed plot d_tool (D6 / D19)
+//  and is asserted there by kind; the saved round trip carries the marker (v43.lay 2, one building moved))
 import { MIGRATE, sanitizeSave, SAVE_VERSION } from '../../src/core/Save.js';
 
 const fail = [];
@@ -111,7 +114,11 @@ if (process.argv.includes('--browser')) {
     st = await page.evaluate(() => window.__FV.state());
     check('v3 save boots: east land open, tower lit', st.territory.east === true && st.sites.tower_east && st.sites.tower_east.state === 'done', JSON.stringify(st.territory));
     check('v3 save boots: toolsmith stands, boathouse scaffold, house foundation', st.built.toolsmith && st.sites.e_dock.state === 'scaffold' && st.sites.v_house1.state === 'foundation' && st.sites.v_house1.got.item_plank === 2, JSON.stringify(st.sites));
-    check('v3 save boots: food box + forge stock', st.food.active && st.food.count === 9 && st.workshops.toolsmith.outs.item_axe === 1, JSON.stringify({ f: st.food, w: st.workshops }));
+    // ((S6) R43: the toolsmith moved from e_m1 to d_tool, done, shown; e_m1 is an empty plot again (its new spot, L2))
+    const kindAt = (sites, b) => Object.keys(sites).filter((k) => sites[k].b === b);
+    check('v3 save boots (R43): the toolsmith stands on d_tool (moved from e_m1), shown; e_m1 holds nothing', JSON.stringify(kindAt(st.sites, 'toolsmith')) === '["d_tool"]' && st.sites.d_tool.state === 'done' && st.sites.d_tool.shown && (!st.sites.e_m1 || !st.sites.e_m1.b), JSON.stringify({ toolsmith: kindAt(st.sites, 'toolsmith'), d_tool: st.sites.d_tool, e_m1: st.sites.e_m1 }));
+    // ((S6) the box's 9 are kept: what is in it plus what the fed miners ate in the 3 s since the boot (fedMiners is on))
+    check('v3 save boots: food box + forge stock', st.food.active && st.food.count + (st.food.eaten || 0) === 9 && st.workshops.toolsmith.outs.item_axe === 1, JSON.stringify({ f: st.food, w: st.workshops }));
     const pad = await page.evaluate(() => { const p = window.__FV.scene.progress.pads.hire2_lumberjack; return p ? { paid: p.paid, got: p.got } : null; });
     check('v3 save boots: hire pad keeps paid coins + the delivered axe', pad && pad.paid === 250 && pad.got.item_axe === 1, JSON.stringify(pad));
     await advance(page, 20);
@@ -119,7 +126,8 @@ if (process.argv.includes('--browser')) {
     check('v3 save: the scaffold finishes after loading', st.built.boathouse === 1 || st.sites.e_dock.state === 'done', JSON.stringify(st.sites.e_dock));
     await page.evaluate(() => window.__FV.save());
     raw = await page.evaluate(() => JSON.parse(localStorage.getItem('frostVillage.save.v1')));
-    check('v3 round trip', raw.v === SAVE_VERSION && raw.territory.east === true && raw.sites.e_m1.st === 'done' && raw.v3.food.on === true, JSON.stringify(raw.sites));
+    check('v3 round trip (R43: the toolsmith saved on d_tool, the marker lay 2 with one building moved)', raw.v === SAVE_VERSION && raw.territory.east === true && raw.sites.d_tool && raw.sites.d_tool.b === 'toolsmith' && raw.sites.d_tool.st === 'done' && !raw.sites.e_m1 && raw.v3.food.on === true
+      && raw.v43 && raw.v43.lay === 2 && raw.v43.refunds43 && raw.v43.refunds43.moved === 1 && raw.v43.refunds43.coins === 0, JSON.stringify({ sites: raw.sites, v43: raw.v43 }));
 
     // 3. a corrupted v3 save still boots
     await boot(Object.assign(clone(v3), { sites: { e_m1: { b: 'castle', st: 'done' }, e_m2: { b: 'store', st: 'scaffold', got: { item_plank: -3 } } }, territory: { east: 1, se: true }, v3: { warehouse: 'x', food: { on: true, food: { item_bread: 1e9 } } } }));

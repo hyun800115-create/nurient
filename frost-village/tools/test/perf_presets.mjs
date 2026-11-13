@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance, render } from './fv_step.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -33,7 +34,9 @@ const results = [];
 const check = (name, ok, info = '') => { results.push({ name, ok: !!ok, info }); console.log((ok ? '  ok  ' : ' FAIL ') + name + (info !== '' ? '  — ' + (typeof info === 'string' ? info : JSON.stringify(info)) : '')); };
 const section = (s) => console.log('— ' + s);
 const FIX = path.join(HERE, 'fixtures');
-const fx46 = JSON.parse(fs.readFileSync(path.join(FIX, 'v41_save_smart_46min.json'), 'utf8'));
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) the preset knobs on a late village; the tour is camera only (the R43 remap is
+//  no part of it)
+const fx46 = asStepB(JSON.parse(fs.readFileSync(path.join(FIX, 'v41_save_smart_46min.json'), 'utf8')));
 const allErrors = [];
 
 const srv = await start(0, { prefix: '/fv/' });

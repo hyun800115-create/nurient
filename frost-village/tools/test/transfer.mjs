@@ -185,6 +185,28 @@ for (const [nm, e] of [['compressed', encZ], ['plain', encJ]]) {
   const s41 = JSON.parse(fs.readFileSync(path.join(FIX, 'v41_save_smart_46min.json'), 'utf8'));
   const sm = T.dryRun({ [SAVE_KEY]: JSON.stringify(s41) }).summary;
   check('a v4.1 save in a code: summary from the migrated save (coins kept, from v6)', sm.coins === s41.coins && sm.fromV === 6, sm);
+  // ((v4.3 step B, S6 — map_save §6.2, the B0 suite audit: remap) both paths run R43: every pre-B village (the v3.5 / v4.1
+  //  fixtures above, the late v4.2 one and the step-B fixtures of 4.2.0.2, 4.2.1, a1–a3.1 Play / preview villages, the
+  //  XL-swap and reprice cases) comes out of the dry run on plot table v2 (v43.lay 2, refunds43 and src written), equal to
+  //  Save.load() of the same stored string; a step-B village (lay 2 already) is not remapped again
+  const preB = fs.readdirSync(FIX).filter((f) => /^(v35_save|v41_save|v42_|v4202_|v421_|v43a\d+_|v43_xl_swap_|v43_reprice_).*\.json$/.test(f) && JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'))._expect !== 'fail').sort();
+  const badB = [];
+  let nMoved = 0, nCoins = 0;
+  for (const f of preB) {
+    const o = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8'));
+    const raw = o.keys ? o.keys[SAVE_KEY] : JSON.stringify(o);
+    const d = T.dryRun({ [SAVE_KEY]: raw });
+    window.localStorage = memStorage({ [SAVE_KEY]: raw });
+    const loaded = Save.load();
+    const v = d.ok && d.save.v43;
+    if (!d.ok || !same(d.save, loaded) || !v || v.lay !== 2 || !v.refunds43 || !v.src) { badB.push([f, d.error || (v && v.lay)]); continue; }
+    nMoved += v.refunds43.moved; nCoins += v.refunds43.coins;
+    const again = T.dryRun({ [SAVE_KEY]: JSON.stringify(Object.assign({ lv: 43 }, d.save)) });
+    if (!again.ok || !same(again.save.v43, d.save.v43) || !same(again.save.sites, d.save.sites) || again.save.coins !== d.save.coins) badB.push([f, 'second load changed it']);
+  }
+  delete window.localStorage;
+  check('(step B, R43) dry run == Save.load() for ' + preB.length + ' pre-B villages, each on plot table v2 (lay 2, refunds43, src; ' + nMoved + ' buildings moved, ' + nCoins + ' coins back in all) and a second load changes nothing',
+    preB.length >= 25 && !badB.length && nMoved > 0, badB.slice(0, 5));
 }
 // apply
 {

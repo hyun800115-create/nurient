@@ -7,6 +7,11 @@
 //   fresh = new game · m25/m35/m46 = fixtures/v41_save_smart_{25,35,46}min.json · late = fixtures/v42_save_office_ttal.json
 //   (the 46-min save + the office and bank built, all four staff hired, the depot built, two minutes played)
 // Writes DIR/<tag>_<scen>.json (one row per collection) and DIR/<tag>_<scen>_*.png.
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap, never asStepB) the fixtures load as they are, through the real R43
+//  remap (tills at the moved workshops, the hall on its new site): the run records the village's v43 marker and refund and
+//  ends with a verdict — no ghost coin (coins drawn at an empty till) and no zero-value pile in any row, the fixture
+//  remapped (lay 2) and its refund in the wallet (coins after the load ≥ the saved coins + refunds43.coins: the tills are
+//  restored from their own saved fields, which R43 never touches — check43 a), 0 page errors; exit 1 otherwise
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +49,8 @@ async function boot(page, save) {
   await installStepper(page);
   await installCoinScan(page);
   await page.evaluate(() => { if (window.__FV.v42) window.__FV.v42.v.seen.whatsNew = 1; });
+  // ((S6) what the load made of the village: the R43 marker, its refund, the wallet and every till right after the boot)
+  boot.last = await page.evaluate(() => { const gs = window.__FV.scene, v = gs.v43 || {}; return { lay: v.lay, refunds: v.refunds43 || null, coins: gs.economy.coins, tills: window.__coins.tills().reduce((s, t) => s + (Number(t.value) || 0), 0) }; });
   await advance(page, 0.5);
 }
 function log(r) { rows.push(r); const s = r.after || {}; console.log(`${r.case.padEnd(34)} ${r.till.padEnd(8)} v=${s.value} n=${s.count} inc=${s.incoming} ink=${s.pileInk ? s.pileInk.px : '-'} ghost=${s.ghost} zeroValCoins=${s.zeroValueCoins} objs=${(s.objs || []).filter((o) => o.visible).map((o) => o.owner + (o.ink ? '[' + o.ink.px + 'px]' : '') + '@a' + o.alpha).join(',')}`); }
@@ -101,6 +108,7 @@ try {
   const { page, log: plog } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, dpr: DPR });
   const save = FIX[SCEN] ? fs.readFileSync(path.join(HERE, 'fixtures', FIX[SCEN]), 'utf8') : null;
   await boot(page, save);
+  const load0 = boot.last;
   const tills = await page.evaluate(() => window.__coins.tills());
   console.log(SCEN, 'tills', JSON.stringify(tills));
   const names = tills.filter((t) => t.enabled).map((t) => t.name);
@@ -149,13 +157,24 @@ try {
       const em = await page.evaluate(() => window.__emptied.slice());
       for (; seen < em.length; seen++) {
         const [nm] = em[seen];
-        const p = await page.evaluate((nn) => { const t = window.__coins.till(nn); return { x: t.x, y: t.y }; }, nm);
+        const p = await page.evaluate((nn) => { const t = window.__coins.till(nn); return t ? { x: t.x, y: t.y } : null; }, nm);
+        // ((S6) a till 딸랑이 empties that coinscan does not list is reported, never a crash)
+        if (!p) { console.log('late 딸랑이 round: till ' + nm + ' is not in coinscan\'s list (not scanned)'); rows.push({ case: 'late 딸랑이 round (takeAll)', till: nm, unknown: true }); continue; }
         await page.evaluate(([x, y]) => window.__FV.camera(x, y - 40, 0.8), [p.x, p.y]);
         await frames(page, 8);
+        // ((S6 verify) takeAll sends the top coins of the pile toward 딸랑이 in flights of 0.26–0.46 s (Seller.takeAll) and
+        //  releases them on arrival: a look inside that window counts coins on their way to him as coins left at the till
+        //  (the 4 "ghost" coins of the first S6 run at the bakery till were such flights: depth FLY + n, taken ≈ 0.3 s
+        //  before). Let them land first — takeTill froze the till, so nothing pays in meanwhile; that early look stays in
+        //  the row as `pre` (not judged))
+        const since = await page.evaluate((tt) => window.__step.t - tt, em[seen][2]);
+        const pre = since < 0.6 ? await page.evaluate((nn) => window.__coins.scan(nn), nm) : null;
+        if (since < 0.6) { await advance(page, 0.6 - since); await frames(page, 2); }
         const after = await page.evaluate((nn) => window.__coins.scan(nn), nm);
         const a = await shot(page, p.x, p.y, 'late_ttal_' + nm + '_' + seen);
         await thaw(page, nm);
-        log({ case: 'late 딸랑이 round (takeAll)', till: nm, taken: em[seen][1], after, shots: [a] });
+        if (pre) console.log('  (' + nm + ': looked ' + since.toFixed(2) + ' s after takeAll; then ghost=' + pre.ghost + ' ' + pre.objs.filter((o) => o.visible).map((o) => o.owner + '@' + o.x + ',' + o.y).join(' ') + ')');
+        log({ case: 'late 딸랑이 round (takeAll)', till: nm, taken: em[seen][1], since: +since.toFixed(3), pre: pre ? { ghost: pre.ghost, objs: pre.objs } : null, after, shots: [a] });
       }
       if (seen >= names.length) break;
     }
@@ -168,6 +187,20 @@ try {
     for (const n of ['market', 'rest', 'tax', 'station', 'depot']) if (names.includes(n)) await chiefCollect(page, n, 'late_reload_z1.0_night', { zoom: 1.0 });
   }
   console.log('page errors', plog.errors.slice(0, 3));
+  // ((S6) the verdict
+  const ghosts = rows.filter((r) => r.after && (r.after.ghost || r.after.zeroValueCoins));
+  console.log('ghost rows: ' + ghosts.length + ' of ' + rows.length + (ghosts.length ? ' — ' + ghosts.map((r) => r.case + ' ' + r.till).join(' · ') : ''));
+  let census = null;
+  if (save) {
+    const sv = JSON.parse(save);
+    census = { lay: load0.lay, moved: load0.refunds && load0.refunds.moved, refund: (load0.refunds && load0.refunds.coins) || 0, saved: Number(sv.coins) || 0, wallet: load0.coins, tills: load0.tills };
+    console.log('load (R43): ' + JSON.stringify(census));
+  }
+  const okCensus = !census || (census.lay === 2 && census.wallet >= census.saved + census.refund);
+  const unknown = rows.filter((r) => r.unknown).map((r) => r.till);
+  const pass = ghosts.length === 0 && okCensus && !plog.errors.length && !unknown.length;
+  console.log((pass ? 'PASS' : 'FAIL') + ' ghostcoins_matrix ' + SCEN + ': ' + ghosts.length + ' ghost rows of ' + rows.length + ', census ' + (okCensus ? 'kept' : 'NOT kept') + ', ' + unknown.length + ' tills not scanned' + (unknown.length ? ' (' + unknown.join() + ')' : '') + ', ' + plog.errors.length + ' page errors');
+  process.exitCode = pass ? 0 : 1;
 } finally {
   fs.writeFileSync(path.join(OUT, `${TAG}_${SCEN}.json`), JSON.stringify(rows, null, 1));
   console.log('time', Math.round((Date.now() - t0) / 1000), 's');

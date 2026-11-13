@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MIGRATE, sanitizeSave, sanitizeV42, keepBank, keepLogistics, SAVE_VERSION } from '../../src/core/Save.js';
+import { MIGRATE, sanitizeSave, sanitizeV42, keepBank, keepLogistics, SAVE_VERSION, migrateSave } from '../../src/core/Save.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -47,6 +47,13 @@ for (const f of v41) {
   check(f + ': dock backlog capped to two train loads (' + before + ' -> ' + after + ')', after <= cap && after === Math.min(before, cap));
   check(f + ': the v4 block otherwise kept (orders, shops, houses, rank, clock)', same(Object.assign({}, s.v4, { cargo: null }), Object.assign({}, base.v4, { cargo: null })));
   check(f + ': no v42 / bank / logistics block invented by the migration', !s.v42 && !s.bank && !s.logistics);
+  // ((v4.3 step B, S6 — map_save §6.2) the game's whole load path (migrateSave) also runs R43: the village comes out on plot
+  //  table v2 with the marker; the save as the chain above leaves it is unchanged apart from what R43 says it moved
+  const g = migrateSave(clone(raw));
+  const moved = g && g.v43 && g.v43.refunds43 ? g.v43.refunds43.moved : -1;
+  check(f + ': (step B) migrateSave carries v43.lay 2 (R43: ' + moved + ' buildings moved, ' + (g && g.v43 && g.v43.refunds43 ? g.v43.refunds43.coins : '?') + ' coins back), steps / stations / land / life as the chain left them',
+    !!g && g.v === 8 && g.v43 && g.v43.lay === 2 && g.v43.src && g.v43.src.v === 6 && moved >= 0 && same(g.progress.done, s.progress.done) && same(g.stations, s.stations) && same(g.territory, s.territory) && same(g.life, s.life) && g.coins === s.coins + g.v43.refunds43.coins,
+    g && g.v43);
 }
 // ---------------------------------------------------------------- v3.5 saves still come all the way
 for (const f of fs.readdirSync(FIX).filter((q) => /^v35_save_.*\.json$/.test(q)).sort()) {

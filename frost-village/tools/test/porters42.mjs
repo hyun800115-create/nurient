@@ -10,6 +10,9 @@
 // 4 no flapping: the rate falls to 0 and nobody leaves; the cap holds with a huge rate;
 // 5 save + reload: the crew is back at once (no walk), the 짐꾼 2 too; an old save's crew follows its own making;
 // 6 the crew works (some carry), 0 page errors.
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap, never asStepB) the fixture loads as it is, through the real R43
+//  remap: the 창고, the 대장간 and the cannery stand on their d_* plots (D6 / D19), so the crew's walks and the 짐꾼 2 pads are
+//  the ones a tester's old village gets; step 1 asserts that load (lay 2, the workshops at home)
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -52,6 +55,9 @@ let fatal = null;
 try {
   await boot(SAVE);
   // ---- 1. the old save
+  // ((v4.3 step B, S6 — BP-21) it went through the real R43 remap: lay 2, every workshop on its d_* plot
+  const r43 = await ev(() => { const gs = window.__FV.scene, v = gs.v43 || {}, at = (b) => Object.keys(gs.sites).filter((k) => gs.sites[k].building === b).join(); return { lay: v.lay, moved: v.refunds43 ? v.refunds43.moved : null, toolsmith: at('toolsmith'), warehouse: at('warehouse'), cannery: at('cannery'), store: at('store') }; });
+  step('1 (step B) the v4.1 save loads through R43 (never asStepB): lay 2, ' + r43.moved + ' moved, 창고 / 대장간 / 통조림 공장 on d_wh / d_tool / d_cannery', r43.lay === 2 && r43.moved > 0 && r43.warehouse === 'd_wh' && r43.toolsmith === 'd_tool' && r43.cannery === 'd_cannery', r43);
   const c0 = await crew();
   const m0 = await ev(() => window.__FV.scene.madeN || 0);
   await adv(30);
@@ -80,8 +86,11 @@ try {
   step('2 짐꾼 2 is due after 45 s of a full output (not at 44 s)', ['toolsmith', 'cannery', 'dock'].every((k) => !P[k].before && P[k].after), P);
   await adv(2);
   const pads = await ev(() => { const L = window.__FV.scene.v42.lines; return Object.keys(L.pads); });
-  const pc = await ev(() => { const gs = window.__FV.scene, L = gs.v42.lines; const pad = L.pads.p2_cannery; if (!pad) return null; const w = gs.sourceById('cannery'); return { x: pad.x, y: pad.y, d: Math.round(Math.hypot(pad.x - w.outPad.x, pad.y - w.outPad.y)), label: pad.opts.labelFn(), open: !gs.collision.blocked(pad.x, pad.y, 16) }; });
-  step('2 the 통조림 짐꾼 2 pad stands by the cannery door (open ground)', !!pc && pc.d < 160 && pc.open && /통조림/.test(pc.label), { pads, pc });
+  const pc = await ev(() => { const gs = window.__FV.scene, L = gs.v42.lines; const pad = L.pads.p2_cannery; if (!pad) return null; const w = gs.sourceById('cannery'), sp = gs.plotPad(w, 'p2'); return { x: pad.x, y: pad.y, d: Math.round(Math.hypot(pad.x - w.outPad.x, pad.y - w.outPad.y)), label: pad.opts.labelFn(), open: !gs.collision.blocked(pad.x, pad.y, 16), plot: w.site ? w.site.id : null, spot: sp ? [Math.round(sp.x), Math.round(sp.y)] : null }; });
+  // ((v4.3 step B, S6 — rewrite) on plot table v2 the 짐꾼 2 pad stands at its plot's own p2 spot (BP-20: world.js
+  //  plots.d_cannery.pads.p2, chosen by L1 from padvis: 150 px below the line pad so its price stays clear of the p2 label),
+  //  ≈ 3.5 m from the cannery's out pad — the v4.2 "by the door" (< 160 px) is now "at the plot's p2 spot, within 4 m")
+  step('2 the 통조림 짐꾼 2 pad stands at d_cannery\'s p2 spot, near the cannery door (≤ 4 m, open ground)', !!pc && pc.plot === 'd_cannery' && !!pc.spot && Math.abs(pc.x - pc.spot[0]) <= 2 && Math.abs(pc.y - pc.spot[1]) <= 2 && pc.d <= 256 && pc.open && /통조림/.test(pc.label), { pads, pc });
   if (pc) {
     await ev(([x, y]) => { const gs = window.__FV.scene; gs.economy.coins = Math.max(gs.economy.coins, 5000); window.__FV.teleport(x, y); window.__FV.setInput(0, 0); }, [pc.x, pc.y]);
     await until(() => !window.__FV.scene.v42.lines.pads.p2_cannery, 12);

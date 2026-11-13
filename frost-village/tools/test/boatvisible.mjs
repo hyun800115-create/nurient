@@ -17,12 +17,15 @@ import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance, until, render } from './fv_step.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const SHOTS = arg('--shots');
 if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
-const fx = (n) => JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures', n), 'utf8'));
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) the boathouse and its boats are on e_dock, which does not move: the fixtures
+//  carry the step-B marker, so the R43 remap (workshops to their d_* plots, the chief back at the hut door) is no part of it
+const fx = (n) => asStepB(JSON.parse(fs.readFileSync(path.join(HERE, 'fixtures', n), 'utf8')));
 let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ok   ' + msg); } else { fail++; console.log('  FAIL ' + msg + (extra !== undefined ? ' ' + JSON.stringify(extra).slice(0, 500) : '')); } };
 

@@ -158,8 +158,12 @@ fs.mkdirSync(SHOTS, { recursive: true });
 const srv = await start(0, { prefix: '/fv/' });
 const browser = await launch();
 const FIXD = path.join(HERE, 'fixtures');
-const PURE25 = fs.readFileSync(path.join(FIXD, 'v41_save_pure_25min.json'), 'utf8');
-const LATE = JSON.parse(fs.readFileSync(path.join(FIXD, 'v42_village_late.json'), 'utf8')).keys;
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB for the browser part) the admin keypad, panel and spare slots on the
+//  saved villages: they carry the step-B marker, so the R43 remap (the chief back at the hut door, moved workshops) is no
+//  part of these rows. The Node part above runs every fixture through migrateSave with R43 and stays equal
+const { asStepB } = await import('./v43_helpers.mjs');
+const PURE25 = asStepB(fs.readFileSync(path.join(FIXD, 'v41_save_pure_25min.json'), 'utf8'));
+const LATE = asStepB(JSON.parse(fs.readFileSync(path.join(FIXD, 'v42_village_late.json'), 'utf8')).keys);
 const SAVE_KEY = 'frostVillage.save.v1', SETTINGS_KEY = 'frostVillage.settings.v1', BACKUP_KEY = 'frostVillage.save.backup', MOVE_KEY = 'frostVillage.move.backup';
 const allErrors = [];
 

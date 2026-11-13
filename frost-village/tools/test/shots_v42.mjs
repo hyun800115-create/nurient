@@ -10,12 +10,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
 const OUT = path.join(ROOT, 'docs', 'previews', 'screens_v42');
 fs.mkdirSync(OUT, { recursive: true });
-const SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8');
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) look sheets of the v4.2 places on the saved village (the R43 remap is no part of them)
+const SAVE = asStepB(fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8'));
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const ONLY = opt('--only', '') ? opt('--only', '').split(',') : null;
