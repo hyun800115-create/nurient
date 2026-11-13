@@ -390,8 +390,8 @@ function checkLayout(scene, D) {
 //   reserve nothing inside p47_plaza but what stood there at L1 (RESERVE_KEEP): no new tree, decor, plot, pad or road node
 //   branch  the branch-shop candidates (s_m1 / s_l1, se_m1 / se_l1, w_civic) stay free: no `only`, no step-B plot on them
 //   hall    the hall's front square (w_hall `clear`) holds no decor and no pad but the hall's own (BP-31)
-//   inside  no decor and no pad inside a step-B plot's footprint (a hidden plot's land stays empty snow), apart from what L2
-//           moves off the hall site (L2_PENDING: the trash pad and its fire, X-4)
+//   inside  no decor and no pad inside a step-B plot's footprint (a hidden plot's land stays empty snow) (L2_PENDING: what L2 had
+//           to move off the hall site — empty since L2, X-4)
 const STEPB_PLOTS = ['w_hall', 'w_civic', 'd_tool', 'd_wh', 'd_cannery', 'd_store', 'd_labour', 'd_school', 'd_clinic', 'h43_2', 'v42_office'];
 const STEPB_NEW = ['w_hall', 'w_civic', 'd_tool', 'd_wh', 'd_cannery', 'd_store', 'd_labour', 'd_school', 'd_clinic', 'h43_2'];
 const HIDDEN = ['w_civic', 'd_labour', 'd_school', 'd_clinic'];
@@ -403,8 +403,9 @@ const V43_BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store'
 const RESERVE_KEEP = [[1040, 1500], [940, 1520], [1052, 1660], [900, 1720], [1060, 1760], [740, 1575], [740, 1521], [835, 1546],
   [1235, 1555], [1440, 1610], [1215, 1700], [760, 1580], [1220, 1590], [1120, 1520], [1010, 1720]];
 const RESERVE_NODES = ['cross_n', 'green'];
-// L2 clears the hall site (X-4, BP-18): until then these stand on w_hall's footprint [what, x, y]
-const L2_PENDING = { w_hall: [['trash', 150, 700]] };
+// L2 clears the hall site (X-4, BP-18): until then these stood on w_hall's footprint [what, x, y]. (L2) The trash pad and its fire, the
+// beach campfire, its seats and the bard's stage moved to the beach west of the hall, the fisher hut past the bank site: nothing left
+const L2_PENDING = {};
 function checkStepB(scene, D, rows) {
   const out = [];
   const T = (c, msg, extra) => out.push({ scene, ok: !!c, msg, extra: c ? undefined : extra });
@@ -479,7 +480,7 @@ function checkStepB(scene, D, rows) {
     const pend = (L2_PENDING[id] || []).some(([w, x, y]) => (r.other.indexOf(w) === 0) && Math.hypot(r.ox - x, (r.oy - y) * 2) < 30);
     if (!pend) inBad.push(id + ': ' + r.type + ' ' + r.other + ' @' + r.ox + ',' + r.oy);
   }
-  T(!inBad.length, 'inside: no decor, pad or road node on a step-B plot (L2_PENDING: the trash pad on w_hall, X-4)', inBad);
+  T(!inBad.length, 'inside: no decor, pad or road node on a step-B plot (the hall site is clear: L2, X-4)', inBad);
   return out;
 }
 

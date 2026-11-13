@@ -9,12 +9,15 @@
 //    (v4.2 integration) the 창고 crew leaves the forge's run to the 도구 짐꾼 unless the forge is full
 // 4. '판매대가 비었어요' over the shelf while it is empty and a customer waits; gone when goods arrive
 // 5. save + reload clean, 0 page errors
-// 6. (v4.2 final, gameplay review #1) the 잡화점 on plot e_m1 after a load: the line is worked out again once the farm
-//    fence is solid (it was made while the zones were still off: places 5–6 inside the fence, customers 5–6 walked on
-//    the spot in every session after the first). Every place standable; a full line all arrives
-// 7. ((v4.3 step B, L1 — BP-20) the 잡화점's own plot d_store (plot table v2): its line (the plot's storeLine: north-west
-//    along the store's front, then south-west) keeps every place — 6, and 8 once meat cans exist — standable, off the
-//    bakery's 짐꾼 2 / hire pads (LINE, P2), off the dog house and clear of the east road (the 큰길's east half). The generic
+// 6. (v4.2 final, gameplay review #1) the 잡화점 after a load: the line is worked out again once everything that stands is
+//    solid (it was made while the zones were still off: on the old e_m1 spot places 5–6 landed inside the farm fence and
+//    customers 5–6 walked on the spot in every session after the first). Every place standable; a full line all arrives.
+//    ((v4.3 step B, L2) the store moves from w_m2 to its own plot d_store in the 46-min save (e_m1 moved to the north-east
+//    shore, far from the farm: the plot whose line met the fence is d_store's neighbourhood now)
+// 7. ((v4.3 step B, L1 — BP-20; L2) the 잡화점's own plot d_store (1990, 1070, plot table v2): its line (the plot's storeLine:
+//    straight north-west from the counter, L2) keeps every place — 6, and 8 once meat cans exist — standable and off the
+//    bakery's LINE pad (a3.2: 1560, 1056; no P2), its price and its label below it (a customer covers 40 × 100 px above his
+//    feet), off the dog house and clear of the east road (the 큰길's east half: ≥ 45 px, outside its paint). The generic
 //    plots above stay in the list: an old village's store stands there until S's remap moves it to d_store
 import fs from 'node:fs';
 import path from 'node:path';
@@ -79,7 +82,8 @@ try {
       const gs = window.__FV.scene, C = gs.collision, m = window.__stores.d_store.store;
       const { WORLD } = await import('/fv/src/data/world.js');
       const bk = WORLD.stations.find((q) => q.id === 'bakery'), SP = WORLD.stationPads.bakery;
-      const bpads = [[bk.x + SP.line[0], bk.y + SP.line[1]], [bk.x + SP.p2[0], bk.y + SP.p2[1]]];
+      // ((L2) a3.2: the bakery's pads all take the LINE spot (p2 null), their label below it ('lb': + 64 px, ≈ 180 × 44 px)
+      const bpads = [SP.line, SP.p2].filter(Boolean).map((o) => [bk.x + o[0], bk.y + o[1], o[2] === 'lb' ? 64 : -62]);
       const N = WORLD.roads.nodes, road = [N.plaza_e, N.east_link, N.east_gate];
       const segD = (px, py, a, b) => { const vx = b[0] - a[0], vy = (b[1] - a[1]) * 2, l2 = vx * vx + vy * vy || 1; const t = Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * 2 * vy) / l2)); return Math.hypot(px - a[0] - vx * t, (py - a[1]) * 2 - vy * t); };
       const dog = WORLD.life.props.find((q) => q[3] && q[3].id === 'doghouse');
@@ -88,8 +92,14 @@ try {
         for (let i = 0; i < m.maxQueue; i++) {
           const q = m.slotPos(i), w = [];
           if (!C.inWalk(q.x, q.y) || C.blocked(q.x, q.y, 13)) w.push('blocked');
-          for (const [x, y] of bpads) if (Math.abs(q.x - x) + 2 * Math.abs(q.y - y) < 86 + 10) w.push('bakery pad');
-          if (Math.min(segD(q.x, q.y, road[0], road[1]), segD(q.x, q.y, road[1], road[2])) < 30) w.push('east road');
+          for (const [x, y, ly] of bpads) {
+            // the customer's feet on the pad's floor (+ 10 px), or his body (40 × 100 px above the feet) over its price / label
+            if ([-20, 0, 20].some((dx) => Math.abs(q.x + dx - x) + 2 * Math.abs(q.y - y) < 86 + 10)) w.push('bakery pad');
+            const body = [q.x - 20, q.y - 100, q.x + 20, q.y], hit = (b) => body[0] < b[2] && body[2] > b[0] && body[1] < b[3] && body[3] > b[1];
+            if (hit([x - 50, y - 20, x + 50, y + 20])) w.push('bakery pad price');
+            if (hit([x - 90, y + ly - 22, x + 90, y + ly + 22])) w.push('bakery pad label');
+          }
+          if (Math.min(segD(q.x, q.y, road[0], road[1]), segD(q.x, q.y, road[1], road[2])) < 45) w.push('east road');
           if (dog && Math.hypot(q.x - dog[1], (q.y - dog[2]) * 2) < 50) w.push('dog house');
           out.push({ x: Math.round(q.x), y: Math.round(q.y), w });
         }
@@ -102,10 +112,11 @@ try {
       if (MC) MC.on = was; gs.refreshStoreLine(); gs.store = prev;
       return { plain, cans, line: m.cfg.queueStep, site: [m.x, m.y] };
     });
-    ok(D7.plain.length === 6 && D7.plain.every((q) => !q.w.length), 'd_store: its 6 line places are standable, off the bakery\'s pads (LINE / P2), the dog house and the east road', D7.plain);
+    ok(D7.plain.length === 6 && D7.plain.every((q) => !q.w.length), 'd_store: its 6 line places are standable, off the bakery\'s LINE pad (floor, price, label), the dog house and the east road', D7.plain);
     ok(D7.cans.length === 8 && D7.cans.every((q) => !q.w.length), 'd_store with meat cans: 8 places, every one clear', D7.cans);
     ok(plots.every(([, v]) => v.ok), 'every line place is standable, apart from the others and off the pads', R);
-    ok(plots.every(([, v]) => v.n === 6) && R.w_m2.bent && R.e_m1.bent && R.e_m2.bent && !R.s_m1.bent, 'every plot keeps its 6 places: w_m2 / e_m1 / e_m2 bend around the pines, s_m1 is straight', R);
+    // ((v4.3 step B, L2) e_m1 moved to the north-east shore (2600, 830): its line no longer meets the border pines, so only w_m2 / e_m2 bend)
+    ok(plots.every(([, v]) => v.n === 6) && R.w_m2.bent && R.e_m2.bent && !R.s_m1.bent, 'every plot keeps its 6 places: w_m2 / e_m2 bend around the pines, s_m1 is straight', R);
     // x-ray: customers standing in the lines the border pines cover (w_m2, e_m1, se_m1, s_l1, se_l1)
     const XR = {};
     for (const id of ['w_m2', 'e_m1', 'se_m1', 's_l1', 'se_l1']) {
@@ -240,10 +251,10 @@ try {
     for (const e of again.log.errors) errors.push('reload: ' + e);
     await again.page.context().close();
   }
-  // ---------------------------------------------------------------- 6. e_m1 after a load
+  // ---------------------------------------------------------------- 6. d_store after a load ((L2) was e_m1)
   {
     const sv = JSON.parse(SAVE);
-    const o = sv.sites.e_m1; delete sv.sites.w_m2; sv.sites.e_m1 = { b: 'store', st: 'done' }; sv.sites.w_m2 = o;
+    const o = sv.sites.w_m2; delete sv.sites.w_m2; sv.sites.d_store = o;
     const { page, log } = await boot(JSON.stringify(sv));
     const L6 = await page.evaluate(() => {
       const gs = window.__FV.scene, m = gs.store, C = gs.collision, P = [];
@@ -262,9 +273,9 @@ try {
       await advance(page, 5);
       arrived = await page.evaluate(() => { const m = window.__FV.scene.store; return { all: m.queue.length >= m.maxQueue && m.queue.every((c) => c.arrived), n: m.queue.filter((c) => c.arrived).length, of: m.queue.length }; });
     }
-    ok(L6.farm && L6.n === 6 && L6.bent && L6.places.every(Boolean), 'e_m1 after a load: 6 places, bent round the farm fence, every one standable', L6);
-    ok(arrived && arrived.all, 'e_m1 after a load: a full line of 6 all reach their places', arrived);
-    for (const e of log.errors) errors.push('e_m1: ' + e);
+    ok(L6.farm && L6.n === 6 && L6.places.every(Boolean), 'd_store after a load: 6 places, every one standable (worked out with the farm open)', L6);
+    ok(arrived && arrived.all, 'd_store after a load: a full line of 6 all reach their places', arrived);
+    for (const e of log.errors) errors.push('d_store: ' + e);
     await page.context().close();
   }
 } catch (e) { fail++; console.log('FATAL', e && e.stack || e); }

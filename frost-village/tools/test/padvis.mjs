@@ -514,6 +514,44 @@ try {
       }, D43);
       await advance(page, 3);
       ok(Object.values(put).every((v) => v === 'done'), 'd43: the workshops stand on d_tool / d_wh / d_cannery / d_store, the hall on w_hall, the office on v42_office (all shown)', put);
+      // ((v4.3 step B, L2) the store's line at d_store vs the bakery's LINE pad spot (a3.2: 1560, 1056, its label below it): every place
+      //  of the line — the meat cans' extra places too — and the store's footprint keep off that pad's floor, its price and its
+      //  label (the widest label any of the line's pads shows there: a customer standing at a place covers the 40 × 100 px box above
+      //  it). Then the line is filled, so the measure below samples the pads round the store with customers standing in it
+      const sl = await page.evaluate(async () => {
+        const gs = window.__FV.scene, m = gs.store, LU = gs.v42 && gs.v42.lines;
+        const { UnlockPad } = await import('/fv/src/entities/UnlockPad.js');
+        const { t } = await import('/fv/src/data/strings.js');
+        const { BALANCE } = await import('/fv/src/data/balance.js');
+        const sp = LU && LU.spotOf('st2', 'bakery');
+        if (!m || !sp) return { err: 'no store / no bakery line spot' };
+        const add = Math.max(0, Math.floor(Number(BALANCE.meatcan && BALANCE.meatcan.storeQueueAdd) || 0));
+        const n = (m.cfg.maxQueue0 || m.maxQueue) + add;
+        const slots = []; for (let i = 0; i < n; i++) { const q = m.slotPos(i); slots.push([Math.round(q.x), Math.round(q.y)]); }
+        const texts = [t('hire_clerk_bakery'), t('st2_pad', { st: t('line_bakery') }), t('p2_pad', { item: t('p2Name_bakery') }), t('op_bakery'), t('hire_farmer'), t('raw_bakery'), t('porter_bakery')].filter((s2) => typeof s2 === 'string' && s2.length);
+        let lab = null, price = null, hw = 0;
+        const n0 = gs.padSpots ? gs.padSpots.length : 0;
+        for (const tx of texts) {
+          const u = new UnlockPad(gs, '__l2_' + tx, sp.x, sp.y, { kind: 'hire', cost: 1000, paid: 0, icon: 'ui_icon_lock', iconSize: 48, labelAt: sp.labelAt, sizeM: 1.9, labelFn: () => tx });
+          u.refresh();
+          const b = u.label.getBounds(), c = u.costText.getBounds(), d = u.costCoin.getBounds();
+          lab = lab ? [Math.min(lab[0], b.x), Math.min(lab[1], b.y), Math.max(lab[2], b.right), Math.max(lab[3], b.bottom)] : [b.x, b.y, b.right, b.bottom];
+          price = [Math.min(c.x, d.x), Math.min(c.y, d.y), Math.max(c.right, d.right), Math.max(c.bottom, d.bottom)];
+          hw = u.pad.w / 2;
+          try { u.destroy(); } catch (e) { /* */ }
+        }
+        if (gs.padSpots) gs.padSpots.length = n0;     // (the spots they added to the residents' no-stand list: gone again)
+        const body = (x, y) => [x - 20, y - 100, x + 20, y];
+        const hit = (A, B) => A[0] < B[2] && A[2] > B[0] && A[1] < B[3] && A[3] > B[1];
+        const onFloor = (x, y) => [[x - 20, y], [x + 20, y], [x, y]].some(([px, py]) => Math.abs(px - sp.x) / (hw + 8) + Math.abs(py - sp.y) / ((hw + 8) / 2) < 1);
+        const bad = slots.map((q, i) => ({ i, q, floor: onFloor(q[0], q[1]), label: hit(body(q[0], q[1]), lab), price: hit(body(q[0], q[1]), price) })).filter((r) => r.floor || r.label || r.price);
+        const st = gs.sites.d_store, gap = Math.abs(st.x - sp.x) / (136 + hw) + Math.abs(st.y - sp.y) / (68 + hw / 2);
+        return { spot: [sp.x, sp.y], hw, lab: lab.map(Math.round), price: price.map(Math.round), n, slots, bad, store: [st.x, st.y], gap: +gap.toFixed(2) };
+      });
+      ok(sl && !sl.err && sl.n >= 8 && !sl.bad.length, 'd43: no place of the store\'s line (' + (sl && sl.n) + ', the meat cans\' too) stands on the bakery LINE pad (' + (sl && sl.spot) + '), its price or its label', sl);
+      ok(sl && !sl.err && sl.gap >= 1.15, 'd43: the store\'s footprint keeps off the bakery LINE pad (diamond gap ' + (sl && sl.gap) + ' ≥ 1.15)', sl && { store: sl.store, spot: sl.spot, gap: sl.gap });
+      await page.evaluate(() => { const m = window.__FV.scene.store; if (m) { for (let i = m.queue.length; i < m.maxQueue; i++) m.spawnCustomer(i); m.spawnT = 1e9; } });
+      await advance(page, 10);
       out.stages.all = await measure(page, 'd43', true);
       const spots = await page.evaluate(() => {
         const gs = window.__FV.scene;
@@ -526,6 +564,16 @@ try {
       });
       const same = (a) => a[0] && a[1] && Math.abs(a[0][0] - a[1][0]) < 1 && Math.abs(a[0][1] - a[1][1]) < 1;
       ok(spots.src && ['line_tool', 'p2_tool', 'line_can', 'p2_can', 'mcan'].every((k) => same(spots[k])), 'd43: the game puts the line, 짐꾼 2 and 고기 통조림 pads where the d_* plots name them (Game.plotPad)', spots);
+      // ((v4.3 step B, L2) e_m1 (2600, 830) stands right behind e_m2 (2520, 985): its build pad (the plot's `drop`) stays in clear
+      //  view with a house on e_m2 in front of it (Game.padCover: points of the pad's floor and price a picture covers, ≤ 1 of 29;
+      //  the default spot in front of the plot had 20 covered)
+      const em1 = await page.evaluate(() => {
+        const gs = window.__FV.scene, a = gs.sites.e_m1, b = gs.sites.e_m2;
+        if (!a || !b || a.state !== 'plot' || b.state !== 'plot') return { skip: true, a: a && a.state, b: b && b.state };
+        b.start('house_a', { instant: true }); b.finish(true);
+        return { drop: [Math.round(a.dropX), Math.round(a.dropY)], n: gs.padCover(a.dropX, a.dropY) };
+      });
+      ok(em1 && !em1.skip && em1.n <= 1, 'd43: e_m1\'s build pad (' + (em1 && em1.drop) + ') is not hidden by a house on e_m2 in front of it (' + (em1 && em1.n) + ' / 29 covered)', em1);
     } else {
       out.stages.all = await measure(page, sc, true);
     }

@@ -527,6 +527,8 @@ export const STRINGS = {
     // (L1, plot table v2) 공방 · 마을회관 제 부지의 이름표 (Site 의 'plotOnly_' + only)
     plotOnly_toolsmith: '대장간 터', plotOnly_warehouse: '창고 터', plotOnly_cannery: '통조림 공장 터', plotOnly_store: '잡화점 터',
     plotOnly_town_hall: '마을회관 터',
+    // (L2) 눈꽃 큰길 (world.js roads spine) · 큰길의 이름난 자리 (N 의 「새 지도 보기」 · 편지가 써요)
+    street43_spine: '눈꽃 큰길', place43_hallFront: '마을회관 앞마당', place43_hutDoor: '촌장님 사무실 앞', place43_deckHead: '낚시 좌대 앞',
     // <<< v43B:L end
 
     // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)
@@ -1046,6 +1048,8 @@ export const STRINGS = {
     // (L1, plot table v2) the workshops' and the hall's own plots (Site label 'plotOnly_' + only)
     plotOnly_toolsmith: 'Toolsmith site', plotOnly_warehouse: 'Warehouse site', plotOnly_cannery: 'Cannery site', plotOnly_store: 'General store site',
     plotOnly_town_hall: 'Town hall site',
+    // (L2) the 눈꽃 큰길 (world.js roads spine) and its named spots (N's 「새 지도 보기」 tour and letter use them)
+    street43_spine: 'Snowflake Main Street', place43_hallFront: 'Town hall square', place43_hutDoor: "Chief's office door", place43_deckHead: 'Fishing deck steps',
     // <<< v43B:L end
 
     // >>> v43B:S start (save: hold / failure / newer cards, 「새 단장 전 마을」)

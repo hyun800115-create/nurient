@@ -120,7 +120,9 @@ export const PLACES = {
   'p:mail_forest': Object.assign(node('forest_link') || { x: 772, y: 1148 }, { name: { ko: '숲 앞 우체통', en: 'Forest mailbox' } }),
   'p:herbalist':   Object.assign(node('w_x') || { x: -470, y: 1190 }, { name: { ko: '서쪽 숲마을 약초꾼', en: 'Herbalist (west wood)' } }),
   'p:big_rest':    Object.assign(node('w_rest') || { x: -330, y: 900 }, { name: { ko: '큰 식당', en: 'Big restaurant' } }),
-  'p:hall':        Object.assign(node('w_front') || { x: -880, y: 2110 }, { name: { ko: '마을회관', en: 'Village hall' } }),
+  // ((v4.3 step B, L2 — X-9 / S-N10: a recorded exception to the plan's read-only vehicles guardrail) the hall moved beside the
+  //  chief's office: its front square's node (world.js roads hall_front), was w_front (−880, 2110) at the old west-village hall
+  'p:hall':        Object.assign(node('hall_front') || { x: -110, y: 1000 }, { name: { ko: '마을회관', en: 'Village hall' } }),
   // ((v4.3 밀밭 · 빵집) the bakery cottage's bread rack O (+ 40 px south): the cottage stands at the gateway, out of the field
   'p:bakery':      Object.assign((() => { const s = stationOf('bakery'); return s ? { x: s.x + s.out[0], y: s.y + s.out[1] + 40 } : { x: 1352, y: 1256 }; })(), { name: { ko: '빵집', en: 'Bakery' } }),
 };

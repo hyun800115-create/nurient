@@ -647,30 +647,37 @@ export class Ground {
   drawRoads(ctx, paths, x0, y0, w, h) {
     if (!paths.length) return;
     const OFF = 30000;
-    const stroke = (c, ox) => {
+    // ((v4.3 step B, L2 — 「눈꽃 큰길」, TXD-3) the main street's pieces (world.js roads `spine`, carried on the path arrays) are
+    //  stroked once more, wider, into the same soft mask: one shape with the other roads (no darker joins), the same
+    //  ground_road texture (0 MiB). Its rim and its body are SPINE_W × the road's
+    const SPINE_W = 1.4;
+    const spine = paths.filter((p) => p && p.spine);
+    const stroke = (c, ox, list) => {
       c.beginPath();
-      for (const pts of paths) pts.forEach((p, i) => (i ? c.lineTo(p[0] - ox, p[1]) : c.moveTo(p[0] - ox, p[1])));
+      for (const pts of list || paths) pts.forEach((p, i) => (i ? c.lineTo(p[0] - ox, p[1]) : c.moveTo(p[0] - ox, p[1])));
     };
     // stroke far off-canvas: only its blurred shadow lands (soft feathered edges in every browser)
     // (shadow offset / blur are device px: scaled with the context, so half-resolution tiles look the same)
-    const soft = (c, lw, color, blur) => {
+    const soft = (c, lw, color, blur, list) => {
       const k = devScale(c);
       c.save();
       c.lineCap = 'round'; c.lineJoin = 'round';
       c.shadowColor = color; c.shadowBlur = blur * k; c.shadowOffsetX = OFF * k; c.shadowOffsetY = 0;
       c.strokeStyle = '#000'; c.lineWidth = lw;
-      stroke(c, OFF); c.stroke();
+      stroke(c, OFF, list); c.stroke();
       c.restore();
     };
     if (Assets.has('ground_road') && typeof document !== 'undefined') {
       // textured road: a soft mask filled with the road texture, over a soft shadowy rim
       soft(ctx, 92, 'rgba(110,130,170,0.30)', 22);
+      if (spine.length) soft(ctx, 92 * SPINE_W, 'rgba(110,130,170,0.30)', 22, spine);
       const k = devScale(ctx);
       const tmp = document.createElement('canvas');
       tmp.width = Math.max(1, Math.ceil(w * k)); tmp.height = Math.max(1, Math.ceil(h * k));
       const t = tmp.getContext('2d');
       t.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
       soft(t, 70, 'rgba(0,0,0,1)', 14);
+      if (spine.length) soft(t, 70 * SPINE_W, 'rgba(0,0,0,1)', 14, spine);
       t.setTransform(1, 0, 0, 1, 0, 0);
       t.globalCompositeOperation = 'source-in';
       const pat = pattern(t, 'ground_road', 0.5);
@@ -685,6 +692,7 @@ export class Ground {
       return;
     }
     soft(ctx, 80, 'rgba(136,160,198,0.36)', 26);   // packed, slightly blue-grey trodden snow
+    if (spine.length) soft(ctx, 80 * SPINE_W, 'rgba(136,160,198,0.36)', 26, spine);
     soft(ctx, 34, 'rgba(150,138,130,0.26)', 14);   // a hint of earth showing through in the middle
   }
 

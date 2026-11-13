@@ -225,7 +225,9 @@ export const WORLD = {
   //   ((v4.3) 오두막 터에 있던 발판과 모닥불은 서쪽으로: 예전 { x: 560, y: 700, fire: [520, 574] })
   //   ((review CD-3) once more, clear of the office too (the office replaces the hut on that plot and its walls reach
   //    further west): { x: 430, y: 688, fire: [360, 574] } was under the office's south-west wall)
-  trash: { x: 150, y: 700, fire: [140, 574] },
+  //   ((v4.3 둘째 걸음, L2 — X-4) 세 번째로 옮겼어요: 마을회관 터 (w_hall 180, 760) 안이 됐어요. 이제 회관 서쪽 바닷가 (회관 그림 왼쪽 끝 x ≈ 20 과
+  //    은행 터의 오른쪽 모서리 x ≈ −114 사이 눈밭): 모닥불은 그 위, 발판은 바닷가 길 (w_b2 → w_gate_n) 바로 위 (길 가운데에서 50 px)
+  trash: { x: -45, y: 585, fire: [-45, 489] },
   // (v4.2.0.1) 가방은 작업대 그림 밖으로, 신발은 손님 줄 끝·손님이 걸어오는 길 밖으로 (이름표는 발판 아래: labels)
   //   (교역소 점원 발판과는 떨어져 있어서 둘 다 함께 보여요. 혹시 다른 발판이 그 자리에 서면 가방·신발이 잠깐 비켜 줘요)
   //   ((v4.3) 「옷·신발 공방」: 작업대가 작은 공방으로 바뀌었어요 (이름과 그림만, 발판·값은 그대로). sprite 그림이 아직 없으면 spriteOld,
@@ -306,7 +308,9 @@ export const WORLD = {
   //  worker: 고용되는 일꾼, hut: 일꾼 오두막 위치 (구역이 열릴 때 함께 나타남)
   //  (v4.2.0.1) 가공소 줄의 고용 발판은 위 STATION_PADS.line 자리 (예전: 화덕 뒤, 제재소 판자 탑 밑, 밀 더미 옆 울타리, 용광로 뒤, 사냥터 안쪽)
   pads: {
-    hire_fisherman:  { ...LINE('grill'), worker: 'fisherman',  hut: [300, 470] },   // ((v4.3) 어부 오두막: 촌장 오두막 뒤에서 서쪽 바닷가로 (예전 585, 470))
+    // ((v4.3) 어부 오두막: 촌장 오두막 뒤에서 서쪽 바닷가로 (예전 585, 470)) ((v4.3 둘째 걸음, L2 — X-4) 또 서쪽으로: (300, 470) 은 마을회관 그림
+    //  뒤였어요. 은행 터 (v42_bank) 서쪽 끝 너머 바닷가, 큰 식당 지붕 위쪽 눈밭 (은행 · 식당 그림 밖)
+    hire_fisherman:  { ...LINE('grill'), worker: 'fisherman',  hut: [-760, 490] },
     zone_forest:     { x: 760,  y: 1130, zone: 'forest' },
     hire_lumberjack: { ...LINE('sawmill'), worker: 'lumberjack', hut: [300, 1010] },
     zone_farm:       { x: 1190, y: 1135, zone: 'farm' },
@@ -374,6 +378,11 @@ export const WORLD = {
   //                                            walk: false 면 걷지 않음, via: [[x, y], ...] 중간 굽은 점 }]
   //  짐꾼·손님·새 주민은 이 길을 따라 걸어 다닙니다 (마지막 몇 미터만 길 밖으로).
   //  모든 점은 걸을 수 있는 땅 위에 있어야 합니다 (장식·건물과 겹치지 않게).
+  //  ((v4.3 둘째 걸음, L2 — 「눈꽃 큰길」, build_plan.md §3.4 L2 · X-8 · TXD-3) spine: true = 눈꽃 큰길의 한 토막: 마을 길 그림 (Ground.drawRoads,
+  //   ground_road 그대로 — 새 그림 0 MiB) 이 조금 더 넓게 칠해요. 광장 · 바닷가 위 토막 (draw: false) 은 칠하지 않아요 (광장 바닥이 그 길).
+  //   큰길 = 마을회관 앞마당 (hall_front) → 큰 식당 (w_rest) → 서쪽 숲마을 갈림 (w_gate_n) → 바닷가 길 → 촌장 오두막 · 사무실 문 앞 (hut_door)
+  //   → 광장 → 남쪽 가지 (x = 990 마을 길: plaza_s → cross_n → green → cross_s, 빵집 손님들이 부르던 「큰길」) · 동쪽 반 (plaza_e → east_link →
+  //   east_gate: 동쪽 망루 아래, 동쪽 땅이 열리면 칠해요). 낚시 좌대 다리 앞은 deck_head (바닷가: 칠하지 않는 걷는 길)
   roads: {
     nodes: {
       plaza_c:  [1000, 770],  plaza_s: [990, 1095], plaza_sw: [705, 965], plaza_se: [1262, 968], plaza_w: [600, 830],
@@ -392,7 +401,9 @@ export const WORLD = {
       // ---- (v4-A) 역 가는 길 (동쪽 해안 → 서리역 광장). 그 너머 길은 WORLD.v4.walk 에서 자동으로 만들어져요
       v_link_w: [2640, 1139], v_link_e: [3184, 1411],
       // ---- (v4-C) 서쪽 숲마을 가는 길 (바닷가 뒤 '바닷가 길' + 마을 마당 옆 '숲길') 과 서쪽 숲마을 안의 길
-      w_b1: [420, 700], w_b2: [230, 620], w_gate_n: [-60, 640],
+      //  ((v4.3 둘째 걸음, L2) hut_door = 촌장 오두막 → 사무실 문 앞 (예전 이름 w_b1, 자리 그대로). hall_front = 마을회관 앞마당 (회관 문 · 승격식 자리의
+      //   서쪽: 세금 상자 · 게시판 발판 · 승격식 발판 사이를 비켜서). deck_head = 낚시 좌대 다리 앞 바닷가 (WORLD.deck.foot 아래)
+      hut_door: [420, 700], w_b2: [230, 620], w_gate_n: [-60, 640], hall_front: [-110, 1000], deck_head: [890, 470],
       w_m1: [560, 1700], w_m2: [300, 1660], w_gate_m: [-40, 1640],
       w_rest: [-330, 900], w_x: [-470, 1190], w_hall: [-560, 1640], w_sq: [-900, 1640], w_s: [-420, 2120], w_nw: [-860, 1040], w_front: [-880, 2110],
     },
@@ -401,16 +412,18 @@ export const WORLD = {
       ['plaza_c', 'plaza_w', { draw: false }], ['plaza_w', 'plaza_sw', { draw: false }],
       ['plaza_c', 'plaza_e', { draw: false }], ['plaza_e', 'plaza_se', { draw: false }],
       ['beach_w', 'beach_n', { draw: false }], ['beach_n', 'beach_e', { draw: false }],
+      // ((v4.3 둘째 걸음, L2) 낚시 좌대 다리 앞 (deck_head): 바닷가 길에서 두 갈래 (beach_w — beach_n 은 그대로: 길이가 짧아지는 길은 없어요)
+      ['beach_w', 'deck_head', { draw: false }], ['deck_head', 'beach_n', { draw: false }],
       // 광장 위쪽 울타리 틈 (그릴 옆): 광장 <-> 바닷가 오른쪽 놀이터
       ['plaza_c', 'gap_n', { draw: false }], ['gap_n', 'beach_n', { draw: false }], ['gap_n', 'beach_e', { draw: false }], ['beach_w', 'plaza_c', { draw: false }],
       // ((v4.3) beach_w 는 촌장 오두막 오른쪽 마당으로 (예전 690, 610: 오두막 터 안). 오두막 왼쪽 바닷가(모닥불)는 w_b1 길로 가요:
       //  beach_w — plaza_w 길은 오두막을 지나가서 없앴어요)
-      ['plaza_s', 'cross_n', { via: [[990, 1150]] }],
+      ['plaza_s', 'cross_n', { via: [[990, 1150]], spine: true }],
       ['plaza_sw', 'forest_link'], ['forest_link', 'forest_gate', { via: [[786, 1230]] }],
       // ((v4.3 밀밭 · 빵집) plaza ↔ field: plaza_s → cross_n → farm_gate (the old plaza_se → farm_link road went through the bakery's yard)
       ['cross_n', 'bakery_q', { draw: false }], ['bakery_q', 'farm_gate', { draw: false }],
       ['cross_n', 'forest_gate', { via: [[880, 1390]] }], ['cross_n', 'farm_gate', { via: [[1090, 1390]] }],
-      ['cross_n', 'green'], ['green', 'cross_s'],
+      ['cross_n', 'green', { spine: true }], ['green', 'cross_s', { spine: true }],
       ['cross_s', 'mine_gate', { via: [[880, 2000]] }], ['cross_s', 'hunt_gate', { via: [[1090, 2010]] }],
       ['cross_s', 'village'],
       ['village', 'tents_w', { via: [[800, 2330]] }], ['village', 'tents_e', { via: [[1180, 2330]] }],
@@ -423,7 +436,7 @@ export const WORLD = {
       ['farm_in', 'field_gate', { zone: 'farm', draw: false, walk: false }],
       ['mine_gate', 'mine_in', { zone: 'mine' }], ['hunt_gate', 'hunt_in', { zone: 'hunt' }],
       // (v3) 새 땅의 길: region = 이 땅이 열려야 생김
-      ['plaza_e', 'east_link', { region: 'east' }], ['east_link', 'east_gate', { region: 'east' }], ['east_gate', 'e_mid', { region: 'east' }],
+      ['plaza_e', 'east_link', { region: 'east', spine: true }], ['east_link', 'east_gate', { region: 'east', spine: true }], ['east_gate', 'e_mid', { region: 'east' }],
       ['e_mid', 'e_dock', { region: 'east', via: [[2200, 880]] }], ['e_mid', 'e_south', { region: 'east', via: [[2230, 1150]] }], ['e_south', 'e_east', { region: 'east' }],
       ['gate', 's_gate', { region: 'south' }], ['s_gate', 's_cross', { region: 'south' }], ['s_cross', 's_w', { region: 'south', via: [[800, 3040]] }],
       ['s_cross', 's_e', { region: 'south', via: [[1180, 3010]] }], ['s_cross', 's_s', { region: 'south' }],
@@ -432,9 +445,12 @@ export const WORLD = {
       // ---- (v4-A) 역 가는 길
       ['e_east', 'v_link_w', { region: 'rail' }], ['v_link_w', 'v_link_e', { region: 'rail' }],
       // ---- (v4-C) 서쪽 숲마을 길 (처음부터 열려 있어요)
-      ['plaza_w', 'w_b1'], ['w_b1', 'w_b2'], ['w_b2', 'w_gate_n'],
+      ['plaza_w', 'hut_door', { spine: true }], ['hut_door', 'w_b2', { spine: true }], ['w_b2', 'w_gate_n', { spine: true }],
       ['green', 'w_m1'], ['w_m1', 'w_m2'], ['w_m2', 'w_gate_m'],
-      ['w_gate_n', 'w_rest', { via: [[-200, 760]] }], ['w_rest', 'w_x'], ['w_x', 'w_nw'], ['w_x', 'w_hall', { via: [[-520, 1420]] }],
+      ['w_gate_n', 'w_rest', { via: [[-200, 760]], spine: true }],
+      // ((v4.3 둘째 걸음, L2) 큰길의 서쪽 끝: 큰 식당 앞 → 마을회관 앞마당 (hall_front). 광장 쪽에서 앞마당까지는 눈밭을 걸어요 (회관과 사무실이
+      //  붙어 있고 앞마당 동쪽은 세금 상자 · 나무꾼 오두막이라 길을 낼 틈이 없어요)
+      ['w_rest', 'hall_front', { spine: true }], ['w_rest', 'w_x'], ['w_x', 'w_nw'], ['w_x', 'w_hall', { via: [[-520, 1420]] }],
       ['w_gate_m', 'w_hall'], ['w_hall', 'w_sq'], ['w_hall', 'w_s', { via: [[-400, 1900]] }], ['w_s', 'w_front'],
     ],
   },
@@ -466,7 +482,9 @@ export const WORLD = {
     //  (예전: 모닥불 520, 590 / 장작 430, 650 / 통 640, 520 / 눈 더미 300, 520 · 345, 640))
     //  ((v4.3 둘째 걸음) 눈 더미 하나는 마을회관 터 (w_hall) 동쪽 끝에서 조금 비켜 줬어요 (예전 318, 700))
     ['flag_pole', 1250, 530], ['snow_pile_a', 236, 512], ['snow_pile_b', 345, 700], ['bush_snow', 1620, 545], ['bush_snow', 1640, 660],
-    ['snow_pile_b', 1720, 600], ['campfire', 140, 590], ['firewood_pile', 470, 498], ['barrel', 728, 503],
+    //  ((v4.3 둘째 걸음, L2 — X-4) 바닷가 모닥불도 회관 서쪽 바닷가로 (예전 140, 590: 회관 그림 뒤에 가려졌어요). 눈 더미 둘 (236, 512 · 345, 700) 은
+    //   회관 그림 뒤라서 회관 터가 나타날 때 치워요 (WORLD.v42.removeDecor 'hall')
+    ['snow_pile_b', 1720, 600], ['campfire', -45, 505], ['firewood_pile', 470, 498], ['barrel', 728, 503],
     // 광장
     ['lamp_post', ...Z('plaza', -6.6, -6.6)], ['lamp_post', ...Z('plaza', 6.6, -6.6)], ['lamp_post', ...Z('plaza', -0.5, 6.7)],
     ['bench', ...Z('plaza', -1.4, -6.4)], ['barrel', 1545, 800], ['crate', 1522, 826, { scale: 0.85 }],
@@ -504,7 +522,8 @@ export const WORLD = {
     ['barrel', 2150, 690, { region: 'east' }], ['crate', 2180, 712, { region: 'east' }], ['crate', 2158, 735, { region: 'east', scale: 0.8 }],
     ['ice_chunk', 2620, 520, { region: 'east' }], ['ice_chunk', 2380, 420, { region: 'east', scale: 0.7 }], ['boat_small', 2760, 560, { region: 'east', flip: true, scale: 0.9 }],
     ['firewood_pile', 2440, 1310, { region: 'east' }], ['tree_stump', 2700, 1360, { region: 'east' }], ['tree_stump', 2580, 1400, { region: 'east' }],
-    ['bush_snow', 1960, 1120, { region: 'east' }], ['snow_pile_a', 2440, 1440, { region: 'east' }], ['snow_pile_b', 2860, 880, { region: 'east' }],
+    //  ((v4.3 둘째 걸음, L2) 덤불 하나는 잡화점 터 (d_store 1990, 1070) 의 서쪽 끝에서 가게 뒤 길가로 (예전 1960, 1120))
+    ['bush_snow', 2180, 1020, { region: 'east' }], ['snow_pile_a', 2440, 1440, { region: 'east' }], ['snow_pile_b', 2860, 880, { region: 'east' }],
     ['campfire', 2060, 790, { region: 'east' }], ['bench', 2330, 960, { region: 'east' }], ['flag_pole', 2480, 760, { region: 'east' }],
     // 남쪽 들판: 밭과 쉼터
     ['hay_bale', 840, 2900, { region: 'south' }], ['hay_bale', 880, 2930, { region: 'south', scale: 0.85 }], ['hay_bale', 260, 3260, { region: 'south' }],
@@ -618,10 +637,14 @@ export const WORLD = {
     // ---- (v4.3 둘째 걸음 「마을 새 단장」, plot table v2 — docs/redesign_v43/stepB/build_plan.md §2, §3.4 L1; D6 / D19)
     //  공방마다 제 부지 하나 (only: 그 건물만, after = 그 건물이 열리는 때 Progression.BUILD_UNLOCK). 보통 M / L 부지는 집과 꾸미기만 (types).
     //  pads = 이 부지에 선 공방의 고용 발판 자리 (부지 중심 기준 px: line = 기술자 · 짐꾼, p2 = 짐꾼 2, mcan = 고기 통조림 기계, Game.plotPad).
-    //  d_store: also r:east — 잡화점은 통조림 공장 뒤라서 동쪽 땅이 늘 열려 있어요 (터의 동쪽 끝이 x 1800 너머). storeLine = 잡화점 손님 줄
-    //   (Game.makeStore 가 읽어요): 가게 앞에서 북서쪽(큰길 남쪽 가장자리를 따라) 네 자리, 그다음 남서쪽으로 — 빵집의 짐꾼 2 · 고용 발판
-    //   (1596, 1112 / 1497, 1117) 과 개집을 비켜요. 가게 그림의 계산대는 남서쪽을 보고 금고 · 계산대 발판이 앞쪽 동편에 있어서, 줄을 동쪽으로
-    //   세우면 그 발판들을 지나가요. 잡화점 점원 발판은 계산대 옆 첫 빈자리 (Game.storeClerkSpot) 라서 pads 가 없어요
+    //  d_store (1990, 1070, east) ((v4.3 둘째 걸음, L2) L1 의 (1740, 1030, start + r:east) 에서 동쪽으로: a3.2 가 옮긴 빵집 고용 발판 LINE
+    //   (1560, 1056, 이름표는 발판 아래 y ≈ 1120) 이 가게 계산대 바로 서쪽이 되어 손님 줄 1 · 2 번이 그 발판 위에 섰어요. 그 자리의 가게는 줄을 낼 곳이
+    //   없어요 (서쪽 = LINE 발판 · 이름표, 남쪽 = 금고 발판 · 밭 울타리 · 농막 지붕, 북쪽 = 큰길 동쪽 반). 이제 가게는 동쪽 땅 (통조림 공장이 서야
+    //   열려요: 동쪽 망루 뒤라서 그때는 늘 열려 있어요), 줄은 storeLine = 계산대 앞에서 곧장 북서쪽 여덟 자리 (6 + 고기 통조림 2): LINE 발판의
+    //   위쪽 (발판 꼭대기에서 30 px 넘게) 과 큰길 (east_link → east_gate, 가운데에서 50 px 넘게) 사이 눈밭이에요. clear = L1 자리의 나무 비움
+    //   그대로 (가장자리 숲 x 1650–1800 이 줄 · LINE 이름표 위로 새로 서지 않게). 가게 그림의 계산대는 남서쪽을 보고 금고 · 계산대 발판이 앞쪽
+    //   동편에 있어서, 줄을 동쪽으로 세우면 그 발판들을 지나가요. 잡화점 점원 발판은 계산대 옆 첫 빈자리 (Game.storeClerkSpot) 라서 pads 가 없어요.
+    //   계산대 발판 (가게 + 88, 140) 이 예전 e_m1 (2040, 1190) 안이라서 e_m1 은 북동쪽 바닷가로 옮겼어요 (아래)
     //  d_wh: pads 없음 — 창고는 고용 발판이 없어요 (기술자 · 짐꾼 · 짐꾼 2 단계가 창고를 부르지 않아요)
     //  pads 는 d43 probe (게임의 Game.padCover: 앞에 선 그림이 바닥 · 값을 가리는 점 수, 29 점 중 ≤ 1) 로 골랐어요: 걸을 수 있고, 길에서 60 px 넘게,
     //   다른 부지 · 망루 · 한마당 터 밖, 다른 돈 내는 발판과 1.9 m 발판끼리 겹치지 않게 (|dx| + 2|dy| ≥ 188). d_tool: line 은 입고 발판 서쪽
@@ -640,12 +663,19 @@ export const WORLD = {
     //   바닷가 (놀이터 옆) — d43 probe 로 고른 자리 (0 ~ 1 / 29)
     d_wh:      { x: 475, y: 1525, size: 'M', region: 'start', after: 'hire_hunter', only: 'warehouse' },
     d_cannery: { x: 1890, y: 485, size: 'M', region: 'east', after: 'boat_rowboat', only: 'cannery', drop: [2000, 700], clear: [[-200, 80, 180]], pads: { line: [-60, 120], p2: [-40, 270], mcan: [-340, 10] } },
-    d_store:   { x: 1740, y: 1030, size: 'M', region: 'start', after: 'b:cannery', also: 'r:east', only: 'store',
-                 storeLine: { queueStart: [-100, 53], queueStep: [-40.7, -20.4], queueTurn: 4, queueStep2: [-40.7, 20.4] } },
+    d_store:   { x: 1990, y: 1070, size: 'M', region: 'east', after: 'b:cannery', only: 'store',
+                 clear: [[-250, -40, 250], [-250, 60, 150], [-250, 180, 200]],
+                 storeLine: { queueStart: [-100, 53], queueStep: [-40.7, -20.4], queueTurn: 99 } },
     e_dock:   { x: 2330, shore: 46, size: 'M', region: 'east', only: 'boathouse' },
-    //  ((v4.3 둘째 걸음) e_m1 의 짓기 발판 · 이름표는 오른쪽 앞으로 (예전 기본 자리 2042, 1277): 바로 옆 잡화점 터 (d_store) 의 점원 발판
-    //   (1978, 1266, Game.storeClerkSpot) 이 그 위에 겹치고 이름표가 점원 발판 이름표를 가렸어요 (padvis d43))
-    e_m1:     { x: 2040, y: 1190, size: 'M', region: 'east', types: TYPES43, drop: [2170, 1265] },
+    //  ((v4.3 둘째 걸음, L2) e_m1 (집 · 꾸미기 부지) 은 북동쪽 바닷가 (2600, 830) 로: 예전 자리 (2040, 1190) 는 잡화점 (d_store 1990, 1070) 의
+    //   계산대 발판 (2078, 1210) 과 점원 발판 자리가 그 안이에요 (집이 서면 발판이 집 밑). 새 자리: e_m2 · 보트 창고 짐꾼 발판 (2387, 740) · 깃대
+    //   밖, 바닷가 선 (2600, 743) 아래. 예전 마을이 이 부지에 지은 대장간 · 집도 함께 옮겨 와요 (S 의 R43 이 대장간은 d_tool 로).
+    //   drop = 짓기 발판: 부지 오른쪽 앞 (L1 의 [2170, 1265] 는 예전 자리의 것). 기본 자리 (2602, 917) 는 바로 앞 e_m2 에 건물이 서면 그 그림
+    //   뒤예요 (집 20 / 29 점, 통조림 공장 25 / 29 점이 가려요, Game.padCover). (2750, 880) 은 e_m2 에 집 · 통조림 공장이 있어도, e_m1 기초를
+    //   놓은 뒤에도 0 점: e_m2 기술자 발판 (2720, 970) 에서 |dx| + 2|dy| 210
+    //   pads: S 의 R43 전 예전 마을의 대장간이 이 부지에 서 있을 때 (v41 / v42 저장): 기술자 · 짐꾼 · 짐꾼 2 발판은 부지 서쪽, 대장간 입고 발판
+    //   (2442, 868) 왼쪽 (기본 자리 (2797, 969) · (2741, 969) 는 옆 e_m2 의 기술자 발판 (2720, 970) 자리라 둘이 겹쳤어요: padvis 35 분 저장)
+    e_m1:     { x: 2600, y: 830, size: 'M', region: 'east', types: TYPES43, drop: [2750, 880], pads: { line: [-310, 40], p2: [-310, 40] } },
     // (v4.2.0.1) pads: 이 부지에 공방(대장간·통조림 공장)을 지었을 때의 고용 발판 자리 (부지 중심 기준 px)
     //   line = 기술자·짐꾼 고용, p2 = 짐꾼 2. e_m2: 예전 자리는 기찻길 울타리 바로 뒤 (그 아래쪽은 기찻길 위: 기차가 발판을
     //   덮었어요), s_m1: 아래 s_m2 건물 그림 뒤, w_m2: 짐꾼 2 자리를 눈 요새가 반쯤 덮었어요
@@ -793,7 +823,9 @@ export const WORLD = {
       // 바닷가 왼쪽 모닥불 둘레 통나무 의자 (어르신들이 불을 쬐며 앉아 있음)
       //   ((v4.3) 모닥불과 함께 서쪽으로: 촌장 오두막 터 (예전 520, 536 / 425, 561 / 615, 561))
       //   ((review CD-3) and once more, clear of the office's walls (the office replaces the hut; 360, 536 / 265, 561 / 455, 561)
-      ['log_seat', 140, 536, { id: 'seat_beach_n' }], ['log_seat_y', 45, 561, { id: 'seat_beach_w' }], ['log_seat_x', 235, 561, { id: 'seat_beach_e' }],
+      //   ((v4.3 둘째 걸음, L2 — X-4) 마을회관 서쪽 바닷가 모닥불 (-45, 505) 둘레로: 의자 둘 (회관과 은행 터 사이 눈밭이 좁아서 동쪽 의자는 뺐어요 —
+      //    그 자리는 회관 그림 뒤예요). 서쪽 의자의 끝은 읍 뒤에 은행을 지으면 은행 벽 뒤에 조금 가려요)
+      ['log_seat', -45, 452, { id: 'seat_beach_n' }], ['log_seat_y', -125, 520, { id: 'seat_beach_w' }],
       // 광장 서쪽 게시판 (수다 떠는 곳), 광장 남쪽 입구 줄등
       //   ((v4.3) 게시판은 조금 아래로: 사무실 터가 오두막 자리로 오면서 사무실 직원 뽑기 발판 (490, 745) 을 가렸어요 (예전 470, 812))
       ['notice_board', 500, 890, { id: 'notice' }],
@@ -826,7 +858,7 @@ export const WORLD = {
     //   acts: sit(의자에 앉기) warm(불 쬐기) chat(수다) read(게시판) play(눈싸움·술래잡기·눈사람) wander(산책) concert(공연)
     areas: {
       // stage: 음유시인이 연주하는 자리 (보면대가 없는 모닥불)
-      beach_w:   { at: [135, 605], r: 115, acts: ['sit', 'warm', 'chat'], fire: [140, 590], stage: [52, 506] },   // ((v4.3) 모닥불을 따라 서쪽으로 (예전 540, 615; review CD-3: 355, 605 was under the office's wall))
+      beach_w:   { at: [-55, 520], r: 95, acts: ['sit', 'warm', 'chat'], fire: [-45, 505], stage: [5, 440] },   // ((v4.3) 모닥불을 따라 서쪽으로 (예전 540, 615; review CD-3: 355, 605 was under the office's wall; (v4.3 둘째 걸음, L2) 135, 605 은 마을회관 터))
       notice:    { at: [520, 925], r: 120, acts: ['read', 'chat'] },                                              // ((v4.3) 게시판을 따라 (예전 520, 870))
       playground:{ at: [1440, 560], r: 150, acts: ['play', 'chat', 'wander'] },
       plaza_s:   { at: [990, 1210], r: 110, acts: ['chat', 'wander'] },
@@ -864,7 +896,10 @@ export const WORLD = {
 // paths to draw on the snow = road edges that are drawn, walkable or not, and belong to no zone / new land
 WORLD.paths = WORLD.roads.edges.filter((e) => !(e[2] && (e[2].draw === false || e[2].zone || e[2].region))).map((e) => {
   const N = WORLD.roads.nodes;
-  return [N[e[0]]].concat((e[2] && e[2].via) || [], [N[e[1]]]);
+  const pts = [N[e[0]]].concat((e[2] && e[2].via) || [], [N[e[1]]]);
+  // ((v4.3 둘째 걸음, L2) 눈꽃 큰길의 토막: Ground.drawRoads 가 더 넓게 칠해요
+  if (e[2] && e[2].spine) pts.spine = true;
+  return pts;
 });
 // (v3) every drawn road, also the ones of zones / new land (decor trees keep clear of them)
 WORLD.allPaths = WORLD.roads.edges.filter((e) => !(e[2] && e[2].draw === false)).map((e) => {
@@ -1022,11 +1057,11 @@ WORLD.v42 = {
           sign: { i: 44.6, j: -1.2 }, fence: [[-6, -0.75, -1.5, -0.75]] },
   // ── 기차가 서는 자리 (맨 앞 기관차 코끝의 i): ours = 마을 열차(1) / 읍 열차(2), town = 솔방울역
   stops: { ours: { 1: -0.8, 2: -2.9 }, town: 31.6 },
-  // ── 촌장 사무실 (광장 서쪽 바닷가 길): 건물 자리, 직원 뽑기 발판, 새 길 갈림 w_office
+  // ── 촌장 사무실 (광장 서쪽 바닷가 길): 건물 자리, 직원 뽑기 발판, 문 앞 길 (roads hut_door; (v4.3 둘째 걸음, L2) 예전 갈림 w_office 는 없어요)
   //    (v4.2.0.1) hire: 사무실 문 옆 (예전 [-150, 905] 은 w_s1 부지의 집 뒤였어요)
   //    ((v4.3) 바닷가 촌장 오두막 자리로 옮겼어요 (예전 110, 810: 마을회관을 지은 뒤 생기던 터). 새 마을은 처음부터 이 터에 오두막이
   //     서 있고, 사무실은 오두막을 고쳐 지어요 (Site replace). hire = 사무실 문 옆 (사무실 기준 px: 예전 자리와 같은 상대 위치))
-  office: { x: HUT[0], y: HUT[1], key: 'chief_office', hire: [HUT[0] - 110, HUT[1] + 105], node: 'w_office', door: [-62, 824], desk: [150, 760] },
+  office: { x: HUT[0], y: HUT[1], key: 'chief_office', hire: [HUT[0] - 110, HUT[1] + 105], node: 'hut_door', door: [-62, 824], desk: [150, 760] },   // ((v4.3 둘째 걸음, L2) node: w_office → hut_door)
   // ── (v4.3) 촌장 오두막 (chief_hut): 처음부터 v42_office 터에 다 지어져 있어요 (그림 = 장식 chief_lodge). 오두막 기준 px:
   //    door = 현관 앞 (촌장이 서는 땅), desk = 창가 책상 (장부 문, 4.3 C), mailbox = 우체통, yard = 바닷가 쪽 마당 (새 게임 시작 자리 근처)
   //    walls = 벽 (원 [x, y, 반지름]): 현관 앞과 마당은 비워 둬요
@@ -1046,20 +1081,29 @@ WORLD.v42 = {
   ],
   // ── 썰매 길 (격자 점): 정류장 → 역앞 거리 (j −5) → 중앙로 (i 31) → ave_s → bank_st → lgx_dock → 2번 문
   sleighRoute: [[5.0, -5.0], [31.0, -5.0], [31.0, -22.2], [31.0, -23.2], [35.8, -23.2], [35.8, -26.2], [34.1, -26.2]],
-  // ── 새 길 갈림 (v2 길 그래프): 사무실 앞 w_office, 은행 문 앞 샛길
+  // ── 새 길 갈림 (v2 길 그래프): 은행 문 앞 샛길
+  //    ((v4.3 둘째 걸음, L2) 예전 사무실 앞 갈림 w_office (-120, 880) 과 그 길 셋은 없앴어요: 사무실은 바닷가 오두막 자리로 옮겼고 (문 앞 = roads
+  //     hut_door), 그 길 (plaza_w → w_office) 은 마을회관 앞마당을 가로질렀어요. 은행 문 샛길은 서쪽 숲마을 갈림 (w_gate_n) 에 바로 이어요
+  //     (같은 굽은 점). 이 그래프는 게임의 길 찾기에 들어가지 않아요 (tools/test/roadnet.test.mjs 만 읽어요))
   roads: {
-    nodes: { w_office: [-120, 880], w_bank: [-458, 640] },
-    edges: [['plaza_w', 'w_office', { via: [[380, 930], [130, 985]] }], ['w_office', 'w_gate_n', { via: [[-170, 760]] }], ['w_bank', 'w_office', { via: [[-200, 760]] }]],
+    nodes: { w_bank: [-458, 640] },
+    edges: [['w_bank', 'w_gate_n', { via: [[-200, 760]] }]],
   },
   // ── 터를 닦을 때 치우는 장식·나무 [종류, x, y, 언제] (언제: office = 사무실 터, bank = 은행 터, rail = 고리 선로와 함께)
   removeDecor: [
     // ((v4.3) 예전 사무실 터 (110, 810) 의 나무 세 그루: 사무실이 바닷가 오두막 자리로 옮겨 가서 이제는 마을회관 터를 닦을 때 (4.3 B))
+    //  ((v4.3 둘째 걸음, L2 — X-4 · BP-18) 'hall' = 마을회관 터 (w_hall) 가 나타날 때, 그리고 회관이 설 때마다 (예전 마을의 다 지은 회관이 한 번에
+    //   돌아올 때도): Office.update / afterRestore (hallSiteUp). 나무 셋은 회관 터가 이미 비워 둬서 (Game.blockedForDecor) 서지 않아요 — 줄은 그대로
+    //   둬요. 눈 더미 둘은 회관 그림 바로 뒤라서 치워요 (그림에 가려 반쯤 보이던 것)
     ['tree', 190, 860, 'hall'], ['tree', 260, 720, 'hall'], ['tree', 300, 930, 'hall'], ['tree', -180, 560, 'bank'],
+    ['snow_pile_a', 236, 512, 'hall'], ['snow_pile_b', 345, 700, 'hall'],
     ['snow_pile_a', -140, 500, 'bank'], ['regionTree', 2950, 1150, 'rail'], ['regionTree', 2930, 1010, 'rail'],
   ],
   // ── 옮기는 장식 [종류, x, y → 새 x, 새 y, 언제]
   //    ((v4.2.0.1) 은행 터의 가로등은 (-290, 770) 으로: 은행 짓기 발판 drop 자리를 비워요)
-  moveDecor: [['lamp_post', -190, 690, -290, 770, 'bank'], ['signpost', -40, 720, -20, 600, 'hall']],   // ((v4.3) 표지판: 'office' → 'hall' (위와 같은 까닭))
+  //    ((v4.3 둘째 걸음, L2) 표지판 (-40, 720) 은 이제 그 자리 그대로: 회관 터 (180, 760) 밖, 서쪽 숲마을 갈림 (w_gate_n) 옆. 예전 'hall' 이 옮기던
+  //     자리 (-20, 600) 는 회관 서쪽 바닷가 모닥불 · 버리기 발판 자리예요)
+  moveDecor: [['lamp_post', -190, 690, -290, 770, 'bank']],
   // ── 가장자리 숲에서 비워 두는 곳 [x0, y0, x1, y1] (숲의 무작위 순서는 그대로: 다른 나무가 움직이지 않아요)
   //    ((v4.2.0.1) w_s4 짓기 발판 앞, 물류창고 짓기 발판 앞, 농부 2·3 발판 옆 소나무 한 그루: 발판을 옮기며 그 둘레의 빈 땅도
   //     옮겨 가서 동쪽 숲의 소나무 한 그루가 새로 서려 했어요 — 예전처럼 비워 둬요;
