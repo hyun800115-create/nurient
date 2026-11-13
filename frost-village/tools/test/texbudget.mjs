@@ -21,12 +21,16 @@
 //  social pages and +2 ground slots, the area pages came back byte for byte). Then a soak (--soak SEC, default 600 game s,
 //  0 skips): the camera stops at the plaza, the east dock, the station, the track and the town square in turn, 40 s each;
 //  once settled (15 s) no area page may load or go (no churn), and a later cycle does no more area loads than the first.
+// ((v4.3 step B, M — build_plan BP-29) --stage4: the village complete / full-v4 views with the shop at stage 4 「눈꽃마을
+//  시장」 (the mkt_s4 row added in the page while P is not merged; built by hook right after unlockV3), and a 'stage-4 plaza' view
+//  (the plaza with the stage-4 page, its lines and both merchants) right after the full-v4 plaza)
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance } from './fv_step.mjs';
+import { addStage4Row, forceStage4 } from './stage4_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -117,7 +121,10 @@ try {
     check('new game + bot to minute ' + BOT + ' <= 368 MiB (must)', overFor(bs, 368) <= 2 * 6, Math.max(...bs.map((r) => r.MiB)));
     await ev(() => window.__FV.setInput(0, 0));
   }
+  if (args.includes('--stage4')) console.log('    (--stage4: ' + JSON.stringify(await addStage4Row(page)) + ')');
   await ev(() => { window.__FV.unlockV3(); window.__FV.give(50000); });
+  // (--stage4: unlockV3 leaves the after-읍 mkt_s4 step alone (v4): it is built here)
+  if (args.includes('--stage4')) console.log('    (--stage4: ' + JSON.stringify(await forceStage4(page)) + ')');
   await advance(page, 2);
   await nudge(() => window.__FV.scene.v4 && window.__FV.scene.v4.ready);
   const v3 = await run('v3.5 village complete', 20);
@@ -164,6 +171,15 @@ try {
   /** the core district's art is all back: every page that was in memory at `before` is again, nothing waits on a stand-in */
   const coreBack = (before) => nudge(`(() => { const T = window.__FV.scene.textures, A = window.__FV.assets(); return ${JSON.stringify(Object.keys(before.res).filter((k) => before.res[k]))}.every((k) => T.exists(k)); })`, 60000);
   const plaza0 = await at('full v4 plaza', m.x, m.y, 1.2, 30);
+  // ((v4.3 step B, M) --stage4: the stage-4 plaza — the shop's lines filled and both merchants at the 자재 창구, the chief on
+  //  register 2 — 20 s at zoom 1.2 (the shop's stage and its page are reported)
+  if (args.includes('--stage4')) {
+    const s4 = await ev(() => { const g = window.__FV.scene, mk = g.market, A = window.__FV.assets(); for (const L of mk.openLanes()) for (let i = L.queue.length; i < 4; i++) mk.spawnCustomer(i); return { stage: mk.stage, page: g.textures.exists('market_s4'), pending: A.pending('market_s4_back'), open2: !!(g.trade && g.trade.open2) }; });
+    await nudge(() => window.__FV.scene.textures.exists('market_s4'), 60000);
+    const R2 = await ev(() => { const r = window.__FV.scene.market.seats.M2; return r ? { x: r.x, y: r.y } : null; });
+    const s4v = await at('stage-4 plaza', R2 ? R2.x : m.x, R2 ? R2.y : m.y, 1.2, 20);
+    check('stage-4 plaza: the shop is at stage 4 with its page, GL total <= 455 MiB (must)', s4.stage === 4 && (s4v.gl || s4v.MiB) <= 455, Object.assign({ MiB: s4v.MiB, gl: s4v.gl }, s4));
+  }
   const tex0 = await texList();
   const core0 = await coreState();
   console.log('    (core at the plaza: ' + JSON.stringify(core0.res) + ', line ' + core0.line + ' MiB source-sum, render targets ' + core0.rt + ' MiB, live ' + JSON.stringify(core0.live) + ')');

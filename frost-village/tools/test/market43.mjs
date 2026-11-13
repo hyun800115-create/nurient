@@ -16,12 +16,25 @@
 //    shop's till, its clerk the 자재 점원; stage from progress (bread selling -> 3, free, with the 고기 clerk); its rack's bread
 //    went to the bakery (no bread on the shop's rack); nothing lost
 // 9. save + reload of a stage-3 village keeps the stage, 60-a-kind racks and the till; 0 page errors
+// ((v4.3 step B, M — build_plan §3.9, X-1, postdepot_addendum §4) stage 4 「눈꽃마을 시장」 (the mkt_s4 row is P's: while P is not
+//  merged the suite adds the contract row in the page, tools/test/stage4_helpers.mjs; G's flag g43s4 is set by hook):
+// 10. the pad (2,000 + 20 planks + 8 ingots) shows only once the village is 읍 AND G's flag g43s4 is set (stage 3 done); buying
+//     it -> stage 4: 자재 · 생선 · 고기 (the same three counters, bread stays at the bakery), every seat at its counter, the 자재
+//     counter's second window (register 2's pad stays with the 자재 clerk hired, the second merchant at his spot), 80 a kind on
+//     both racks, the stage-4 page; with progress.flags.s4half the pad asks half (P's price hook; reported when it is missing)
+// 11. three lines: each food line's customers pay there (fish, meat), the merchant buys at the 자재 창구
+// 12. the second merchant spot: the 자재 clerk alone -> one merchant (163.6 a min); the clerk + the chief on register 2 -> both
+//     (163.6 + 211.8 a min); the chief alone on register 2 -> the first merchant only (211.8)
+// 13. spawnMul: stage 4 brings ~1.2x the customers of stage 2 (and more than stage 3)
+// 14. save + reload at stage 4 keeps the stage, 80 a kind (restore runs after progress.init has set stage 4), every clerk and
+//     the second window
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance, until } from './fv_step.mjs';
+import { addStage4Row, openStage4Pad } from './stage4_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.join(HERE, 'fixtures');
@@ -47,6 +60,9 @@ async function boot(save) {
   await page.evaluate((sv) => { try { localStorage.clear(); if (sv) localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, save);
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 180000);
+  // ((v4.3 step B, M) the mkt_s4 row (P's) before the village is built: a reload at stage 4 applies it in progress.init
+  const row4 = await addStage4Row(page);
+  if (row4.added && !boot.said) { boot.said = true; console.log('  (the mkt_s4 row is not in STEPS yet: P is not merged; the contract row is added in the page)'); }
   await sleep(300);
   await tapStart(page);
   await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player, 180000);
@@ -258,6 +274,145 @@ try {
     ok(artOk(art9, 3), 'after the reload the shop shows the stage-3 picture (not the stage-2 page that arrives first)', art9);
     errors.push(...b2.log.errors);
     await b2.page.context().close();
+  }
+  // ---------------------------------------------------------------- 10. stage 4: the pad, the transition
+  {
+    const none = await ev(page, () => { const g = window.__FV.scene, pr = g.progress; pr.syncPads(); return { pad: !!pr.pads.mkt_s4, s3: pr.isDone('mkt_s3'), eup: !!pr.flags.rankEup }; });
+    ok(!none.pad && none.s3 && !none.eup, 'stage 3, not 읍: no 눈꽃마을 시장 pad', none);
+    const eupOnly = await ev(page, () => { const g = window.__FV.scene, pr = g.progress; pr.flags.rankEup = true; pr.syncPads(); return { pad: !!pr.pads.mkt_s4 }; });
+    ok(!eupOnly.pad, '읍 alone (G\'s flag g43s4 not set: the post-depot chain has not reached row 9) brings no pad (postdepot_addendum BP-41)', eupOnly);
+    const half = await ev(page, async () => {
+      const g = window.__FV.scene, pr = g.progress;
+      // (a 읍 village has its east watchtower: its unlock pad near the shop pads' spot would keep the stage-4 pad waiting)
+      if (!pr.done.tower_east && pr.pads.tower_east) window.__FV.doneStep('tower_east');
+      const src = await (await fetch(new URL('src/systems/Progression.js', location.href).href)).text();
+      pr.flags.s4half = true; pr.flags.g43s4 = true; pr.syncPads();
+      const p = pr.pads.mkt_s4, out = { hook: /stage4Old/.test(src), cost: p ? p.cost : null };
+      if (p) { p.destroy(); delete pr.pads.mkt_s4; }
+      delete pr.flags.s4half; delete pr.flags.g43s4;
+      return out;
+    });
+    if (half.hook) ok(half.cost === 1000, 'a village that was already 읍 at the remap (flags.s4half) gets the pad at half price: 1,000', half);
+    else console.log('  SKIP half price: P\'s stage4Old price hook is not in this tree (the pad asks ' + half.cost + '); re-run after P merges');
+    const p = await openStage4Pad(page);
+    ok(!!p && p.cost === 2000 && p.items && p.items.item_plank === 20 && p.items.item_ingot === 8, '읍 + g43s4 (stage 3 done): the 눈꽃마을 시장 pad (2,000 + 20 planks + 8 ingots)', p);
+    await ev(page, () => { const g = window.__FV.scene; window.__banners4 = []; const b = g.ui.banner; g.ui.banner = function (a, c, o) { window.__banners4.push([a, c]); return b.call(this, a, c, o); }; window.__FV.completeStep('mkt_s4'); g.market.spawnT = 1; });
+    await advance(page, 3);
+    await until(page, () => !window.__FV.assets().pending('market_s4_back'), 40);
+    await advance(page, 1);
+    const r = await ev(page, () => {
+      const g = window.__FV.scene, m = g.market, T = g.trade, A = window.__FV.assets(), D = A.def('market_s4_back');
+      const near = (a, b, t) => Math.hypot(a.x - b.x, a.y - b.y) <= (t || 3);
+      const S = m.seats, c2 = (D.customer2Points || [])[0];
+      return {
+        stage: m.stage, done: !!g.progress.done.mkt_s4, art: m.img.texture.key + '|' + m.img.frame.name, open: m.openLanes().map((l) => l.id),
+        A: S.A.seller.id, B: S.B.seller.id, aClerk: !!(S.A.clerk && near(S.A.clerk, S.A.staff)), bClerk: !!(S.B.clerk && near(S.B.clerk, S.B.staff)), mClerk: !!(S.M.clerk && near(S.M.clerk, S.M.staff)),
+        open2: T.open2, m2on: S.M2.enabled, m2pad: S.M2.pad.img.visible, m2label: S.M2.labelText.text, merchant2: T.merchant2.sprite.visible && !!c2 && near(T.merchant2, { x: m.x + c2[0], y: m.y + c2[1] }),
+        max: m.maxPerType, matMax: T.maxPerType, foodCap: m.stock.max, matCap: T.stock.max, banner: window.__banners4.map((q) => q[0]).join('|'),
+        plates: m.plates.filter((q) => q.on).map((q) => q.key), sign: m.sign ? m.sign.visible : false, signFont: m.signFont || null,
+        pads: Object.keys(g.progress.pads).filter((k) => /mkt_s|clerk_s3/.test(k)),
+        chiefOnly: !!(m.occ && m.occ.chiefOnly),
+      };
+    });
+    ok(r.stage === 4 && r.done && r.art === 'market_s4|market_s4_back' && r.open.join() === 'fish,meat', 'stage 4 「눈꽃마을 시장」: 자재 · 생선 · 고기 lines, its own page (bread stays at the bakery)', r);
+    ok(r.A === 'fish' && r.B === 'meat' && r.aClerk && r.bClerk && r.mClerk, 'stage 4: the fish clerk, the 고기 clerk and the 자재 점원 stand at their new posts', r);
+    ok(r.open2 && r.m2on && r.m2pad && r.merchant2 && /2/.test(r.m2label), 'stage 4: the 자재 counter\'s second window — register 2\'s pad stays (the 자재 clerk is hired), the second merchant stands at his spot', r);
+    ok(r.max === 80 && r.matMax === 80 && r.foodCap >= 160 && r.matCap >= 160, 'stage 4: 80 a kind on both racks (market43.shelfMax[3])', r);
+    ok(/눈꽃마을 시장|Snowbloom Village Market/.test(r.banner) && r.sign && r.plates.join() === 'plate_mat,plate_fish,plate_meat', 'stage 4: its banner, the 「눈꽃마을 시장」 board and the three plates (자재 · 생선 · 고기)', r);
+    ok(!r.pads.length, 'no shop step pad left after stage 4', r.pads);
+    // ((M verify) the 3.6 m roof covers the plaza behind the row (residents at the snowman / flag corner): from stage 4 only the
+    //  chief fades the shop (Occlusion chiefOnly), else it was see-through 41–67 % of the time in late villages
+    ok(r.chiefOnly, 'stage 4: only the chief makes the shop see-through (x-ray chiefOnly: residents behind the roof do not)', { chiefOnly: r.chiefOnly });
+  }
+  // ---------------------------------------------------------------- 11. three lines at stage 4
+  {
+    const r = await ev(page, () => {
+      const g = window.__FV.scene, m = g.market, F = window.__FV, T = g.trade;
+      for (const ty of ['item_fish_cooked', 'item_meat_cooked']) while (m.stock.countOf(ty) < 60) m.stock.push(ty, null, g.effects);
+      for (const ty of ['item_plank', 'item_ingot']) while (T.stock.countOf(ty) < 30) T.stock.push(ty, null, g.effects);
+      F.teleport(m.x + 500, m.y + 500);
+      const sold = { fish: 0, meat: 0 }; let traded = 0;
+      const on = (v, c) => { if (c && c.market && sold[c.market.id] !== undefined) sold[c.market.id]++; };
+      const tr = () => traded++;
+      g.events.on('sold', on); g.events.on('traded', tr);
+      m.spawnT = 0;
+      for (let s = 0; s < 90; s++) { window.__step.run(1); for (const ty of ['item_fish_cooked', 'item_meat_cooked']) while (m.stock.countOf(ty) < 40) m.stock.push(ty, null, g.effects); }
+      g.events.off('sold', on); g.events.off('traded', tr);
+      return { sold, traded, q: m.openLanes().map((l) => l.queue.length) };
+    });
+    ok(r.sold.fish >= 4 && r.sold.meat >= 4 && r.traded >= 30, 'stage 4: customers pay in the fish line and in the meat line, the merchant buys at the 자재 창구 (90 s)', r);
+  }
+  // ---------------------------------------------------------------- 12. the second merchant spot
+  {
+    const rate = (who) => ev(page, (who) => {
+      const g = window.__FV.scene, T = g.trade, F = window.__FV, R = T.register, R2 = g.market.seats.M2;
+      const n = { 1: 0, 2: 0 };
+      const on = (v, w) => { n[w === 2 ? 2 : 1]++; };
+      g.events.on('traded', on);
+      const top = () => { for (const ty of ['item_plank', 'item_ingot']) while (T.stock.countWithIncoming(ty) < 60) T.stock.push(ty, null, g.effects); };
+      const stash = who === 'chief2only' ? R.clerk : null;
+      if (stash) { R.clerk = null; stash.sprite.setVisible(false); R.setEnabled(true); }
+      const place = () => { if (who === 'clerk') F.teleport(T.x + 600, T.y + 600); else F.teleport(R2.x, R2.y); F.setInput(0, 0); };
+      place(); top(); window.__step.run(5); top();
+      n[1] = 0; n[2] = 0;
+      let servers = 0;
+      for (let s = 0; s < 60; s++) { place(); window.__step.run(1); top(); servers = Math.max(servers, T.servers()); }
+      // ((the chief on register 2 stands in front of the 자재 counter: drawn above the shop's layers, the shop not faded)
+      const m = g.market, P = g.player;
+      const look = who === 'clerk' ? null : { chiefDepth: +P.sprite.depth.toFixed(2), front: m.front ? +m.front.depth.toFixed(2) : null, back: +m.img.depth.toFixed(2), alpha: +m.img.alpha.toFixed(2), m1: +T.merchant.sprite.depth.toFixed(2), m2: +T.merchant2.sprite.depth.toFixed(2), noXray: !!P.noXray };
+      // (off the strip again: the chief counts for the x-ray as before; alpha is reported only — a porter walking behind the
+      //  row fades the shop as it should)
+      if (look) { F.teleport(T.x + 600, T.y + 600); window.__step.run(0.3); look.noXrayAfter = !!P.noXray; }
+      g.events.off('traded', on);
+      if (stash) { R.clerk = stash; stash.sprite.setVisible(true); R.setEnabled(true); }
+      F.teleport(T.x + 600, T.y + 600);
+      return { m1: n[1], m2: n[2], servers, look };
+    }, who);
+    const clerk = await rate('clerk');
+    ok(clerk.m1 >= 160 && clerk.m1 <= 168 && clerk.m2 === 0, 'the 자재 clerk alone: one merchant buys (' + clerk.m1 + ' a min; trade post 163.6), the second merchant waits', clerk);
+    const both = await rate('both');
+    ok(both.m1 >= 160 && both.m1 <= 168 && both.m2 >= 207 && both.m2 <= 216 && both.servers === 2, 'the clerk + the chief on register 2: both merchants buy (' + both.m1 + ' + ' + both.m2 + ' a min = ' + (both.m1 + both.m2) + ')', both);
+    const L = both.look || {};
+    ok(L.chiefDepth > L.front && L.m1 > L.front && L.m2 > L.front && L.noXray && !L.noXrayAfter, 'the chief on register 2 and both merchants (in front of the 자재 counter, west of the row\'s middle) are drawn above the shop\'s layers; the chief does not fade the shop while there (x-ray), and does again once off the strip (shop alpha ' + L.alpha + ')', L);
+    const solo = await rate('chief2only');
+    ok(solo.m1 >= 207 && solo.m1 <= 216 && solo.m2 === 0, 'the chief alone on register 2 (no clerk): the first merchant buys at the chief\'s rate (' + solo.m1 + '), the second waits', solo);
+  }
+  // ---------------------------------------------------------------- 13. spawnMul at stage 4
+  {
+    const r = await ev(page, () => {
+      const g = window.__FV.scene, m = g.market, real = m.spawnCustomer;
+      // (the lines emptied first: a full line (maxQueue) spawns nobody; nobody joins while spawnCustomer only counts)
+      for (const id in m.lanes) { const L = m.lanes[id]; for (const c of L.queue.slice()) { try { c.despawn(); } catch (e) { /* */ } } L.queue.length = 0; }
+      for (const c of m.leaving.slice()) { try { c.despawn(); } catch (e) { /* */ } } m.leaving.length = 0;
+      let n = 0;
+      m.spawnCustomer = function () { n++; return null; };
+      const count = (st, secs) => { m.setStage(st, true); n = 0; m.spawnT = 0; window.__step.run(secs); return n; };
+      const secs = 900;
+      const s2 = count(2, secs), s3 = count(3, secs), s4 = count(4, secs);
+      m.spawnCustomer = real;
+      m.setStage(4, true);
+      return { s2, s3, s4, r42: +(s4 / s2).toFixed(3), r43: +(s4 / s3).toFixed(3), mul: window.__BAL && window.__BAL.market43 && window.__BAL.market43.spawnMul };
+    });
+    ok(r.r42 > 1.12 && r.r42 < 1.28 && r.s4 > r.s3, 'spawnMul: stage 4 brings ~1.2x the customers of stage 2, more than stage 3 (same spawn points)', r);
+  }
+  // ---------------------------------------------------------------- 14. save + reload at stage 4
+  {
+    const sv = await ev(page, () => {
+      const g = window.__FV.scene, m = g.market, T = g.trade;
+      for (const ty of ['item_fish_cooked', 'item_meat_cooked']) while (m.stock.countOf(ty) < 75) m.stock.push(ty, null, g.effects);
+      for (const ty of ['item_plank', 'item_ingot']) while (T.stock.countOf(ty) < 72) T.stock.push(ty, null, g.effects);
+      g.save(true);
+      return { save: localStorage.getItem('frostVillage.save.v1'), till: m.cash.value };
+    });
+    const b3 = await boot(sv.save);
+    await until(b3.page, () => !window.__FV.assets().pending('market_s4_back'), 40);
+    const r = await ev(b3.page, () => { const g = window.__FV.scene, m = g.market, L = g.shopLoaded; return { stage: L.stage, fish: L.food.item_fish_cooked, meat: L.food.item_meat_cooked, plank: L.mat.item_plank, ingot: L.mat.item_ingot, max: m.maxPerType, clerks: Object.keys(m.seats).filter((k) => m.seats[k].clerk), open2: g.trade.open2, m2pad: m.seats.M2.pad.img.visible }; });
+    ok(r.stage === 4 && r.fish >= 75 && r.meat >= 75 && r.plank >= 72 && r.ingot >= 72 && r.max === 80, 'a stage-4 village reloads at stage 4 with 75 a kind kept on the 80 racks (restore after progress.init set stage 4)', r);
+    ok(r.clerks.join() === 'A,M,B' && r.open2 && r.m2pad, 'every clerk back, the second 자재 window open with its pad', r);
+    const art = await shownArt(b3.page);
+    ok(artOk(art, 4), 'after the reload the shop shows the stage-4 picture', art);
+    errors.push(...b3.log.errors);
+    await b3.page.context().close();
   }
   errors.push(...log.errors);
   await page.context().close();

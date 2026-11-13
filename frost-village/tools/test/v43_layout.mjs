@@ -793,6 +793,40 @@ if (ONLY.includes('merchant')) {
       mrows.push(Object.assign({ case: 'ceiling_' + who, save: fx, minutes: 1, items_per_min: c.traded, coins_per_min: c.coins, theoretical_per_min: +(60 / sec).toFixed(1), frame_period_per_min: +(3600 / frames).toFixed(1) }, flat(c)));
       console.log(`  merchant ceiling (${who}) ${fx}: ${c.traded} items/min (trade.buyInterval ${c.interval}${who === 'clerk' ? ' × ' + c.slow : ''} = ${sec.toFixed(3)} s -> ${(60 / sec).toFixed(1)} a min; ${frames} whole frames -> ${(3600 / frames).toFixed(1)}) (${wall()})`);
     }
+    // ---- ((v4.3 step B, M — G4, build_plan §3.9) the stage-4 second merchant spot, measured and reported separately: the
+    //      shop set to stage 4 by hook (the mkt_s4 row is P's: added in the page while it is missing; 읍 and G's flag g43s4
+    //      by hook), the shelf kept full, the 자재 clerk at her window and the chief on register 2 (two people at the 자재
+    //      registers: both merchants buy). Ceiling = clerk (163.6) + chief (211.8) ≈ 375 a min
+    if (/46min/.test(fx)) {
+      const c = await ev(async () => {
+        const gs = window.__FV.scene, T = gs.trade, F = window.__FV, M = window.__M, pr = gs.progress;
+        const PR = await import(new URL('src/systems/Progression.js', location.href).href);
+        if (!PR.STEPS.find((q) => q.id === 'mkt_s4')) { const at = PR.STEPS.findIndex((q) => q.id === 'hire_clerk_s3'); PR.STEPS.splice(at + 1, 0, { id: 'mkt_s4', type: 'shop', level: 4, after: 'f:rankEup', flag: 'g43s4', also: 'mkt_s3', side: true, v4: true }); }
+        window.__bot = null; M.on = false;
+        pr.flags.rankEup = true; pr.flags.g43s4 = true;
+        if (!pr.isDone('mkt_s3')) F.doneStep('mkt_s3');
+        F.doneStep('mkt_s4');
+        if (!T.register.clerk) F.doneStep('hire_clerk_trade');
+        window.__sim.run(3);
+        const R2 = gs.market.seats.M2, n = { 1: 0, 2: 0 };
+        const on = (v, w) => { n[w === 2 ? 2 : 1]++; };
+        gs.events.on('traded', on);
+        const top = () => { for (const ty of ['item_plank', 'item_ingot']) { let k = 0; while (T.stock.countWithIncoming(ty) < T.maxPerType && k++ < 90) T.stock.push(ty, null, gs.effects); } };
+        const place = () => { F.teleport(R2.x, R2.y); F.setInput(0, 0); };
+        place(); top();
+        let acc = 0;
+        window.__sim.run(5, null, (dt) => { acc += dt; if (acc >= 1) { acc -= 1; top(); place(); } });
+        n[1] = 0; n[2] = 0; acc = 0;
+        let servers = 2;
+        window.__sim.run(60, null, (dt) => { acc += dt; if (acc >= 1) { acc -= 1; top(); place(); servers = Math.min(servers, T.servers()); } });
+        gs.events.off('traded', on);
+        return { m1: n[1], m2: n[2], total: n[1] + n[2], stage: gs.market.stage, servers, clerk: !!T.register.clerk, chief2: R2.chief, max: T.maxPerType };
+      });
+      mrows.push(Object.assign({ case: 'stage4_second_spot', save: fx, minutes: 1, items_per_min: c.total, theoretical_per_min: 375.4 }, flat(c)));
+      summary.merchantStage4 = c;
+      console.log(`  merchant stage 4, second spot (clerk + chief on register 2) ${fx}: ${c.total} items/min = ${c.m1} (first merchant, clerk) + ${c.m2} (second merchant, chief); stage ${c.stage}, servers ${c.servers} (${wall()})`);
+      if (!(c.stage === 4 && c.m2 > 0 && c.servers === 2)) { stepBFail = true; console.log('  FAIL merchant stage 4: the second spot did not open with two people at the 자재 registers'); }
+    }
   }
   writeCsv('merchant.csv', mrows);
   ALL.merchant = mrows;

@@ -33,6 +33,8 @@ export class Register {
     lab.add([this.labelBg, this.labelText]);
     this.label = lab;
     this.labelBaseY = this.y - 46;
+    // ((v4.3 step B, M) a register may carry its own label word (the 자재 counter's second window: 「계산대 2」)
+    this.labelKey = cfg.labelKey || 'register';
     this.refresh();
     // where a clerk stands: the art's staff point (buildings manifest: `<art>_staff` for the v1 stalls,
     // the building's own staffPoints for the v3 shops) or our own offset
@@ -92,7 +94,7 @@ export class Register {
   }
 
   refresh() {
-    this.labelText.setText(t('register'));
+    this.labelText.setText(t(this.labelKey || 'register'));
     this.labelBg.setSize(Math.max(84, this.labelText.width + 34), 40);
   }
 

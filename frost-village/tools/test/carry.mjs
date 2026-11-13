@@ -306,6 +306,30 @@ for (const run of [{ fx: 'v42_village_late.json', vp: { width: 412, height: 915 
   });
   ok(C.bandTop >= C.colBottom + 4 && (!C0.started || !C.vis || C.banner || C.top >= C.colBottom + 4), '[' + run.tag + '] the 관망 caption starts below the right-hand column (' + (C0.started ? 'shown, top ' + C.top : 'band top ' + C.bandTop) + ', column ' + C.colBottom + ')', Object.assign(C, C0));
   await sleep(600);
+  // ((v4.3 step B, M) the shop at stage 4 「눈꽃마을 시장」 (set by hook): the counters keep their names on the pill — planks go
+  //  to 「가게 자재 창구」 at the stage-4 자재 rack, grilled fish to 「먹거리 진열대」 at the stage-4 food rack — and the till's name
+  //  in the office is the stage's board name)
+  const S4 = await page.evaluate(async () => {
+    const F = window.__FV, g = F.scene, m = g.market, T = g.trade, N = F.v42.v.nav;
+    const { t } = await import(new URL('src/data/strings.js', location.href).href);
+    m.setStage(4, true);
+    const O = F.v42 && F.v42.v ? F.v42.v.office : null;
+    const out = { stage: m.stage, till: O && O.tillName ? O.tillName('market') : null, sign4: t('sign_market_4') };
+    for (const [ty, k, rack] of [['item_plank', 'mat', T.shelf], ['item_fish_cooked', 'food', m.shelf]]) {
+      F.clearStack(); F.teleport(m.x + 160, m.y + 330); F.setInput(0, 0);
+      F.carry(ty, 3);
+      N.pickT = 0;
+      await new Promise((r) => setTimeout(r, 1300));
+      const s = F.v42.carry.state(), d = N.dest;
+      out[k] = { row2: s.row2, label: d ? d.label : null, at: d && d.pad ? [Math.round(d.pad.x), Math.round(d.pad.y)] : null, rack: [Math.round(rack.x), Math.round(rack.y)], name: t(k === 'mat' ? 'place_trade' : 'place_market') };
+    }
+    F.clearStack();
+    return out;
+  });
+  const atRack = (q) => q && q.at && Math.abs(q.at[0] - q.rack[0]) < 3 && Math.abs(q.at[1] - q.rack[1]) < 3;
+  ok(S4.stage === 4 && S4.mat.label === 'place_trade' && atRack(S4.mat) && S4.mat.row2 && S4.mat.row2.indexOf(S4.mat.name) >= 0, '[' + run.tag + '] stage 4: planks → ' + S4.mat.name + ' at the stage-4 자재 rack (' + S4.mat.row2 + ')', S4);
+  ok(!atRack(S4.food) || (S4.food.label === 'place_market' && S4.food.row2 && S4.food.row2.indexOf(S4.food.name) >= 0), '[' + run.tag + '] stage 4: grilled fish → ' + (atRack(S4.food) ? S4.food.name + ' at the stage-4 food rack (' + S4.food.row2 + ')' : 'another place takes it first (' + S4.food.label + ')'), S4);
+  ok(!S4.till || S4.till === S4.sign4, '[' + run.tag + '] stage 4: the office names the shop\'s till by its board, ' + S4.sign4, S4);
   errors.push(...log.errors);
   await page.close();
 }
