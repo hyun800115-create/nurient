@@ -124,6 +124,10 @@ try {
     const b0 = await page.evaluate(() => window.__FV.v42.goals.book(3, 12));
     console.log('       cur ' + (b0.cur && b0.cur.id) + ' · next ' + b0.next.map((r) => r.id + ':' + r.state).join(', ') + ' · side ' + b0.side.map((r) => r.id).join(', ') + ' · done ' + b0.done + '/' + b0.all);
     ok(b0.cur && b0.next.length >= 1 && b0.side.length >= 1 && b0.done >= 15, 'the book: a current goal, next goals, side goals, ≥ 15 done', { cur: b0.cur, n: b0.next.length, s: b0.side.length, done: b0.done });
+    // ((v4.3 step B, P) the hall is the first goal after village complete (1,200 coins); the hut → office is a side row
+    //  before 읍, never a main row)
+    ok(b0.cur && b0.cur.id === 'town_hall' && b0.cur.coins === 1200 && b0.cur.place, '(step B) the 25-min village: 지금 = 마을회관 짓기 (1,200), with a place', b0.cur);
+    ok(b0.side.some((r) => r.id === 'plot:v42_office' && r.coins === 400) && !b0.next.some((r) => r.id === 'v42:chief_office'), '(step B) the office is a side row (400) before 읍, not a main row', { side: b0.side.map((r) => r.id + ':' + r.coins), next: b0.next.map((r) => r.id) });
     // a REAL tap on the 목표 button
     const c = await page.$('canvas'); const bb = await c.boundingBox(); const k = bb.width / 720;
     const p0 = await page.evaluate(() => window.__FV.v42.goals.panel());

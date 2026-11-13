@@ -4,7 +4,8 @@
 //          flows per minute, a fix button that hops the camera to the pad (가공소 2단 · 짐꾼 2 · 물류창고로 보내요)
 //   소식   today's paper (masthead, date + weather, headlines, an ad, the letters link)
 //   편지   the inbox with the letters' buttons
-//   직원   one line per person and what they do now; locked roles show cost and the hire pad
+//   직원   one line per person and what they do now; locked roles show cost and the hire pad ((v4.3 step B, P) before 읍:
+//          「읍이 되면 와요」 instead — nobody can be hired yet, and the locked tabs say their clerk comes at 읍)
 //   통장   the passbook (last 8 rows) and today's income by source as bars
 // Art: (CODE-2) the ui5 set: tab plates ui_office_tab(_on) with the tab icons (ui_icon_inventory / news / letter /
 // staff / bank), the 재고 rows on the ui_chalk_panel chalkboard with the glossy ui_status dots, each letter on its own
@@ -88,7 +89,10 @@ export class OfficePanel {
     const O = this.office, need = (TABS.find((q) => q[0] === id) || [])[2];
     if (!need) return null;
     if (need === 'bank') return O.bank ? null : t('tabLockedBank');
-    return O.hired(need) ? null : t('tabLocked', { role: t('role_' + need), name: t('staff_' + need) });
+    if (O.hired(need)) return null;
+    // ((v4.3 step B, P — D3 ★A) before 읍 the clerk cannot be hired yet: the tab says when they come
+    if (O.eup && !O.eup()) return t('tabLockedEup', { role: t('role_' + need), name: t('staff_' + need) });
+    return t('tabLocked', { role: t('role_' + need), name: t('staff_' + need) });
   }
 
   show(tab) {
@@ -147,7 +151,7 @@ export class OfficePanel {
       case 'stock': return v.ledger ? v.ledger.rows().map((r) => r.status + r.pile + '.' + r.out + '.' + r.shelf + '.' + r.flow.join(',')).join('|') : '';
       case 'news': return v.news ? v.news.list.length + ':' + v.news.day + ':' + v.news.unread() : '';
       case 'letters': return v.news ? v.news.inbox.map((r) => r.id + ':' + r.state).join(',') : '';
-      case 'staff': return O.staffRows().map((r) => r.text).join('|');
+      case 'staff': return (O.eup && O.eup() ? 'e|' : 'v|') + O.staffRows().map((r) => r.text).join('|');
       case 'bank': return O.log.length + ':' + O.depositedTotal + ':' + JSON.stringify(O.income);
       case 'depot': { const Dp = v.depot; return Dp && Dp.built ? Dp.model.stock.ver + ':' + Dp.sleighs.map((x) => x.state + x.count()).join(',') + ':' + (Dp.hires || 0) + (Dp.fork || 0) : 'none'; }
       default: return '';
@@ -238,7 +242,8 @@ export class OfficePanel {
   // ------------------------------------------------------------------ 직원
   tab_staff() {
     const B = this.box, O = this.office;
-    this.text(B.x0 + 36, B.top + 180, t('staffTitle'), 26, '#2b2f3a');
+    // ((v4.3 step B, P — X-7) before 읍 the title says it too: the four come together once the village is 읍
+    this.text(B.x0 + 36, B.top + 180, O.eup && !O.eup() ? t('staffTitleEup') : t('staffTitle'), 26, '#2b2f3a');
     O.staffRows().forEach((r, i) => {
       const y = B.top + 250 + i * 90;
       this.icon(B.x0 + 64, y, r.hired ? (Assets.has('ui_icon_staff') ? 'ui_icon_staff' : 'ui_icon_worker') : 'ui_icon_lock', 46);

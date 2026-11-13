@@ -1,8 +1,11 @@
 // (v4.2, docs/v42_plan.md §6) 촌장 사무실, its staff, the coin courier and 서리 은행 — gs.v42.office.
-//   sites      world.js WORLD.plots v42_office (after the 마을회관) and v42_bank (읍 + the office): ordinary v3 plots with
-//              `only`, built by Game.makeBuilding -> makeBuilding() here; their decor is cleared / moved when they appear
-//   staff      hire pads one at a time on WORLD.v42.office.hire: 셈이 (500) -> 딸랑이 (900) -> 소복이 (700) -> 총총이 (900,
-//              after 읍); each walks in from the plaza and takes its desk spot (seeds saved, looks regenerate)
+//   sites      world.js WORLD.plots v42_office (the hut's plot, from the mine on: a side goal, (v4.3 step B) 400 + 판자 8)
+//              and v42_bank (읍 + the office): ordinary v3 plots with `only`, built by Game.makeBuilding -> makeBuilding()
+//              here; their decor is cleared / moved when they appear
+//   staff      hire pads one at a time on WORLD.v42.office.hire: 셈이 (500) -> 딸랑이 (900) -> 소복이 (700) -> 총총이 (900);
+//              ((v4.3 step B, P — D3 ★A) all four after 읍: before it the office stands with no hire pad, its 직원 tab says
+//              they come at 읍; staff an older village already hired stay); each walks in from the plaza and takes its
+//              desk spot (seeds saved, looks regenerate)
 //   courier    딸랑이's rounds of gs.tills (CashPad.takeAll), deposits at the bank counter (the office safe before the
 //              bank): coins -> the HUD counter (spendable) + a passbook row (v42.office.log). No savings in v4.2.
 //   panel      the 책상 pad (0.4 s), the 업무 chip (after 총총이), the bank's 창구 pad: OfficePanel (UI scene)
@@ -24,6 +27,9 @@ import { t, fmt } from '../../data/strings.js';
 import { gdist } from '../../core/Iso.js';
 import { villageTills } from '../V42.js';
 import { Residency } from '../../core/Residency.js';
+// ---- (v4.3 step B, P) the v43 bus (BP-25: the office / hall cards shown; P1 only listens)
+import { emit as emit43 } from '../v43/hooks.js';
+import { EV43 } from '../../data/ids43.js';
 
 const ROLES = ['sem', 'ttal', 'bok', 'chong'];
 const OB = () => (BALANCE.v42 && BALANCE.v42.office) || {};
@@ -132,16 +138,24 @@ export class Office {
   }
 
   // ------------------------------------------------------------------ staff
+  /** ((v4.3 step B, P — D3 ★A, Q15) has the village become 읍? (the staff come from then on) */
+  eup() { const rk = this.gs.v4 && this.gs.v4.rank; return !!(rk && rk.level >= 2); }
+
   nextRole() {
     if (!this.built) return null;
-    const rk = this.gs.v4 && this.gs.v4.rank;
+    // ((v4.3 step B, P — D3 ★A) all four staff after 읍 (it was 총총이 only): the office (≈ 16 min, a side goal) stands
+    //  with no hire pad until then. One condition hides the pad, so the goal window's side rows and 관망's 'hire' spend
+    //  need no change. Staff an older village hired before 읍 stay (Q21: no refund, a thank-you letter in v4.4)
+    if (!this.eup()) return null;
     for (const r of ROLES) {
       if (this.hired(r)) continue;
-      if (r === 'chong' && !(rk && rk.level >= 2)) return null;
       return r;
     }
     return null;
   }
+
+  /** ((v4.3 step B, P) the tab the 책상 pad opens: 재고 once 셈이 works there, else 직원 (what comes at 읍) */
+  deskTab() { return this.hired('sem') ? 'stock' : 'staff'; }
 
   showHire() {
     const gs = this.gs, r = this.nextRole();
@@ -434,10 +448,19 @@ export class Office {
     this.syncHut(true);
     // the plots' decor goes when they appear
     const so = gs.sites && gs.sites.v42_office, sb = gs.sites && gs.sites.v42_bank;
-    if (so && so.shown && !this.cleared.office) this.clearDecor('office');
+    if (so && so.shown && !this.cleared.office) {
+      this.clearDecor('office');
+      // ((v4.3 step B, P — BP-25) the office's side card is up (the hut's plot opens with the mine)
+      if (so.state === 'plot') emit43(EV43.card, { id: 'chief_office', side: true });
+    }
     if (sb && sb.shown && !this.cleared.bank) this.clearDecor('bank');
     // ((v4.3 step B, L2 — BP-18) the hall's plot beside the office (w_hall): its decor ('hall') goes when the plot shows or a hall stands
-    if (!this.cleared.hall && this.hallSiteUp()) this.clearDecor('hall');
+    if (!this.cleared.hall && this.hallSiteUp()) {
+      this.clearDecor('hall');
+      // ((v4.3 step B, P — BP-25) the hall's goal card is up (village complete): the main road's next goal
+      const sh = gs.sites && gs.sites.w_hall;
+      if (sh && sh.shown && sh.state === 'plot') emit43(EV43.card, { id: 'town_hall', side: false });
+    }
     if (!B) return;
     // (a pad paid in full hires inside its update and is gone afterwards: never read it back then)
     const hp = this.hirePad;
@@ -478,7 +501,7 @@ export class Office {
     const p = gs.player;
     if (B.deskPad.contains(p.x, p.y)) {
       this.deskT += dt;
-      if (this.deskT >= (Number(OB().deskPadS) || 0.4) && !this.deskOpened) { this.deskOpened = true; this.openPanel('desk', 'stock'); }
+      if (this.deskT >= (Number(OB().deskPadS) || 0.4) && !this.deskOpened) { this.deskOpened = true; this.openPanel('desk', this.deskTab()); }
     } else { this.deskT = 0; this.deskOpened = false; }
     // the mailbox flag, the wall board (1 Hz near the view)
     const N = this.v42.news;
@@ -495,6 +518,8 @@ export class Office {
     return ROLES.map((r) => {
       const ch = this.staff[r];
       const cost = Number(OB().hire && OB().hire[r]) || 0;
+      // ((v4.3 step B, P — D3 ★A) before 읍 nobody can be hired yet: the row says they come at 읍 (no price, no pad)
+      if (!ch && !this.eup()) return { role: r, hired: false, cost, eup: false, text: t('staffAfterEup', { role: t('role_' + r), name: t('staff_' + r) }) };
       if (!ch) return { role: r, hired: false, cost, text: t('staffLocked', { role: t('role_' + r), name: t('staff_' + r), cost: fmt(cost) }) };
       const text = r === 'ttal' ? ch.doingText() : t('staffDoing_' + (ch.doing || 'desk'));
       return { role: r, hired: true, text: t('staff_' + r) + ' · ' + text };

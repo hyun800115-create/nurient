@@ -274,7 +274,8 @@ export const BALANCE = {
     house_a:   { coins: 160,  item_plank: 10, item_ingot: 0, time: 7, people: 3 },   // 통나무집 (3명)
     house_b:   { coins: 320,  item_plank: 10, item_ingot: 3, time: 8, people: 4 },   // 돌집 (4명)
     // ---- (v4-C) 마을 건물 (서쪽 숲마을의 아주 큰 부지) — 하는 일은 아래 civic 칸에 있어요
-    town_hall:      { coins: 2400, item_plank: 30, item_ingot: 10, time: 14 },   // 마을회관 (시청)
+    // ((4.3 둘째 걸음) 마을회관은 마을이 완성되면 바로 다음 목표예요 (오두막 · 촌장 사무실 옆 터). 예전 값은 2400 + 판자 30 + 주괴 10)
+    town_hall:      { coins: 1200, item_plank: 16, item_ingot: 4, time: 14 },    // 마을회관 (시청)
     big_restaurant: { coins: 1500, item_plank: 24, item_ingot: 6, time: 12 },    // 큰 식당
     // ---- (v4-C) 꾸미기: happy = 마을 행복도가 이만큼 올라요 (같은 것을 또 지으면 절반씩만)
     deco_snowman:    { coins: 120, item_plank: 0,  item_ingot: 0, time: 3, happy: 2 },   // 눈사람 동상 (작은 부지)
@@ -714,7 +715,7 @@ export const BALANCE = {
   //   어부 한 바퀴 = castS + (waitMin ~ waitMax) + biteS + fishReelS + restS ≈ 3.5초, 한 번 감으면 fishPerReel 마리 (두 마리가 같이 올라와요)
   //   → 한 사람이 1분에 약 34마리, 세 사람이면 약 100마리 (4.2 어부와 같은 빠르기: 예전 어부는 한 사람이 1분에 약 34마리)
   deck: { reelS: 0.6, castS: 0.6, waitMin: 1.0, waitMax: 2.8, biteS: 0.25, fishReelS: 0.6, restS: 0.15, fishPerReel: 2 },
-  // 오두막 → 촌장 사무실 (옆 목표). (4.3 B 부터 이 값: 지금(4.3 A)은 사무실 값과 열리는 때가 예전 그대로예요 — v42.office.site)
+  // 오두막 → 촌장 사무실 (옆 목표, 광산을 열면 지을 수 있어요). (4.3 둘째 걸음부터 이 값을 써요. 직원은 읍이 되면 와요)
   hut: { office: { coins: 400, item_plank: 8, item_ingot: 0, time: 8 } },
   // 첫 집 두 채 (숲을 열면, 옆 목표): world.js 부지 h43_1 (뾰족집) / h43_2 (통나무집) 의 값. 사는 사람 수와 짓는 시간은 그 집 그대로
   houses43: [{ coins: 80, item_plank: 4 }, { coins: 160, item_plank: 6 }],

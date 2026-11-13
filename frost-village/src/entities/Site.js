@@ -15,6 +15,9 @@ import { Pad } from './Pad.js';
 import { ItemStack } from './ItemStack.js';
 import { Character } from './Character.js';
 import { panel } from '../core/Panel.js';
+// ---- (v4.3 step B, P) the v43 bus (BP-25: the office and the hall finished; P1 only listens)
+import { emit as emit43 } from '../systems/v43/hooks.js';
+import { EV43 } from '../data/ids43.js';
 
 const DIR_IDX = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
 const SIZE_FALLBACK = { S: { dropPoint: [2, 64], workPoints: [[-81, 27], [79, 29]], workDirs: ['NE', 'NW'], footprint: [181, 91] },
@@ -31,6 +34,9 @@ export function buildCost(bkey, siteId) {
   if (bkey === 'watchtower') return (BALANCE.towers && BALANCE.towers[siteId]) || { coins: 300, item_plank: 10, item_ingot: 0, time: 8 };
   // (v4.2) 촌장 사무실 · 서리 은행 · 서리 물류창고 (balance.js v42)
   const V = BALANCE.v42;
+  // ((v4.3 step B, P — D16 ★A) the hut → 촌장 사무실 is a side goal from the mine on at balance.js hut.office (400 + 판자 8);
+  //  v42.office.site (1,800 + 20 + 6) is the pre-B price, kept only as the fallback. Remap43 NEW43 must equal this (save_v43 §12)
+  if (bkey === 'chief_office' && BALANCE.hut && BALANCE.hut.office) return BALANCE.hut.office;
   if (V && bkey === 'chief_office' && V.office && V.office.site) return V.office.site;
   if (V && bkey === 'bank42' && V.bank && V.bank.site) return V.bank.site;
   if (V && bkey === 'depot42' && V.depot && V.depot.site) return V.depot.site;
@@ -405,6 +411,9 @@ export class Site {
       gs.sfxAt(Assets.audioDef('sfx_build_done') ? 'sfx_build_done' : 'sfx_unlock', this.x, this.y, { volume: 0.9 }, true);
       gs.effects.shake(180, 0.004);
       gs.events.emit('built', this.building, this);
+      // ((v4.3 step B, P — BP-25) the chief's two buildings of step B finished live: the office (≈ 16) and the hall (≈ 22)
+      if (this.building === 'chief_office') emit43(EV43.milestone, { id: 'office' });
+      else if (this.building === 'town_hall') emit43(EV43.milestone, { id: 'hall' });
     }
   }
 

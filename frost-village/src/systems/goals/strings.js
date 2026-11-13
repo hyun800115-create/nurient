@@ -54,6 +54,8 @@ export const GOAL_STR = {
     g_already: '벌써 여기 있어요 · {place}',
     g_tutorial: '튜토리얼을 마치면 볼 수 있어요',
     g_busy: '지금은 걸어갈 수 없어요',
+    // ((v4.3 step B, P — X-7) the hut → 촌장 사무실 side card before 읍
+    g_office43: '촌장님 사무실 (직원은 읍이 되면 와요)',
 
     // ==== (v4.3 step B, B0b) ko: G adds its keys ONLY between its start / end lines (the same pair in en)
     // >>> v43B:G start (post-depot goals: GOALS43 row names, banners, sub lines g43_*; postdepot_addendum.md §3.7)
@@ -132,6 +134,7 @@ export const GOAL_STR = {
     g_already: 'Already here: {place}',
     g_tutorial: 'Available after the tutorial',
     g_busy: "Can't walk there right now",
+    g_office43: "Chief's office (staff come once you are a town)",
 
     // ==== (v4.3 step B, B0b) en: G adds its keys ONLY between its start / end lines (the same pair in ko)
     // >>> v43B:G start (post-depot goals: GOALS43 row names, banners, sub lines g43_*; postdepot_addendum.md §3.7)
