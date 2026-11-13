@@ -571,9 +571,35 @@ export const STRINGS = {
     // <<< v43B:P1 end
 
     // >>> v43B:G start (post-depot goals: GOALS43 objective lines obj_g43_*; postdepot_addendum.md §3.7)
+    // (물류창고 다음 목표: 위 가운데 「다음 할 일」 한 줄. 목표 창의 이름·작은 줄은 src/systems/goals/strings.js)
+    obj_g43_staff: '물류창고 직원 뽑기 {have}/{n} ({cost} 코인)',
+    obj_g43_fork: '지게차 들이기 ({cost} 코인)',
+    obj_g43_st2: '{st} 2단 놓기 ({cost} 코인)',
+    obj_g43_st2gate: '{name|을/를} 뽑으면 2단을 놓을 수 있어요 ({cost} 코인)',
+    obj_g43_deco: '마을 꾸미기 {have}/{n} · 빈 땅에 꾸밈 짓기',
+    obj_g43_house: '첫 집 짓기 ({cost} 코인)',
+    obj_g43_build: '{name} 짓는 중 · 재료 {got}/{need}',
+    obj_g43_dlv: '정기 납품 {have}/{n} · {item} {got}/{need}',
+    obj_g43_dlvTake: '정기 납품: {item} 가지러 가요 {got}/{need}',
+    obj_g43_dlvWait: '정기 납품 {have}/{n} · 새 주문을 기다려요',
+    obj_g43_train: '기차가 짐을 실어 가요 {have}/{n}',
+    obj_g43_shop: '가게 키우기: {name} ({cost} 코인)',
+    obj_g43_s4: '가게 4단 「눈꽃마을 시장」 ({cost} 코인)',
+    obj_g43_taste: '마을회관 앞 발판에 서 보세요 · 읍장 취임 맛보기',
+    obj_g43_wait: '{name} · {why}',
     // <<< v43B:G end
 
     // >>> v43B:T start (읍장 취임 맛보기: pad label, banner, title and teaser cards taste_*; postdepot_addendum.md §5.3)
+    // (no version number in any of these: the roadmap can still renumber the next update, BP-45)
+    taste_pad: '읍장 취임 맛보기',
+    taste_banner: '읍장 취임 맛보기', taste_bannerSub: '서리읍 주민들이 모였어요',
+    taste_cheer: '서리읍의 읍장님, 축하드려요!',
+    taste_next: '다음 업데이트에서 열려요',
+    taste_l1: '읍장 수업 1 · 마을 경영 창', taste_l2: '지도에서 마을 돌보기',
+    taste_tag: '곧 열려요',
+    taste_foot: '진짜 취임식은 다음 업데이트에서 열려요',
+    taste_ok: '좋아요',
+    taste_end: '진짜 취임식은 다음 업데이트에서 열려요',
     // <<< v43B:T end
   },
 
@@ -1099,9 +1125,34 @@ export const STRINGS = {
     // <<< v43B:P1 end
 
     // >>> v43B:G start (post-depot goals: GOALS43 objective lines obj_g43_*; postdepot_addendum.md §3.7)
+    obj_g43_staff: 'Hire depot hands {have}/{n} ({cost} coins)',
+    obj_g43_fork: 'Get the depot a forklift ({cost} coins)',
+    obj_g43_st2: 'Put the {st} at level 2 ({cost} coins)',
+    obj_g43_st2gate: 'Hire {name} to unlock level 2 ({cost} coins)',
+    obj_g43_deco: 'Decorate {have}/{n} · build decor on a free plot',
+    obj_g43_house: 'Build a first house ({cost} coins)',
+    obj_g43_build: 'Building the {name} · materials {got}/{need}',
+    obj_g43_dlv: 'Regular delivery {have}/{n} · {item} {got}/{need}',
+    obj_g43_dlvTake: 'Regular delivery: fetch {item} {got}/{need}',
+    obj_g43_dlvWait: 'Regular delivery {have}/{n} · waiting for the next order',
+    obj_g43_train: 'The trains carry goods {have}/{n}',
+    obj_g43_shop: 'Grow the shop: {name} ({cost} coins)',
+    obj_g43_s4: 'Shop stage 4 「Snowbloom Village Market」 ({cost} coins)',
+    obj_g43_taste: 'Stand on the pad by the town hall · inauguration preview',
+    obj_g43_wait: '{name} · {why}',
     // <<< v43B:G end
 
     // >>> v43B:T start (읍장 취임 맛보기: pad label, banner, title and teaser cards taste_*; postdepot_addendum.md §5.3)
+    // (no version number in any of these: the roadmap can still renumber the next update, BP-45)
+    taste_pad: 'Inauguration preview',
+    taste_banner: 'A taste of the inauguration', taste_bannerSub: 'Frost Town has gathered',
+    taste_cheer: 'Congratulations, Mayor of Frost Town!',
+    taste_next: 'Coming in the next update',
+    taste_l1: 'Mayor lesson 1 · the village desk', taste_l2: 'Look after the village from the map',
+    taste_tag: 'Coming soon',
+    taste_foot: 'The real inauguration comes in the next update',
+    taste_ok: 'OK',
+    taste_end: 'The real inauguration comes in the next update',
     // <<< v43B:T end
   },
 };

@@ -20,7 +20,9 @@
 // 9 tools/test/v43_helpers.mjs asStepB / isStepB on a save object, its text and a keys fixture
 // 10 (B0b, postdepot_addendum.md §6.1) the post-depot chain (G) and the 읍장 취임 맛보기 (T): the G43 ids, seen keys, flag
 //   and x key are save-safe; the goals43 balance keys and their repairs; v43/index.js registers G and T between N and P1;
-//   the stubs answer nothing (while they are the stubs); the GoalBook seams (rows, sub, side de-duplication, G's side
+//   the stubs answer nothing (while they are the stubs; once G is in, the real Goals43 keeps the contract: attach makes
+//   gs.goals43 with every seam, closed on a bare scene, its listeners gone at shutdown; once T is in, G and T on one bare
+//   scene: row 10 listed, T's gate shut, both gone at shutdown); the GoalBook seams (rows, sub, side de-duplication, G's side
 //   rows) and Tutorial.v42Goal's order, driven by a stand-in gs.goals43; the B0b class changes no row; Rank.hold:
 //   ceremonyOn = cerOn || hold, a hold never ticks or ends the ceremony and is not state().ceremony; Rank.hallFrame is
 //   the 승격식's hall framing, and the 승격식 runs as before while hold is unset
@@ -407,12 +409,42 @@ const strip2 = (o) => JSON.parse(JSON.stringify(o));
     const rf = g.refs();
     ok(!('goals43' in gs) && same(g.rows(true, null), []) && same(g.sideRows(null, 0), []) && rf instanceof Set && rf.size === 0 && g.sub({ kind: 'g43' }) === null && g.objective({}, 'place') === null && g.objective({}, 'text') === null && g.current() === null,
       'the Goals43 stub: attach leaves no gs.goals43; rows / sideRows [], refs an empty Set, sub / objective / current null');
-  } else st.push('the Goals43 stub (G is in)');
+  } else {
+    st.push('the Goals43 stub (G is in)');
+    // (G is in) the real class keeps B0b's contract: attach on a scene makes gs.goals43 with every seam; with nothing of
+    //  a village (no progress, no v4.2) it is closed and answers nothing; the scene's shutdown takes its listeners
+    const L = new Map();
+    const events = { on(n, f) { L.set(n, (L.get(n) || []).concat([f])); }, off(n, f) { L.set(n, (L.get(n) || []).filter((q) => q !== f)); }, once(n, f) { this.on(n, f); }, emit(n, ...a) { for (const f of (L.get(n) || []).slice()) f(...a); } };
+    const gs = { events };
+    const g = v43.Goals43.attach(gs, { fresh: true });
+    const n = () => [...L.values()].reduce((s, a) => s + a.length, 0);
+    ok(gs.goals43 === g && g instanceof v43.Goals43 && ['rows', 'sideRows', 'refs', 'sub', 'objective', 'current', 'tasteReady'].every((k) => typeof g[k] === 'function') && n() >= 3, 'the real Goals43: attach makes gs.goals43 with every seam (rows, sideRows, refs, sub, objective, current, tasteReady) and its listeners', n());
+    const rs = g.rows(true, null), rf = g.refs();
+    ok(rs.length === v43.GOALS43.filter((d) => (d.step ? false : d.taste ? v43.EupTaste.enabled : true)).length && rs.every((r) => r.kind === 'g43' && (r.state === 'next' || r.state === 'done')) && rf instanceof Set && rf.size === 0 && same(g.sideRows(null, 0), []) && g.sub({ kind: 'pad' }) === null && g.objective({}, 'place') === null && g.objective({}, 'text') === null && g.current() === null && g.tasteReady() === false,
+      'with no village it is closed: its rows locked, refs an empty Set, no side rows / objective / current row / taste gate');
+    events.emit('shutdown');
+    ok(gs.goals43 === null && n() === 0, 'the scene\'s shutdown removes every listener and gs.goals43 (BP-56)', n());
+  }
   if (v43.EupTaste.stub === true) {
     const gs = {};
     v43.EupTaste.attach(gs, { fresh: true });
     ok(v43.EupTaste.enabled === false && Object.keys(gs).length === 0, 'the EupTaste stub: enabled false (row 10 absent), attach does nothing');
-  } else st.push('the EupTaste stub (T is in)');
+  } else {
+    st.push('the EupTaste stub (T is in)');
+    // (T is in, a3.3) G and T attached in the hook order on one bare scene: row 10 is in G's rows, T's gate asks G and
+    //  stays shut (no 읍, chain closed), no pad / place; the scene's shutdown takes both and every listener
+    const L = new Map();
+    const events = { on(n, f) { L.set(n, (L.get(n) || []).concat([f])); }, off(n, f) { L.set(n, (L.get(n) || []).filter((q) => q !== f)); }, once(n, f) { this.on(n, f); }, emit(n, ...a) { for (const f of (L.get(n) || []).slice()) f(...a); } };
+    const gs = { events };
+    const n = () => [...L.values()].reduce((s, a) => s + a.length, 0);
+    const g = v43.Goals43.attach(gs, { fresh: true });
+    v43.EupTaste.attach(gs, { fresh: true });
+    const E = gs.eupTaste;
+    ok(v43.EupTaste.enabled === true && E && typeof E.destroy === 'function' && g && g.defs().some((d) => d.id === 'g43_taste') && g.rows(true, null).some((r) => r.id === 'g43_taste'), 'the real EupTaste: enabled, attach makes gs.eupTaste; G lists row 10 (g43_taste) because of it (BP-53)');
+    ok(v43.EupTaste.gate(gs) === false && g.tasteReady() === false && !E.pad && v43.EupTaste.place(gs) === null, 'on a bare scene T\'s gate (G\'s tasteReady) is shut: no pad, no place');
+    events.emit('shutdown');
+    ok(gs.goals43 === null && gs.eupTaste === null && n() === 0, 'the scene\'s shutdown takes G and T and every listener', n());
+  }
   if (EupTasteCard.stub === true) { const c = new EupTasteCard({}); ok(c.isOpen === false, 'the EupTasteCard stub never opens'); } else st.push('the EupTasteCard stub (T is in)');
   skipped.push(...st);
 }
