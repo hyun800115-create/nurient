@@ -21,13 +21,19 @@
   "shadows": "buildings / sites have a baked soft cool shadow falling screen down-right; items and boats none.",
   "stackStep": "items: px between stacked copies at scale 1; carryScale = scale for hand-carried stacks (same rules as assets/props items).",
   "boats": "characters{} entries with kind \"boat\": 5 rendered dirs + flipX mirrors, frame names {anim}_{dir}_{i}; crew baked in, 1 px ink outline like the characters, NO shadow (draw fx_wake at wakePoint[dir], mirrored dirs negate dx). cargoPoint[dir] = [dx, dy, behind] = bottom of a carried fish stack (behind = draw the stack before the boat sprite).",
-  "staff overrides": "market_counter_staff / trade_post_staff are not images: {of, staffPoints, staffDirs, staffDepth} for the EXISTING props sellers, measured from prop_assets geometry."
+  "staff overrides": "market_counter_staff / trade_post_staff are not images: {of, staffPoints, staffDirs, staffDepth} for the EXISTING props sellers, measured from prop_assets geometry.",
+  "split43": "(v4.3 step B, TX-a T-3a) bld_buildings is split by district: bld_work = warehouse + toolsmith (the d_wh / d_tool work strip), bld_east = cannery + store (d_cannery / d_store). Each page is a texture area of its own (src/core/Residency.js). tools/blender/prop_repack.py does the split; run it again after a full bld_pack.py rebuild."
  },
  "atlases": [
   {
-   "key": "bld_buildings",
-   "png": "buildings/bld_buildings.png",
-   "json": "buildings/bld_buildings.json"
+   "key": "bld_work",
+   "png": "buildings/bld_work.png",
+   "json": "buildings/bld_work.json"
+  },
+  {
+   "key": "bld_east",
+   "png": "buildings/bld_east.png",
+   "json": "buildings/bld_east.json"
   },
   {
    "key": "bld_buildings_2",
@@ -59,7 +65,7 @@
  ],
  "sprites": {
   "warehouse": {
-   "atlas": "bld_buildings",
+   "atlas": "bld_work",
    "frame": "warehouse",
    "anchor": [
     0.41667,
@@ -127,7 +133,7 @@
    "notes": "Warehouse (3x3 m): big log barn with a gambrel roof; its gable end faces screen down-left (world -Y) with wide red X-braced barn doors standing open (crates / sacks / barrels inside and outside) and a loft hoist above the doors. anims.work = the hoist lifts a sack bundle (pulley turning, rope shortening) while the doors sway. staffPoints[0] = keeper beside the doors (in front of the barn: draw above it). inPoint = drop-off pad (front-left), outPoint = pick-up pad (right side)."
   },
   "station_cannery": {
-   "atlas": "bld_buildings",
+   "atlas": "bld_east",
    "frame": "station_cannery",
    "anchor": [
     0.33259,
@@ -193,7 +199,7 @@
    "notes": "Cannery (3x3 m): brick + half-timber workshop with a slate roof, a giant tin can on the ridge, a brick chimney. In front (screen down-left) a conveyor runs along world +X: fish crate at the left (input) end, a can-sealing press in the middle, an output tray at the right end. The crate, the tray and the idle belt are EMPTY: the fish / ingots and the cans are the stacks' own item pictures on the in / out pads. anims.work = cans travel along the belt (seamless), the press stamps, lamp blinks, steam + chimney smoke. inPoint = fish/ingot pad (front-left), outPoint = cans pad (right). fxPoints: press, steam, smoke, input, output."
   },
   "shop_general": {
-   "atlas": "bld_buildings",
+   "atlas": "bld_east",
    "frame": "shop_general",
    "anchor": [
     0.33333,
@@ -255,7 +261,7 @@
    "notes": "General store (3x3 m): cream plank shop with a false front, green-white awning, open counter with a brass cash register, shelves of cans / jars / tools inside. Front faces screen down-left (world -Y). staffPoints[0] = the clerk spot BEHIND the counter (facing SW = SE flipped): draw the shop (depth d), then the clerk (d + 0.5), then the overlay sprite shop_general_front (d + 1, same anchor) so the counter hides the clerk's legs. customerPoint = where the first customer stands in front of the counter (queue toward screen down-left); cashPoint = coin pad; inPoint = restock pad (porters)."
   },
   "shop_general_front": {
-   "atlas": "bld_buildings",
+   "atlas": "bld_east",
    "frame": "shop_general_front",
    "anchor": [
     0.33333,
@@ -270,7 +276,7 @@
    "notes": "Occluder overlay for shop_general (same frame + anchor): draw it ABOVE the clerk standing at shop_general.staffPoints[0] (building depth d, clerk d + 0.5, overlay d + 1) so the counter hides the clerk's legs. Contains every surface on the camera side of the vertical plane through the staff spot (the counter + what stands in front of the clerk)."
   },
   "station_toolsmith": {
-   "atlas": "bld_buildings",
+   "atlas": "bld_work",
    "frame": "station_toolsmith",
    "anchor": [
     0.35309,

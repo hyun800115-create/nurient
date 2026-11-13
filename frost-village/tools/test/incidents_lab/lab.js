@@ -33,7 +33,7 @@ const W0 = 720, MIN_H = 1280, MAX_H = 1600;
 }
 
 const LATE = ['town', 'roads', 'life2', 'civic', 'fx_city', 'vehicles', 'logistics'];
-const ATLASES = ['town_civic', 'town_shops', 'town_homes', 'town_park', 'town_street', 'town_rails', 'roads_decals', 'props_nature', 'props_decor', 'props_buildings', 'bld_buildings', 'bld_buildings_2', 'bld_sites',
+const ATLASES = ['town_civic', 'town_shops', 'town_homes', 'town_park', 'town_street', 'town_rails', 'roads_decals', 'props_nature', 'props_decor', 'props_buildings', 'bld_work', 'bld_east', 'bld_buildings_2', 'bld_sites',
   'life_props', 'emotes', 'fx_particles', 'ui_icons', 'ui2_icons', 'civ_props', 'civ_police', 'civ_moving', 'ui4_icons', 'veh_police_car'];
 const LIFE2 = ['flower_stand', 'ribbon_garland'];
 const IMAGES = ['ground_snow', 'ground_plaza', 'road_dirt', 'road_dirt_y', 'road_dirt_cross', 'road_cobble_wide', 'road_asphalt', 'sidewalk', 'ui_wanted_poster', 'ui_wanted_silhouette', 'ui_chat_bubble'];

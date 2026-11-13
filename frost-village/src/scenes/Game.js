@@ -429,7 +429,9 @@ export class Game extends Phaser.Scene {
     // then residents who live here already
     const first = working.concat((this.life && this.life.moved) || [], ['npc_clerk_a', 'npc_clerk_b', 'npc_porter_a', 'npc_porter_b']);
     // (v3) the building / construction / boat pictures come first once they are needed (plots may be on screen)
-    const n = Assets.queueLazy(this.load, first, ['bakery43', 'market_s3', 'market_s2', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    // ((v4.3 step B, TX-a) bld_buildings is split by district: bld_work (warehouse + toolsmith), bld_east (cannery + store);
+    //  + the shop's stage-4 page (no art until WP-M: queueLazy skips a key with no manifest entry))
+    const n = Assets.queueLazy(this.load, first, ['bakery43', 'market_s4', 'market_s3', 'market_s2', 'bld_sites', 'bld_work', 'bld_east', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (want.length) Assets.queueAudio(this.load, (k) => want.indexOf(k) >= 0);
     this.lazyGateT = 2;
     if (!want.length && !n) return;
@@ -443,10 +445,20 @@ export class Game extends Phaser.Scene {
     if (f === 'water' && !WATER_DATA.test(k)) return WaterSheets.allowed(k);     // (v4-C2) only the water sheets a system asked for
     if (!pr) return true;
     // ((v4.3) the shop's stage pages: stage 2 once the forest is near (its pad shows), stage 3 once the farm is open
-    const ms = /^market_s([2-9])$/.exec(k);
+    const ms = /^market_s([1-9])$/.exec(k);
     //  ((review CD-2) a page of an earlier stage is never fetched (stage 3 carries its own sled): 1.15 MiB less at stage 3)
     //  ((v4.3 밀밭 · 빵집) stage 3 comes after village complete now (the first smoked meat sold): fetched from the hunt on)
-    if (ms) { const n = Number(ms[1]), st = this.market ? this.market.stage : 1; if (st > n) return false; return st === n || (n === 2 ? pr.isDone('hire_fisherman') : pr.isDone('zone_hunt')); }
+    //  ((v4.3 step B, TX-a) stage 1 too (a boot page, but the core area may let it go and fetch it again: never once the
+    //   shop is past it, T-4); stage 4 once its step is done or 읍 offers it (map_tx T-3c / build_plan §3.6)
+    if (ms) {
+      const n = Number(ms[1]), st = this.market ? this.market.stage : 1;
+      if (st > n) return false;
+      if (st === n) return true;
+      if (n === 2) return pr.isDone('hire_fisherman');
+      if (n === 3) return pr.isDone('zone_hunt');
+      if (n === 4) return pr.isDone('mkt_s4') || !!(pr.flags && pr.flags.rankEup);
+      return false;
+    }
     // ((v4.3 밀밭 · 빵집) the bakery cottage, its stall and the field's 농막 / props: once the field is next (the lumberjack hired)
     if (k === 'bakery43') return pr.isDone('hire_lumberjack') || pr.isDone('zone_farm') || pr.isDone('bld_bakery');
     if (f === 'workers') return pr.complete || pr.anyDone(/^(hire[23]_|op_toolsmith)/);
@@ -480,7 +492,7 @@ export class Game extends Phaser.Scene {
     if (this.lazyGateT > 0) return;
     this.lazyGateT = 2;
     if (!Assets.gate) return;
-    const n = Assets.queueLazy(this.load, [], ['bakery43', 'market_s2', 'market_s3', 'bld_sites', 'bld_buildings', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
+    const n = Assets.queueLazy(this.load, [], ['bakery43', 'market_s2', 'market_s3', 'market_s4', 'bld_sites', 'bld_work', 'bld_east', 'bld_buildings_2', 'boat_rowboat', 'boat_fishing']);
     if (n) this.startLazyLoad();
   }
 

@@ -240,7 +240,10 @@ async function phoneFlow(o) {
         await tapL(page, tr.sp.x, tr.sp.y);
         const after = await page.evaluate(() => ({ tapped: window.__tapped, on: window.__FV.scene.v42.pilot.on, ct: window.__FV.scene.camTarget }));
         ok(after.tapped === tr.key && after.on && near(after.ct.x, c0.x, 1) && near(after.ct.y, c0.y, 1), `[${tag}] a tap on a resident still reaches them (${tr.key}); 관망 stays on, the camera does not move`, { tr, after, c0 });
-        await page.evaluate(() => { const gs = window.__FV.scene; if (gs.residentChat && gs.residentChat.hide) try { gs.residentChat.hide(); } catch (e) { /* */ } });
+        // ((v4.3 step B, TX-a) the 「수다 떨기」 pill a resident with a persona card shows under their feet goes too (UI's, not
+        //  ResidentChat's: there is no residentChat.hide), at once: else the pinch's first finger below can land on it, open
+        //  the chat sheet and pause the village — every check after it then failed on a still game (npc_kid_boy, 11 FAILs))
+        await page.evaluate(() => { const gs = window.__FV.scene, ui = window.__FV.game.scene.getScene('UI'); if (gs.residentChat && gs.residentChat.hide) try { gs.residentChat.hide(); } catch (e) { /* */ } if (ui && ui.hideChatButton) try { ui.hideChatButton(); if (ui.chatBtn) ui.chatBtn.setVisible(false); } catch (e) { /* */ } });
       }
       // ---- a pinch zooms, 관망 stays on, the leftover finger does not pan until lifted
       const pz = await page.evaluate(() => {

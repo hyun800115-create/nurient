@@ -12,7 +12,8 @@
   "carryScale": "items: recommended scale for stacks carried in a character's hands (chibi bodies; at 1x an item is head-wide). Draw carried copy i at scale carryScale and y - i*stackStep*carryScale. Ground/pad towers and UI icons stay at scale 1 (stackStep is native).",
   "fxPoints": "stations: px offsets [dx, dy] from the anchor where game FX can be spawned (fire = flame/heat source, smoke = just above the chimney/vent top, blade, dust, crucible).",
   "work": "stations: the idle frame is the resting state (embers banked, no smoke); anims.work is a seamless 4-frame loop with flames, smoke puffs and moving parts baked in. All frames share frameSize and anchor, so swap frames in place.",
-  "repack43": "(v4.3 bakery split) props_buildings repacked by tools/blender/prop_repack.py without station_bakery (+ its 4 work frames), market_counter, trade_post, upgrade_bench and fish_net (no longer drawn: the bakery43 cottage, the market stalls, the 자재 창구, workshop43 and the fishing deck replaced them)."
+  "repack43": "(v4.3 bakery split) props_buildings repacked by tools/blender/prop_repack.py without station_bakery (+ its 4 work frames), market_counter, trade_post, upgrade_bench and fish_net (no longer drawn: the bakery43 cottage, the market stalls, the 자재 창구, workshop43 and the fishing deck replaced them).",
+  "repack43b": "(v4.3 step B, TX-a T-3b) mine_entrance, boat_small and campfire live on props_decor (they stand outside the core district too); props_buildings holds only core-district pictures, so the core texture area may let it go (src/core/Residency.js)."
  },
  "atlases": [
   {
@@ -634,7 +635,7 @@
    "notes": "Canvas A-frame tent; entrance faces screen down-left (world -Y)."
   },
   "campfire": {
-   "atlas": "props_buildings",
+   "atlas": "props_decor",
    "frame": "campfire",
    "anchor": [
     0.47794,
@@ -679,7 +680,7 @@
    "notes": "Wooden pier 2 m wide, 4.4 m long along world +Y (runs screen up-right into the sea). Anchor = centre; the land end is at -Y (screen down-left)."
   },
   "mine_entrance": {
-   "atlas": "props_buildings",
+   "atlas": "props_decor",
    "frame": "mine_entrance",
    "anchor": [
     0.46505,
@@ -703,7 +704,7 @@
    "notes": "Rock face with a timber-framed tunnel; the tunnel faces the camera (screen down). Rails + ore cart come out toward the viewer. Anchor = centre of the rock base."
   },
   "boat_small": {
-   "atlas": "props_buildings",
+   "atlas": "props_decor",
    "frame": "boat_small",
    "anchor": [
     0.45098,

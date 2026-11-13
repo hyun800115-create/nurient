@@ -138,7 +138,7 @@ const E = (page, fn, a) => page.evaluate(fn, a);
 // frames differ by 14-95 in the cells where the fish / steaks / hams / log / bread / cans were painted.
 await section('art', null, async (page) => {
   const want = JSON.parse(fs.readFileSync(path.join(HERE, 'ghostsweep_art.json'), 'utf8'));
-  // the cannery, the store and the boats are on the lazy buildings pages (bld_buildings, boat_*), which a fresh game
+  // the cannery, the store and the boats are on the lazy buildings pages (bld_east, boat_*), which a fresh game
   // fetches only from the farmer on: open that gate and fetch them through the game's own lazy loader
   await E(page, () => { const A = window.__FV.assets(), g = window.__FV.scene; A.gate = () => true; g.checkLazyGates(99); });
   for (let k = 0; k < 180; k++) {

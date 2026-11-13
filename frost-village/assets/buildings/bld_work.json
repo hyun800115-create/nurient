@@ -1,0 +1,216 @@
+{
+ "frames": {
+  "station_toolsmith": {
+   "frame": {
+    "x": 420,
+    "y": 441,
+    "w": 352,
+    "h": 385
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 78,
+    "w": 352,
+    "h": 385
+   },
+   "sourceSize": {
+    "w": 388,
+    "h": 472
+   }
+  },
+  "station_toolsmith_work_0": {
+   "frame": {
+    "x": 420,
+    "y": 0,
+    "w": 353,
+    "h": 439
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 1,
+    "y": 28,
+    "w": 353,
+    "h": 439
+   },
+   "sourceSize": {
+    "w": 388,
+    "h": 472
+   }
+  },
+  "station_toolsmith_work_1": {
+   "frame": {
+    "x": 0,
+    "y": 1586,
+    "w": 353,
+    "h": 443
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 1,
+    "y": 24,
+    "w": 353,
+    "h": 443
+   },
+   "sourceSize": {
+    "w": 388,
+    "h": 472
+   }
+  },
+  "station_toolsmith_work_2": {
+   "frame": {
+    "x": 420,
+    "y": 828,
+    "w": 354,
+    "h": 446
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 1,
+    "y": 21,
+    "w": 354,
+    "h": 446
+   },
+   "sourceSize": {
+    "w": 388,
+    "h": 472
+   }
+  },
+  "station_toolsmith_work_3": {
+   "frame": {
+    "x": 0,
+    "y": 1136,
+    "w": 353,
+    "h": 448
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 1,
+    "y": 19,
+    "w": 353,
+    "h": 448
+   },
+   "sourceSize": {
+    "w": 388,
+    "h": 472
+   }
+  },
+  "warehouse": {
+   "frame": {
+    "x": 355,
+    "y": 1276,
+    "w": 418,
+    "h": 376
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 19,
+    "w": 418,
+    "h": 376
+   },
+   "sourceSize": {
+    "w": 456,
+    "h": 412
+   }
+  },
+  "warehouse_work_0": {
+   "frame": {
+    "x": 0,
+    "y": 379,
+    "w": 418,
+    "h": 376
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 19,
+    "w": 418,
+    "h": 376
+   },
+   "sourceSize": {
+    "w": 456,
+    "h": 412
+   }
+  },
+  "warehouse_work_1": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 418,
+    "h": 377
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 19,
+    "w": 418,
+    "h": 377
+   },
+   "sourceSize": {
+    "w": 456,
+    "h": 412
+   }
+  },
+  "warehouse_work_2": {
+   "frame": {
+    "x": 355,
+    "y": 1654,
+    "w": 418,
+    "h": 377
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 19,
+    "w": 418,
+    "h": 377
+   },
+   "sourceSize": {
+    "w": 456,
+    "h": 412
+   }
+  },
+  "warehouse_work_3": {
+   "frame": {
+    "x": 0,
+    "y": 757,
+    "w": 418,
+    "h": 377
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 19,
+    "w": 418,
+    "h": 377
+   },
+   "sourceSize": {
+    "w": 456,
+    "h": 412
+   }
+  }
+ },
+ "meta": {
+  "app": "frost-village/tools/pack_utils.py",
+  "version": "1.0",
+  "image": "bld_work.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 774,
+   "h": 2032
+  },
+  "scale": "1",
+  "repack43b": "tools/blender/prop_repack.py (v4.3 step B T-3a): split of bld_buildings by district"
+ }
+}

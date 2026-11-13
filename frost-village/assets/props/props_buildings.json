@@ -1,45 +1,5 @@
 {
  "frames": {
-  "boat_small": {
-   "frame": {
-    "x": 467,
-    "y": 1071,
-    "w": 167,
-    "h": 112
-   },
-   "rotated": false,
-   "trimmed": true,
-   "spriteSourceSize": {
-    "x": 12,
-    "y": 19,
-    "w": 167,
-    "h": 112
-   },
-   "sourceSize": {
-    "w": 204,
-    "h": 156
-   }
-  },
-  "campfire": {
-   "frame": {
-    "x": 1232,
-    "y": 1069,
-    "w": 97,
-    "h": 59
-   },
-   "rotated": false,
-   "trimmed": true,
-   "spriteSourceSize": {
-    "x": 15,
-    "y": 19,
-    "w": 97,
-    "h": 59
-   },
-   "sourceSize": {
-    "w": 136,
-    "h": 100
-   }
-  },
   "chief_lodge": {
    "frame": {
     "x": 0,
@@ -62,8 +22,8 @@
   },
   "dock_pier": {
    "frame": {
-    "x": 1117,
-    "y": 597,
+    "x": 723,
+    "y": 896,
     "w": 343,
     "h": 266
    },
@@ -80,30 +40,10 @@
     "h": 308
    }
   },
-  "mine_entrance": {
-   "frame": {
-    "x": 772,
-    "y": 597,
-    "w": 343,
-    "h": 273
-   },
-   "rotated": false,
-   "trimmed": true,
-   "spriteSourceSize": {
-    "x": 3,
-    "y": 19,
-    "w": 343,
-    "h": 273
-   },
-   "sourceSize": {
-    "w": 372,
-    "h": 300
-   }
-  },
   "station_grill": {
    "frame": {
-    "x": 0,
-    "y": 988,
+    "x": 259,
+    "y": 1371,
     "w": 240,
     "h": 165
    },
@@ -122,8 +62,8 @@
   },
   "station_grill_work_0": {
    "frame": {
-    "x": 523,
-    "y": 872,
+    "x": 0,
+    "y": 1367,
     "w": 257,
     "h": 197
    },
@@ -142,8 +82,8 @@
   },
   "station_grill_work_1": {
    "frame": {
-    "x": 1117,
-    "y": 865,
+    "x": 745,
+    "y": 1164,
     "w": 258,
     "h": 202
    },
@@ -162,8 +102,8 @@
   },
   "station_grill_work_2": {
    "frame": {
-    "x": 260,
-    "y": 861,
+    "x": 482,
+    "y": 1164,
     "w": 261,
     "h": 205
    },
@@ -182,8 +122,8 @@
   },
   "station_grill_work_3": {
    "frame": {
-    "x": 0,
-    "y": 779,
+    "x": 222,
+    "y": 1158,
     "w": 258,
     "h": 207
    },
@@ -202,8 +142,8 @@
   },
   "station_sawmill": {
    "frame": {
-    "x": 1377,
-    "y": 865,
+    "x": 501,
+    "y": 1371,
     "w": 223,
     "h": 153
    },
@@ -222,8 +162,8 @@
   },
   "station_sawmill_work_0": {
    "frame": {
-    "x": 1377,
-    "y": 1020,
+    "x": 501,
+    "y": 1526,
     "w": 223,
     "h": 153
    },
@@ -242,8 +182,8 @@
   },
   "station_sawmill_work_1": {
    "frame": {
-    "x": 782,
-    "y": 1067,
+    "x": 259,
+    "y": 1538,
     "w": 223,
     "h": 153
    },
@@ -262,8 +202,8 @@
   },
   "station_sawmill_work_2": {
    "frame": {
-    "x": 242,
-    "y": 1068,
+    "x": 726,
+    "y": 1563,
     "w": 223,
     "h": 153
    },
@@ -282,8 +222,8 @@
   },
   "station_sawmill_work_3": {
    "frame": {
-    "x": 1007,
-    "y": 1069,
+    "x": 0,
+    "y": 1566,
     "w": 223,
     "h": 153
    },
@@ -302,8 +242,8 @@
   },
   "station_smelter": {
    "frame": {
-    "x": 527,
-    "y": 620,
+    "x": 0,
+    "y": 1076,
     "w": 220,
     "h": 230
    },
@@ -322,8 +262,8 @@
   },
   "station_smelter_work_0": {
    "frame": {
-    "x": 850,
-    "y": 302,
+    "x": 494,
+    "y": 625,
     "w": 227,
     "h": 290
    },
@@ -342,8 +282,8 @@
   },
   "station_smelter_work_1": {
    "frame": {
-    "x": 1079,
-    "y": 300,
+    "x": 265,
+    "y": 488,
     "w": 227,
     "h": 295
    },
@@ -362,8 +302,8 @@
   },
   "station_smelter_work_2": {
    "frame": {
-    "x": 1079,
-    "y": 0,
+    "x": 850,
+    "y": 302,
     "w": 228,
     "h": 298
    },
@@ -403,7 +343,7 @@
   "station_smokehouse": {
    "frame": {
     "x": 264,
-    "y": 620,
+    "y": 917,
     "w": 261,
     "h": 239
    },
@@ -423,7 +363,7 @@
   "station_smokehouse_work_0": {
    "frame": {
     "x": 0,
-    "y": 488,
+    "y": 785,
     "w": 262,
     "h": 289
    },
@@ -442,8 +382,8 @@
   },
   "station_smokehouse_work_1": {
    "frame": {
-    "x": 507,
-    "y": 326,
+    "x": 772,
+    "y": 602,
     "w": 263,
     "h": 292
    },
@@ -462,8 +402,8 @@
   },
   "station_smokehouse_work_2": {
    "frame": {
-    "x": 1309,
-    "y": 299,
+    "x": 0,
+    "y": 488,
     "w": 263,
     "h": 295
    },
@@ -482,8 +422,8 @@
   },
   "station_smokehouse_work_3": {
    "frame": {
-    "x": 1309,
-    "y": 0,
+    "x": 507,
+    "y": 326,
     "w": 263,
     "h": 297
    },
@@ -502,8 +442,8 @@
   },
   "tent_a": {
    "frame": {
-    "x": 782,
-    "y": 872,
+    "x": 745,
+    "y": 1368,
     "w": 251,
     "h": 193
    },
@@ -547,10 +487,11 @@
   "image": "props_buildings.png",
   "format": "RGBA8888",
   "size": {
-   "w": 1600,
-   "h": 1224
+   "w": 1088,
+   "h": 1720
   },
   "scale": "1",
-  "repack": "tools/blender/prop_repack.py (v4.3 bakery split): dropped fish_net, market_counter, station_bakery, station_bakery_work_0, station_bakery_work_1, station_bakery_work_2, station_bakery_work_3, trade_post, upgrade_bench"
+  "repack": "tools/blender/prop_repack.py (v4.3 bakery split): dropped fish_net, market_counter, station_bakery, station_bakery_work_0, station_bakery_work_1, station_bakery_work_2, station_bakery_work_3, trade_post, upgrade_bench",
+  "repack43b": "tools/blender/prop_repack.py (v4.3 step B T-3b): mine_entrance, boat_small, campfire moved props_buildings -> props_decor"
  }
 }

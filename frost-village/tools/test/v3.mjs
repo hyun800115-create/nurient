@@ -35,7 +35,7 @@ try {
   await page.reload({ waitUntil: 'load' });
   await realWaitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 120000);
   // 1. the buildings fragment is not needed for the title screen (it loads after Start)
-  const atTitle = await ev(() => window.__FV.game.textures.exists('bld_buildings'));
+  const atTitle = await ev(() => window.__FV.game.textures.exists('bld_work'));
   await realSleep(400);
   await tapStart(page);
   await realWaitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 180000);
@@ -43,7 +43,7 @@ try {
   // they wait until the village gets there (less memory on the phone early on)
   await realWaitFor(page, () => window.__FV.hasTex('vil_npc_chef'), 90000).catch(() => {});
   await realSleep(1500);
-  const early = await ev(() => ({ b: window.__FV.game.textures.exists('bld_buildings'), w: window.__FV.game.textures.exists('wkr_fisherman_b') }));
+  const early = await ev(() => ({ b: window.__FV.game.textures.exists('bld_work'), w: window.__FV.game.textures.exists('wkr_fisherman_b') }));
   await installStepper(page);
   await adv(1);
 
@@ -53,8 +53,8 @@ try {
   // (the game loop sleeps under the fixed-step clock, and Phaser's loader only starts queued files beyond
   //  its parallel limit on a scene update: give it that nudge while waiting, without advancing game time —
   //  on a busy machine the residents' files are still loading here and the gated ones would wait forever)
-  await realWaitFor(page, () => { const L = window.__FV.scene.load; if (L && L.isLoading()) L.update(); return window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('bld_sites') && window.__FV.game.textures.exists('wkr_fisherman_b'); }, 90000).catch(() => {});
-  const afterStart = await ev(() => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('wkr_fisherman_b'));
+  await realWaitFor(page, () => { const L = window.__FV.scene.load; if (L && L.isLoading()) L.update(); return window.__FV.game.textures.exists('bld_work') && window.__FV.game.textures.exists('bld_sites') && window.__FV.game.textures.exists('wkr_fisherman_b'); }, 90000).catch(() => {});
+  const afterStart = await ev(() => window.__FV.game.textures.exists('bld_work') && window.__FV.game.textures.exists('wkr_fisherman_b'));
   step('buildings / worker-variant art loads lazily: not at the title, not in a new village, then when needed', !atTitle && !early.b && !early.w && afterStart, `title=${atTitle} newVillage=${JSON.stringify(early)} later=${afterStart}`);
   let s = await st();
   const fog = await ev(() => { const gs = window.__FV.scene, T = gs.territory; return { east: !!T.regions.east.fog, south: !!T.regions.south.fog, walk: gs.collision.inWalk(2300, 1000), walkStart: gs.collision.inWalk(990, 1200), cam: T.camRect }; });

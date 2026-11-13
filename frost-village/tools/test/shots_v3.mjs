@@ -41,7 +41,7 @@ try {
   await sleep(600);
   await tapStart(page);
   await waitFor(page, () => window.__FV.state && window.__FV.game.scene.isActive('UI'), 180000);
-  await waitFor(page, () => window.__FV.game.textures.exists('bld_buildings') && window.__FV.game.textures.exists('bld_sites'), 180000).catch(() => {});
+  await waitFor(page, () => window.__FV.game.textures.exists('bld_work') && window.__FV.game.textures.exists('bld_sites'), 180000).catch(() => {});
   await installStepper(page);
   await ev(() => { window.__FV.unlockAll(); window.__FV.give(4000); });
   await adv(3);

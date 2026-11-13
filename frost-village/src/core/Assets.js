@@ -31,8 +31,8 @@ const LAZY_KEY = /^fx_(build_dust|build_done|wake|wake_ring|fire_big|wave_crash|
 // (v4-C2) the water's data textures + baked shoreline field: not needed for the title's first paint (prefetched
 // while the title shows, else the Game fetches them first and the old sea shows until they are there)
 export const WATER_DATA = /^water_(waves_a|waves_b|foam|lut|shore_ramp|field_village)$/;
-// ((v4.3) the shop's later stages (assets/market market_s2, market_s3): after the title, when the village nears them
-//  (Game.lazyAllowed); stage 1 「눈꽃 노점」 is in the boot set
+// ((v4.3) the shop's later stages (assets/market market_s2, market_s3; step B's market_s4): after the title, when the village
+//  nears them (Game.lazyAllowed); stage 1 「눈꽃 노점」 is in the boot set
 export const MARKET_LATE = /^market_s[2-9]$/;
 // ((v4.3 밀밭 · 빵집) the bakery cottage, its stall and the field's 농막 / scarecrow / sled / sacks (assets/bakery43, one page): after the
 //  title, once the field is near (Game.lazyAllowed: the forest's lumberjack hired, or the field already open)
@@ -203,6 +203,12 @@ export const Assets = {
   framePage: {},      // 'atlas|frame' -> page key (split building atlases)
   demanded: new Set(),// on-demand pages asked for (social)
   held: new Set(),    // pictures Residency took out of memory (a far area): not re-queued until it lets them go
+  // ((v4.3 step B, TX-a T-3f) the pages a Residency area manages (filled by Residency once the village runs, so the boot
+  //  load is untouched): such a page counts as an after-title picture — a boot page (props_buildings, deck43, market_s1)
+  //  an area let go is queued again when the area comes near, and what asks for one of its pictures meanwhile gets the
+  //  invisible stand-in and is re-skinned on arrival (Assets.pending), not a placeholder box)
+  areaPages: new Set(),
+  standIn: null,      // ((v4.3 step B, TX-a) fn(img, spriteKey): a stand-in Assets.image made during a rebuild (Residency.attach)
   pageUse: {},        // page key -> last time a character used it (ms)
   /** replace the atlases of fragment `frag` (all merged fragments when null) by their pages */
   applyPages(frag) {
@@ -271,7 +277,7 @@ export const Assets = {
   gate: null,            // (v3.5 review) fn(fileKey) -> may this after-title file load now? (null = all)
 
   /** is file `key` one of the pictures that load after the title? */
-  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || MARKET_LATE.test(key) || BAKERY_LATE.test(key) || this.lateFrag.has(this.fragOf[key]); },
+  isLazy(key) { return (LAZY_FRAGMENTS.indexOf(this.fragOf[key]) >= 0 && !EAGER_KEYS.has(key)) || LAZY_KEY.test(key) || WATER_DATA.test(key) || MARKET_LATE.test(key) || BAKERY_LATE.test(key) || this.lateFrag.has(this.fragOf[key]) || this.areaPages.has(key); },
 
   /**
    * (v4-C2) fetch after-title pictures now, outside any scene's loader (plain Image elements added to the
@@ -886,6 +892,9 @@ export const Assets = {
     const r = this.sprite(key);
     const img = scene.add.image(x, y, r.tex, r.frame);
     img.setOrigin(r.anchor[0], r.anchor[1]);
+    // ((v4.3 step B, TX-a) the village built again while an area's pages are out of memory: Residency dresses this stand-in
+    //  when its page comes (set by Residency.attach for that build only)
+    if (r.pending && this.standIn) { try { this.standIn(img, key); } catch (e) { /* a stand-in stays a stand-in */ } }
     return img;
   },
 
