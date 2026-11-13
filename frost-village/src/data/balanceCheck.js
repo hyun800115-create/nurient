@@ -251,7 +251,7 @@ function checkGoals43(B) {
 
 // ---- (v4-C) 마을회관·큰 식당·꾸미기·이주민 (docs/기획서_v4_추가요청.md)
 const C1_BUILD = {
-  town_hall: { coins: 2400, item_plank: 30, item_ingot: 10, time: 14 }, big_restaurant: { coins: 1500, item_plank: 24, item_ingot: 6, time: 12 },
+  town_hall: { coins: 1200, item_plank: 16, item_ingot: 4, time: 14 }, big_restaurant: { coins: 1500, item_plank: 24, item_ingot: 6, time: 12 },
   deco_snowman: { coins: 120, item_plank: 0, item_ingot: 0, time: 3, happy: 2 }, deco_bench: { coins: 90, item_plank: 4, item_ingot: 0, time: 3, happy: 1 },
   deco_lamp: { coins: 80, item_plank: 0, item_ingot: 1, time: 3, happy: 1 }, deco_flowers: { coins: 160, item_plank: 3, item_ingot: 0, time: 4, happy: 2 },
   deco_rink: { coins: 400, item_plank: 0, item_ingot: 0, time: 5, happy: 3 }, deco_playground: { coins: 550, item_plank: 12, item_ingot: 0, time: 6, happy: 4 },

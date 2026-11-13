@@ -7,6 +7,10 @@ import { Audio } from '../core/Audio.js';
 import { Assets } from '../core/Assets.js';
 import { t } from '../data/strings.js';
 import { TOOL_OF } from '../data/items.js';
+// ---- (v4.3 step B, P) plot rules (BP-7: `only` / `types` / the size's menu in one place), the step-B ids, the v43 bus
+import { plotAccepts } from './plotRules.js';
+import { HALL_UNLOCK, STEP43, FLAG43, EV43 } from '../data/ids43.js';
+import { emit as emit43 } from './v43/hooks.js';
 
 /** (v3.5) the look a hire step brings: the n-th free look of the profession (workers manifest professions{}) */
 export function workerLook(gs, s) {
@@ -32,6 +36,30 @@ export function stepCost(s) {
   if (s.type === 'restStaff') { const S = (BALANCE.civic && BALANCE.civic.restaurant && BALANCE.civic.restaurant.staff) || {}; return S[s.role] || 500; }
   if (BALANCE.costs[s.id] !== undefined) return BALANCE.costs[s.id];
   return BALANCE.costs3 && BALANCE.costs3[s.id];
+}
+
+/**
+ * ((v4.3 step B, P — build_plan.md §3.7 item 4, postdepot_addendum.md §4.2) what a step's pad asks: { coins, items }.
+ * stepCost's coins, the shop stages' / the bakery's materials from balance.js (every key but coins), and the 4단
+ * 「눈꽃마을 시장」 at market43.stage4Old × the price (coins and materials) for a village that was already 읍 when it was
+ * remapped (progress.flags.s4half). `flags` = progress.flags (null: full price). The pad (syncPads) and the goal window's
+ * row before the pad stands (GoalBook.stepRow) both ask here, so they never disagree
+ */
+export function stepPrice(s, flags) {
+  let coins = stepCost(s);
+  let items = s.items || null;
+  const mats = (src) => { const o = {}; for (const k in src) if (k !== 'coins' && Number(src[k]) > 0) o[k] = Math.floor(Number(src[k])); return o; };
+  // ((review SHOP-4) 눈꽃 시장's materials come from balance.js market43.stage<n> (every key but coins), as its coins do
+  if (s.type === 'shop') { const S3 = ((BALANCE.market43 || {})['stage' + s.level]) || null; if (S3) { const o = mats(S3); if (Object.keys(o).length) items = o; } }
+  // ((v4.3 밀밭 · 빵집) 빵집 짓기's materials: balance.js bakery43.build (every key but coins), as the shop's
+  if (s.type === 'bakery') { const BB = (BALANCE.bakery43 && BALANCE.bakery43.build) || null; if (BB) { const o = mats(BB); items = Object.keys(o).length ? o : null; } }
+  if (s.id === STEP43.shop4 && flags && flags[FLAG43.s4half]) {
+    const k = Number((BALANCE.market43 || {}).stage4Old);
+    const mul = Number.isFinite(k) && k > 0 && k <= 1 ? k : 0.5;
+    if (Number.isFinite(coins)) coins = Math.max(1, Math.round(coins * mul));
+    if (items) { const o = {}; for (const m in items) o[m] = Math.max(1, Math.ceil(items[m] * mul)); items = o; }
+  }
+  return { coins, items };
 }
 
 // id, type, what it needs first (after = a step id, flag = a one-time event such as the first sale).
@@ -70,6 +98,13 @@ export const STEPS = [
   //  (Bread sells at the bakery's own stall; bought before complete, the 400 + 8 planks pushed village complete later)
   { id: 'mkt_s3', type: 'shop', level: 3, after: 'hire_hunter', flag: 'firstMeatSale', side: true, items: { item_plank: 8 } },
   { id: 'hire_clerk_s3', type: 'clerk', seller: 'meat', after: 'mkt_s3', side: true },
+  // ((v4.3 step B, P — build_plan.md §2 / §3.7 item 4, as amended by postdepot_addendum.md §4.1, BP-41) 4단 「눈꽃마을 시장」
+  //  (2,000 + 판자 20 + 주괴 8, balance.js market43.stage4; half for a village that was already 읍: stepPrice) after 읍, once
+  //  the post-depot chain reaches it (GOALS43 row 9 sets flags.g43s4; goals43.s4Early: at 읍) and only on top of 3단 (also:
+  //  setStage would otherwise jump 2 → 4). side: it stays out of MAIN_STEPS / nextPad (the main road shows it as row 9).
+  //  Its pad stands on WORLD.pads.mkt_s4 (M may move it); applyStep grows the shop like 2단 / 3단. v4: an after-읍 step, so
+  //  the tests' unlockAll (every first-loop / zone step at once) leaves it alone, as it does the 승격식
+  { id: 'mkt_s4', type: 'shop', level: 4, after: 'f:rankEup', flag: 'g43s4', also: 'mkt_s3', side: true, v4: true },
   // ore line
   { id: 'zone_mine', type: 'zone', zone: 'mine', after: 'hire_farmer' },
   { id: 'op_smelter', type: 'operator', station: 'smelter', after: 'zone_mine' },
@@ -151,6 +186,10 @@ export const GOALS_V3 = [
 //   progress, the next goal the chief can work on is shown instead. when: only once that is met (f:<flag>).
 //   shops / people: the numbers come from balance.js v4.rank.2 (n is the default)
 export const GOALS = [
+  // ---- (v4.3 step B, P — decisions D2 ★A, build_plan.md §3.7 item 3) the town hall first after village complete (1,200 +
+  //   판자 16 + 주괴 4 on w_hall beside the chief's office; its card opens at village complete, BUILD_UNLOCK): tax box, notice
+  //   board, +rooms and +happiness ≈ 22 minutes in, the ceremony's venue later. (It was after the fifth shop at 2,400)
+  { id: 'town_hall', kind: 'build', c1: true },
   { id: 'east', kind: 'region', step: 'tower_east' },
   { id: 'station', kind: 'build', v4: true },
   { id: 'firstTrain', kind: 'flag', passive: true, v4: true },
@@ -174,9 +213,7 @@ export const GOALS = [
   { id: 'se', kind: 'region', step: 'tower_se' },
   { id: 'boat_fishing', kind: 'step' },
   { id: 'shops:5', kind: 'shops', n: 5, rankKey: 'shops', passive: true, v4: true },
-  // ---- (v4-C) the town hall (tax box, notice board, +rooms toward the 45 people, the ceremony's venue): after the
-  //   fifth shop so its 2400 coins / planks / ingots do not hold up the cannery and the shops' orders (bot runs)
-  { id: 'town_hall', kind: 'build', c1: true },
+  // ((v4.3 step B, P) the town hall moved to the front of this list (village complete); it was here, after the fifth shop)
   { id: 'people:45', kind: 'people', n: 45, rankKey: 'people', passive: true, v4: true },
   { id: 'rank:2', kind: 'rank', n: 2, v4: true },
 ];
@@ -185,9 +222,10 @@ export const BUILD_UNLOCK = {
   // ((v4.2.1 물류 손질, LD3) the 창고 opens at village complete (it was 'r:south', ≈ 32 min): "창고는 초반에"
   toolsmith: 'r:east', boathouse: 'b:toolsmith', warehouse: 'hire_hunter', cannery: 'boat_rowboat', store: 'b:cannery',
   house_a: 'hire_miner', house_b: 'b:toolsmith', house_c: 'hire_miner',
-  // ---- (v4-C) the town hall and the big restaurant come when the east watchtower's site starts (the neighbours'
-  // art comes then too); early decor uses the village's own props, the park / street / flower ones the town's
-  town_hall: 'tower_east', big_restaurant: 'tower_east',
+  // ---- (v4-C) the big restaurant comes when the east watchtower's site starts (the neighbours' art comes then too);
+  // early decor uses the village's own props, the park / street / flower ones the town's.
+  // ((v4.3 step B, P — D2 ★A) the town hall at village complete (ids43 HALL_UNLOCK = 'hire_hunter', the w_hall plot's `after`)
+  town_hall: HALL_UNLOCK, big_restaurant: 'tower_east',
   deco_snowman: 'hire_miner', deco_bench: 'hire_miner', deco_lamp: 'hire_miner', deco_rink: 'zone_hunt',
   deco_flowers: 'tower_east', deco_playground: 'tower_east', deco_fountain: 'tower_east',
 };
@@ -221,6 +259,8 @@ export class Progression {
   }
 
   isDone(id) { return !!this.done[id]; }
+  /** ((v4.3 step B, P) what step `s` asks in this village: { coins, items } (the 4단 at half price for an s4half village) */
+  stepPrice(s) { return stepPrice(s, this.flags); }
   /** (v3) an `after` condition: step id, 'b:<building>' (finished) or 'r:<land>' (open) */
   met(cond) {
     if (!cond) return true;
@@ -268,13 +308,16 @@ export class Progression {
     }
     return passive;
   }
-  /** ((v4.2.1) is there a free, shown plot whose build menu offers `bkey`? (Civic MENU by size; reserved plots by `only`) */
+  /** ((v4.2.1) is there a free, shown plot whose build menu offers `bkey`?
+   *  ((v4.3 step B, P — BP-7) the plot rules decide (plotRules.plotAccepts: `only`, else L1's `types`, else the size's
+   *  menu). Before, any M / L plot counted for any building: with plot table v2 the generic M / L plots take houses and
+   *  decor only, so the 창고 now waits for its own d_wh plot, as the build menu does) */
   freePlotFor(bkey) {
     const gs = this.gs;
     for (const id in gs.sites || {}) {
       const st = gs.sites[id];
       if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
-      if (st.only ? st.only === bkey : (st.size === 'M' || st.size === 'L')) return true;
+      if (plotAccepts(st, bkey)) return true;
     }
     return false;
   }
@@ -426,7 +469,9 @@ export class Progression {
       // ((v4.2.0.1) one live paid pad per spot: a pad whose spot is taken (another step, a 가공소 2단 / 짐꾼 2 offer)
       //  waits there until that one is bought, then appears (its saved part payment kept). The bench pads step aside)
       if (gs.paidPadNear && gs.paidPadNear(cfg.x, cfg.y, 45.25 * (s.type === 'rank' ? 2.1 : 1.9), s.id, true)) { this.waiting = true; continue; }
-      const cost = stepCost(s);
+      // ((v4.3 step B, P) stepPrice: stepCost + the materials of the shop stages / the bakery, and the s4half half price
+      const pp = stepPrice(s, this.flags);
+      const cost = pp.coins;
       // (v3.5 review) a partial payment above the (new, lower) price is given back, never swallowed
       // (v3 -> v3.5 lowered some prices; the designer may lower one in balance.js too)
       const price = sanePrice(cost), paidBefore = this.paid[s.id] || 0;
@@ -435,11 +480,8 @@ export class Progression {
         if (gs.economy) gs.economy.add(paidBefore - price);
       }
       let icon = 'ui_icon_lock';
-      let items = s.items || null;
-      // ((review SHOP-4) 눈꽃 시장's materials come from balance.js market43.stage<n> (every key but coins), as its coins do
-      if (s.type === 'shop') { const S3 = ((BALANCE.market43 || {})['stage' + s.level]) || null; if (S3) { const o = {}; for (const k in S3) if (k !== 'coins' && Number(S3[k]) > 0) o[k] = Math.floor(Number(S3[k])); if (Object.keys(o).length) items = o; } }
-      // ((v4.3 밀밭 · 빵집) 빵집 짓기's materials: balance.js bakery43.build (every key but coins), as the shop's
-      if (s.type === 'bakery') { const BB = (BALANCE.bakery43 && BALANCE.bakery43.build) || null; if (BB) { const o = {}; for (const k in BB) if (k !== 'coins' && Number(BB[k]) > 0) o[k] = Math.floor(Number(BB[k])); items = Object.keys(o).length ? o : null; } }
+      // ((review SHOP-4) the shop stages' and (v4.3 밀밭 · 빵집) the bakery's materials: balance.js (stepPrice)
+      let items = pp.items;
       // (v3.5) the face of who comes: a portrait still loading (after the title) arrives a moment later
       const face = (k, fb) => (Assets.has(k) || Assets.pending(k) ? k : fb);
       if (s.type === 'hire' || s.type === 'hire2' || s.type === 'hire3') icon = face('portrait_' + workerLook(gs, s), 'portrait_' + s.worker);
@@ -528,6 +570,9 @@ export class Progression {
     }
     gs.events.emit('step', s.id);
     for (const id of withIt) gs.events.emit('step', id);
+    // ((v4.3 step B, P — BP-25) the v43 bus: village complete and the 4단 「눈꽃마을 시장」 bought (P1 only listens)
+    if (s.id === COMPLETE_AFTER) emit43(EV43.milestone, { id: 'complete' });
+    else if (s.id === STEP43.shop4) emit43(EV43.milestone, { id: STEP43.shop4, half: !!this.flags[FLAG43.s4half] });
     if (s.id === BENCH_AFTER) gs.time.delayedCall(1400, () => this.openBench(false));
     gs.time.delayedCall(s.type === 'zone' ? 1800 : 600, () => this.syncPads());
     if (s.id === COMPLETE_AFTER && !this.celebrated) {

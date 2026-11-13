@@ -18,7 +18,8 @@ import { FOODS, GOODS } from '../entities/Seller.js';
 import { MINER_FOOD, MATERIALS, STORE_GOODS, SHOP_FOODS, BAKERY_GOODS } from '../data/items.js';
 import { buildCost } from '../entities/Site.js';
 import { BALANCE } from '../data/balance.js';
-import { MENU } from './Civic.js';
+// ((v4.3 step B, P — BP-7) which plot takes which building: plotRules (`only`, else L1's `types`, else the size's menu)
+import { plotAccepts } from './plotRules.js';
 
 const ZONE_CHAINS = [
   // ((v4.3) planks and ingots sell at the shop's 자재 창구 (the trade post merged into the shop): seller 'mat')
@@ -109,6 +110,8 @@ export class Tutorial {
     if (this.v4Hint(set, dt, idle)) return;
     // ---- (v4.3) the first houses (a side goal): only when he stands idle and the coins also pay for the next pad
     if (idle && this.house43Hint(set)) return;
+    // ---- ((v4.3 step B, P — D16) the hut → 촌장 사무실 (a side goal before 읍): idle, and never ahead of the next main goal
+    if (idle && this.office43Hint(set)) return;
     const nx = prog.nextPad();
     let goal = nx && !prog.complete ? { key: 'obj_next:' + nx.id + ':' + nx.remaining, text: t('obj_next', { name: t(nx.id), cost: fmt(nx.remaining) }) } : null;
     // ((bakefix) its coins paid, only materials left (빵집 짓기's planks): say what it still waits for, not 「(0 코인)」
@@ -321,8 +324,11 @@ export class Tutorial {
   }
 
   /** (v4.2) the next v4.2 thing to pay for once the v4 goals are done: { x, y, h, key, text, cost, pay, pad } or null.
-   *  Order: the 촌장 사무실 plot, its hire pad, the 서리 은행 plot, the 서리 물류창고 plot, then the line offers on the map
+   *  Order: the office's hire pad, the 서리 은행 plot, the 서리 물류창고 plot, then the line offers on the map
    *  (짐꾼 2, 가공소 2단, 역 짐꾼 3/4, 화물칸 크게). Nothing here gates 읍 (they come after it).
+   *  ((v4.3 step B, P — build_plan.md §3.7 items 1–2) the 촌장 사무실 is a side goal from the mine on (office43Hint), no
+   *  longer the first goal after 읍: its plot comes back here only as the bank guard (still the hut at 읍, and the bank's
+   *  plot needs the office). The staff come after 읍 only (Office.nextRole): the hire branch asks for 읍 too
    *  ((v4.3 step B) a post-depot row with a place comes before the line offers, one without after them: { key, text }) */
   v42Goal() {
     const gs = this.gs, v = gs.v42;
@@ -336,11 +342,14 @@ export class Tutorial {
     const padGoal = (u, name) => (u && u.active && !u.done && !u.maxed ? { x: u.x, y: u.y, h: 112, cost: u.remaining, pay: true, pad: u.pad, hold: !u.needsLeave, key: 'obj_next:' + u.id + ':' + u.remaining, text: t('obj_next', { name, cost: fmt(u.remaining) }) } : null);
     const O = v.office;
     const hp = O && O.hirePad;
-    const hire = hp ? padGoal(hp, t('staff_' + hp.role)) : null;
+    const rk = gs.v4 && gs.v4.rank, eup = !!(rk && rk.level >= 2);
+    const hire = hp && eup ? padGoal(hp, t('staff_' + hp.role)) : null;
+    // ((v4.3 step B, P) the bank guard: the office plot only while the bank is neither built nor started
+    const officeFirst = !gs.isBuilt('bank42') && !gs.isBuilding('bank42') ? plot('v42_office', 'chief_office') : null;
     // ((v4.3 step B, BP-55) then the post-depot chain (gs.goals43, G): a current row with a place → the line offers (as
     //  before) → a current row's text only (a counter or a wait), so a waiting row never hides the line-offer arrow
     const G43 = gs.goals43;
-    let c = plot('v42_office', 'chief_office') || hire || plot('v42_bank', 'bank42') || plot('v42_depot', 'depot42') || (G43 ? G43.objective(this, 'place') : null);
+    let c = hire || officeFirst || plot('v42_bank', 'bank42') || plot('v42_depot', 'depot42') || (G43 ? G43.objective(this, 'place') : null);
     if (!c && v.lines) for (const id in v.lines.pads) { const u = v.lines.pads[id]; const lab = u.opts && u.opts.labelFn ? u.opts.labelFn() : id; c = padGoal(u, lab); if (c) break; }
     if (!c && G43) c = G43.objective(this, 'text');
     return c;
@@ -422,8 +431,10 @@ export class Tutorial {
     for (const id in gs.sites) {
       const st = gs.sites[id];
       if (st.kind !== 'plot' || st.state !== 'plot' || !st.shown) continue;
-      // ((v4-C) the plot's build menu decides: Civic MENU by size — the XL plots take the hall and the restaurant)
-      if (st.only ? st.only !== bkey : (MENU[st.size] || MENU.M).indexOf(bkey) < 0) continue;
+      // ((v4-C) the plot's build menu decides. (v4.3 step B, P — BP-7) through plotRules: `only`, else L1's `types`, else
+      //  the size's menu — the hall's arrow goes to w_hall only (w_rest takes the restaurant alone), a workshop to its own
+      //  d_* plot, a house or decor to a plot whose `types` allow it)
+      if (!plotAccepts(st, bkey)) continue;
       // (a house or decor on a big plot only where the build menu allows it)
       if ((/^house_/.test(bkey) || /^deco_/.test(bkey)) && st.size !== 'S') { const c = gs.buildChoices(st).find((q) => q.key === bkey); if (!c || c.locked) continue; }
       const d = gdist(p.x, p.y, st.dropX, st.dropY);
@@ -446,6 +457,30 @@ export class Tutorial {
       return true;
     }
     return false;
+  }
+
+  /**
+   * ((v4.3 step B, P — D16 ★A, X-7) the hut → 촌장 사무실 (world.js plots v42_office, from the mine on; 400 + 판자 8): a side
+   * goal before 읍, shown like the first houses — only while he stands idle, and only when the coins also pay for what the
+   * main road asks next (the next pad, and after village complete the next building goal: the hall first) — "never ahead
+   * of the next main goal". From 읍 on v42Goal leads to it (the bank guard)
+   */
+  office43Hint(set) {
+    const gs = this.gs, p = gs.player, prog = gs.progress, st = gs.sites && gs.sites.v42_office;
+    if (!st || st.state !== 'plot' || !st.shown || gs.isBuilt('chief_office') || gs.isBuilding('chief_office')) return false;
+    const rk = gs.v4 && gs.v4.rank;
+    if (rk && rk.level >= 2) return false;
+    const c = gs.buildChoices(st).find((q) => q.key === 'chief_office');
+    if (!c || c.locked) return false;
+    const nx = prog.nextPad();
+    let keep = nx ? nx.remaining : 0;
+    const g = prog.complete ? prog.nextGoal() : null;
+    if (g && g.kind === 'build' && !gs.isBuilt(g.id) && !gs.isBuilding(g.id)) keep += buildCost(g.id).coins || 0;
+    else if (g && g.kind === 'rank' && prog.pads.rank_eup) keep += prog.pads.rank_eup.remaining || 0;
+    if (gs.economy.coins < (c.cost.coins || 0) + keep) return false;
+    if (st.pad && st.pad.contains(p.x, p.y)) { this.textKey = 'obj_office43'; return true; }
+    set(st.dropX, st.dropY, 70, 'obj_office43');
+    return true;
   }
 
   /** where the chief can pick up `type` (a station / workshop output, else nothing) */

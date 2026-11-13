@@ -1,18 +1,18 @@
 // (v4.3) 목표 창 — what is left to do, read from the game's own progression (nothing here is saved or changes play).
 //   main   the main road in order: the first loop's and the four zones' steps (Progression STEPS without side / v3 / v4 /
 //          c1 rows and the ones that come with another), then the v4 GOALS after village complete (passive ones come by
-//          themselves), then the three v4.2 buildings (사무실 · 은행 · 물류창고). One is "now" (Progression.nextGoal() /
+//          themselves), then the v4.2 buildings (은행 · 물류창고; (v4.3 step B, P) the 촌장 사무실 is a side goal from the mine
+//          on, and a main row before the bank only while it is still the hut at 읍 — the bank needs it). One is "now" (Progression.nextGoal() /
 //          the first one not done), the others "next" (locked: the one before comes first) or "wait" (passive, in progress);
 //          (v4.3 step B) then the post-depot chain GOALS43 from gs.goals43 (src/systems/goals/Goals43.js, package G)
 //   side   the optional purchases standing in the village now (every paid pad that is not the main one: clerks, porters,
 //          2nd / 3rd workers, bench upgrades, line offers, the office hire, the restaurant staff) + the first houses'
-//          plots; what the coins pay for first, then the cheapest
+//          plots + ((v4.3 step B, P) before 읍) the hut → 촌장 사무실 plot; what the coins pay for first, then the cheapest
 //   place  where a tap walks the chief: the pad / plot drop pad / site drop pad / food box / town gate ({ x, y, pad })
 // Rows: { id, kind, name, icon, coins, items, have, need, state, afford, place, why, sub }
 
-import { STEPS, GOALS, COMES_WITH, stepCost, workerLook } from '../Progression.js';
+import { STEPS, GOALS, COMES_WITH, stepCost, stepPrice, workerLook } from '../Progression.js';
 import { WORLD } from '../../data/world.js';
-import { BALANCE } from '../../data/balance.js';
 import { Assets } from '../../core/Assets.js';
 import { t, fmt } from '../../data/strings.js';
 import { buildCost } from '../../entities/Site.js';
@@ -21,8 +21,12 @@ import { gt } from './strings.js';
 const WITH = new Set([].concat(...Object.values(COMES_WITH)));
 /** the main road before village complete (17 steps: the bakery split added 빵집 짓기 and 빵집 판매원) */
 export const MAIN_STEPS = STEPS.filter((s) => !s.side && !s.v3 && !s.v4 && !s.c1 && !WITH.has(s.id));
-/** (v4.2) the three buildings after 읍 (Tutorial.v42Goal's plots) */
-export const V42_BUILDS = [['v42_office', 'chief_office'], ['v42_bank', 'bank42'], ['v42_depot', 'depot42']];
+/** (v4.2) the buildings after 읍 (Tutorial.v42Goal's plots). ((v4.3 step B, P — D3 / D16 ★A, build_plan.md §3.7 item 1) the
+ *  촌장 사무실 left this list: it is a side goal from the mine on (OFFICE43, GoalBook.sideRows); at 읍 it comes back as a main
+ *  row before the bank only while the plot is still the hut (the bank's plot needs b:chief_office): the bank guard) */
+export const V42_BUILDS = [['v42_bank', 'bank42'], ['v42_depot', 'depot42']];
+/** ((v4.3 step B, P) the hut's plot and what replaces it */
+export const OFFICE43 = ['v42_office', 'chief_office'];
 const ITEM_SHORT = (k) => t(k);
 const pick = (...keys) => { for (const k of keys) { try { if (k && Assets.has(k)) return k; } catch (e) { /* */ } } return keys[keys.length - 1]; };
 
@@ -55,10 +59,14 @@ export class GoalBook {
   stepRow(s, state) {
     const gs = this.gs, pr = gs.progress, pad = pr.pads[s.id];
     const done = pr.isDone(s.id);
-    const r = { id: s.id, kind: 'step', name: this.stepName(s), icon: this.stepIcon(s), coins: pad ? pad.remaining : stepCost(s) || 0, items: null, state: done ? 'done' : state, place: null, why: null };
+    // ((v4.3 step B, P) before its pad stands a row asks Progression.stepPrice (the 4단 at half price for an s4half village,
+    //  postdepot_addendum.md §3.1 row 9), not the bare stepCost
+    const price = pr.stepPrice ? pr.stepPrice(s) : stepPrice(s, pr.flags);
+    const r = { id: s.id, kind: 'step', name: this.stepName(s), icon: this.stepIcon(s), coins: pad ? pad.remaining : price.coins || 0, items: null, state: done ? 'done' : state, place: null, why: null };
     if (pad && pad.items) { r.items = {}; for (const k in pad.items) { const left = pad.items[k] - (pad.got[k] || 0); if (left > 0) r.items[k] = left; } }
-    // ((bakefix) 빵집 짓기 before its pad stands: its planks too (balance.js bakery43.build, every key but coins), not coins alone
-    else if (!pad && !done && s.type === 'bakery') { const B = (BALANCE.bakery43 && BALANCE.bakery43.build) || {}; const it = {}; for (const k in B) if (k !== 'coins' && Number(B[k]) > 0) it[k] = Math.floor(Number(B[k])); r.items = Object.keys(it).length ? it : null; }
+    // ((bakefix) 빵집 짓기 before its pad stands: its planks too (balance.js bakery43.build, every key but coins), not coins alone;
+    //  ((v4.3 step B, P) the shop stages too: the 4단's planks and ingots)
+    else if (!pad && !done && (s.type === 'bakery' || s.type === 'shop')) r.items = price.items && Object.keys(price.items).length ? Object.assign({}, price.items) : null;
     if (!done && pad && pad.active && !pad.done) r.place = { x: pad.x, y: pad.y, pad: pad.pad, ref: pad };
     else if (!done && state === 'now') r.why = 'wait';
     return r;
@@ -191,6 +199,15 @@ export class GoalBook {
     }
     // 3. the v4.2 buildings (after 읍: every v4 goal done)
     const after = pr.complete && GOALS.every((g) => pr.goalDone(g));
+    // ((v4.3 step B, P — the bank guard, build_plan.md §3.7 item 1) still the hut at 읍: the 촌장 사무실 first (the bank's
+    //  plot needs it); a village that built it before 읍 never sees this row. ((P verify) 읍 by the rank too: a 읍 village
+    //  with a v4 goal open again (people below 45 a while, an older village whose 승격식 came before its hall) keeps the
+    //  row in 「다음」 like the bank and the depot, never the 「직원은 읍이 되면 와요」 side row)
+    if (this.officeGuard(after || this.afterEup())) {
+      const r = this.v42Row(OFFICE43[0], OFFICE43[1], after && !cur && gs.v42 ? 'now' : 'next');
+      if (r.state === 'now') cur = r;
+      rows.push(r);
+    }
     for (const [id, bkey] of V42_BUILDS) {
       const st = after && !cur && gs.v42 ? 'now' : 'next';
       const r = this.v42Row(id, bkey, st);
@@ -201,6 +218,20 @@ export class GoalBook {
     const G43 = gs.goals43;
     if (G43) for (const r of G43.rows(after && !cur, this) || []) { if (r.state === 'now' && !cur) cur = r; rows.push(r); }
     return { rows, cur };
+  }
+
+  /** ((v4.3 step B, P) the bank guard: 읍 reached (`after`), the office not built, the bank neither built nor started */
+  officeGuard(after) {
+    const gs = this.gs;
+    if (!after || !gs.isBuilt) return false;
+    return !gs.isBuilt(OFFICE43[1]) && !gs.isBuilt('bank42') && !(gs.isBuilding && gs.isBuilding('bank42'));
+  }
+
+  /** ((v4.3 step B, P) has the village become 읍? The rank itself (as Office.eup and Tutorial.office43Hint read it), or every
+   *  v4 goal done (the window's own rule for the v4.2 rows) */
+  afterEup() {
+    const gs = this.gs, pr = gs.progress, rk = gs.v4 && gs.v4.rank;
+    return !!((rk && rk.level >= 2) || (pr && pr.complete && GOALS.every((g) => pr.goalDone(g))));
   }
 
   /** the side goals standing now: every paid pad that is not the current main one, + the first houses' plots */
@@ -235,6 +266,18 @@ export class GoalBook {
       if (st.state !== 'plot' || !st.shown || (g43refs && g43refs.has(st))) continue;
       const c = buildCost(st.only, id);
       const r = { id: 'plot:' + id, kind: 'plot', name: gt('g_house43', { n: hn }), icon: pick('ui_icon_house', 'ui_icon_hammer'), coins: c.coins || 0, items: null, state: 'side', place: { x: st.dropX, y: st.dropY, pad: st.pad, ref: st }, why: null };
+      const it = {};
+      for (const k of ['item_plank', 'item_ingot']) if (c[k] > 0) it[k] = c[k];
+      r.items = Object.keys(it).length ? it : null;
+      r.afford = coins >= r.coins;
+      out.push(r);
+    }
+    // ((v4.3 step B, P — D16 / X-7) the hut → 촌장 사무실 (400 + 판자 8) from the mine until 읍: a side goal whose name says
+    //  the staff come at 읍. From 읍 on it is a main row (the bank guard), never a side row too
+    const so = gs.sites && gs.sites[OFFICE43[0]];
+    if (so && so.state === 'plot' && so.shown && so !== curRef && !(g43refs && g43refs.has(so)) && !(gs.isBuilt && gs.isBuilt(OFFICE43[1])) && !this.afterEup()) {
+      const c = buildCost(OFFICE43[1], OFFICE43[0]);
+      const r = { id: 'plot:' + OFFICE43[0], kind: 'plot', name: gt('g_office43'), icon: pick('ui_icon_office', 'ui_icon_hammer'), coins: c.coins || 0, items: null, state: 'side', place: { x: so.dropX, y: so.dropY, pad: so.pad, ref: so }, why: null };
       const it = {};
       for (const k of ['item_plank', 'item_ingot']) if (c[k] > 0) it[k] = c[k];
       r.items = Object.keys(it).length ? it : null;

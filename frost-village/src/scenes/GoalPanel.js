@@ -17,6 +17,9 @@ import { View } from '../core/View.js';
 import { panel } from '../core/Panel.js';
 import { FONT } from '../data/strings.js';
 import { gt } from '../systems/goals/strings.js';
+// ((v4.3 step B, P — BP-25) the v43 bus: the goal window opened (EV43.goalwin, ids43: "P"); P1 only listens
+import { emit as emit43 } from '../systems/v43/hooks.js';
+import { EV43 } from '../data/ids43.js';
 
 const TXT = (size, color = '#2b2f3a', weight = '800', extra) => Object.assign({ fontFamily: FONT, fontSize: size + 'px', fontStyle: weight, color, resolution: 2 }, extra || {});
 const has = (k) => { try { return !!k && Assets.has(k); } catch (e) { return false; } };
@@ -196,6 +199,7 @@ export class GoalPanel {
     try { this.fill(Wk.read(3, 12)); } catch (e) { console.error('[goals] window', e); }
     this.readT = 0.5;
     if (window.__FV) window.__FV.goalsOpen = true;
+    emit43(EV43.goalwin, { from: this.src || 'button' });
   }
 
   close(quiet) {

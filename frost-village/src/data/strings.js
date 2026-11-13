@@ -556,6 +556,12 @@ export const STRINGS = {
     // <<< v43B:S end
 
     // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
+    // (오두막 → 촌장 사무실: 광산을 열면 짓는 옆 목표, 직원 넷은 읍이 되면 와요 — decisions X-7, D3)
+    bp_chief_office: '직원은 읍이 되면 와요',
+    obj_office43: '촌장님 사무실을 지을 수 있어요 · 직원은 읍이 되면 와요',
+    staffAfterEup: '{role} {name} · 읍이 되면 와요',
+    staffTitleEup: '사무실 직원 · 읍이 되면 와요',
+    tabLockedEup: '읍이 되면 {role} {name|이/가} 와요',
     // <<< v43B:P end
 
     // >>> v43B:H start (hall: train-cash pile label, stage-4 offer banner)
@@ -1084,6 +1090,11 @@ export const STRINGS = {
     // <<< v43B:S end
 
     // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
+    bp_chief_office: 'Staff come once you are a town',
+    obj_office43: "You can build the chief's office · staff come once you are a town",
+    staffAfterEup: '{name} ({role}) · comes once you are a town',
+    staffTitleEup: 'Office staff · they come once you are a town',
+    tabLockedEup: 'Opens when {name} ({role}) comes, once you are a town',
     // <<< v43B:P end
 
     // >>> v43B:H start (hall: train-cash pile label, stage-4 offer banner)

@@ -1,7 +1,8 @@
 // (v4.2, docs/v42_plan.md §4.4 / §5.6 / §6 + §15) the v4.2 places in the game, fixed-step clock:
 //   node tools/test/v42.mjs
 // From the v4.1 46-min save (village complete):
-//   office   the 촌장 사무실 stands on its plot; the hire pad offers 셈이 first; the four staff come
+//   office   the 촌장 사무실 stands on its plot; ((v4.3 step B, P) no hire pad before 읍, its 직원 tab says they come at 읍;
+//            at 읍) the hire pad offers 셈이 first; the four staff come
 //   courier  딸랑이's rounds: every coin taken from a till reaches the wallet (Σ taken = Σ deposited + the sack),
 //            the passbook log gets its rows, no till is emptied below 0
 //   bank     서리 은행: built after the office, the courier deposits at its counter, the 통장 tab opens < 100 ms
@@ -42,7 +43,15 @@ try {
   ok(o0.complete && o0.plot && o0.shown, 'the 46-min save: village complete, the office plot shows', o0);
   let st = await page.evaluate(() => window.__FV.v42.office({ build: true }));
   ok(st.built && !st.bank, 'the office stands (the bank waits)', st);
-  ok(st.hire === 'sem', 'the hire pad offers 셈이 first (' + st.hire + ')');
+  // ((v4.3 step B, P — D3 ★A) the staff come after 읍: before it no hire pad, and the 직원 tab says when they come
+  await advance(page, 2.5);
+  const pre = await page.evaluate(() => { const gs = window.__FV.scene, O = gs.v42.office; return { rank: gs.v4 && gs.v4.rank ? gs.v4.rank.level : null, hire: O.hirePad ? O.hirePad.role : null, rows: O.staffRows().map((r) => r.text), desk: O.deskTab() }; });
+  ok(pre.rank === 1 && pre.hire === null && pre.rows.every((x) => /읍이 되면 와요/.test(x)) && pre.desk === 'staff', '(v4.3 step B) before 읍: no hire pad; the 직원 tab says 「읍이 되면 와요」; the desk opens 직원', pre);
+  // 읍 the way play reaches it (the rank_eup step's flag and level, then the 'step' event), then the pad comes back
+  await page.evaluate(() => { const gs = window.__FV.scene; gs.v4.rank.ceremony(true); gs.events.emit('step', 'rank_eup'); });
+  await advance(page, 2.5);
+  st = await page.evaluate(() => window.__FV.v42.office());
+  ok(st.hire === 'sem', 'at 읍 the hire pad offers 셈이 first (' + st.hire + ')');
   // (CODE-1 review) paying the hire pad for real — standing on it — hires 셈이 without an error (the pad used to be read
   //  back after it had hired and gone: a crash card on the first staff hire)
   const e0 = log.errors.length;
