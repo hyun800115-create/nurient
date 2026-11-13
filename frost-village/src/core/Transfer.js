@@ -18,7 +18,7 @@
 // (save.backup, save.backup.2, *.bad) nor this feature's spare (move.backup). A future key with the prefix comes along
 // by itself. Every reader sanitizes its record on load, and the save itself is dry-run through Save.js migrateSave
 // (the same migration + sanitize path as a stored save) before anything is written.
-import { SAVE_KEY, BACKUP_KEY, BAD_KEY, SAVE_VERSION, LV, migrateSave, isNewerSave } from './Save.js';
+import { SAVE_KEY, BACKUP_KEY, BAD_KEY, SAVE_VERSION, LV, migrateSaveEx, isNewerSave } from './Save.js';
 // ---- (v4.3 step B, S1 — map_save N7) the code format 2 (codes carry the content level `lv`)
 import { CODE_FMT as FMT43 } from '../data/ids43.js';
 import { VERSION, BUILD_DATE } from '../data/version.js';
@@ -113,17 +113,20 @@ async function pump(ts, bytes, limit) {
 
 // ---------------------------------------------------------------- the code
 /**
- * keys -> { code, comp, chars, payloadBytes }. opts: { made (ms), compress (default true when possible) }
+ * keys -> { code, comp, chars, payloadBytes }. opts: { made (ms), compress (default true when possible),
+ *   fmt ((v4.3 step B, S4) 1 for a village saved before step B — the 「새 단장 전 마을」 copy, the failure card's stored
+ *   village: an older build may read those, they hold nothing it would cut down; anything else is CODE_FMT) }
  */
 export async function encodeVillage(keys, opts = {}) {
-  const payload = { app: 'snowbloom', fmt: CODE_FMT, made: Math.round(opts.made || Date.now()), saveV: SAVE_VERSION, lv: LV, build: VERSION + ' · ' + BUILD_DATE, keys };
+  const fmt = opts.fmt === CODE_FMT_MIN ? CODE_FMT_MIN : CODE_FMT;
+  const payload = { app: 'snowbloom', fmt, made: Math.round(opts.made || Date.now()), saveV: SAVE_VERSION, lv: LV, build: VERSION + ' · ' + BUILD_DATE, keys };
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   let comp = 'j', data = bytes;
   if (opts.compress !== false && canCompress()) {
     try { data = await pump(new CompressionStream('deflate-raw'), bytes); comp = 'z'; } catch (e) { comp = 'j'; data = bytes; }
   }
   const b64 = toB64url(data);
-  const head = CODE_TAG + CODE_FMT + '.' + comp + '.' + b64.length + '.' + b64;
+  const head = CODE_TAG + fmt + '.' + comp + '.' + b64.length + '.' + b64;
   const code = head + '.' + crc32(head);
   return { code, comp, chars: code.length, payloadBytes: bytes.length };
 }
@@ -196,8 +199,9 @@ async function decodeAt(rest) {
 }
 
 /**
- * the save inside `keys` through the game's own load path (Save.js migrateSave: every MIGRATE step + sanitizeSave),
- * nothing written -> { ok: true, save, summary } or { ok: false, error: 'newerSave' | 'badSave' }
+ * the save inside `keys` through the game's own load path (Save.js migrateSaveEx: every MIGRATE step, R43 for an old
+ * village, sanitizeSave), nothing written -> { ok: true, save, summary } or { ok: false, error: 'newerSave' | 'badSave' |
+ * 'migrateFail' } ((v4.3 step B, S4) migrateFail: an old village R43 could not move losslessly; info { reason })
  */
 export function dryRun(keys, made) {
   let raw = null;
@@ -205,14 +209,16 @@ export function dryRun(keys, made) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fail('badSave');
   // ((v4.3 step B, F0s) a village from a newer build: its `v` above SAVE_VERSION, or its content level `lv` above LV)
   if (isNewerSave(raw)) return fail('newerSave');
-  let s = null;
-  try { s = migrateSave(raw); } catch (e) { s = null; }
-  if (!s) return fail('badSave');
-  return { ok: true, save: s, summary: summarize(s, keys, made, raw) };
+  let r = null;
+  try { r = migrateSaveEx(raw); } catch (e) { r = null; }
+  if (r && r.fail) return fail('migrateFail', { reason: r.fail.reason });
+  if (!r || !r.save) return fail('badSave');
+  return { ok: true, save: r.save, summary: summarize(r.save, keys, made, raw, r) };
 }
 
-/** what the confirm card shows: coins, rank, residents, the village day, when the code was made, what it carries */
-export function summarize(s, keys, made, raw) {
+/** what the confirm card shows: coins, rank, residents, the village day, when the code was made, what it carries.
+ *  ((v4.3 step B, S4) mig = migrateSaveEx's result: remap43 { coins, moved, kept } when the village moves onto the new map) */
+export function summarize(s, keys, made, raw, mig) {
   const life = s.life && typeof s.life === 'object' ? s.life : {};
   const moved = Array.isArray(life.moved) ? life.moved.filter((k) => typeof k === 'string' && k.startsWith('npc_')).length : 0;
   const settlers = s.c1 && Number.isFinite(s.c1.settlers) ? s.c1.settlers : 0;
@@ -233,6 +239,7 @@ export function summarize(s, keys, made, raw) {
     fromV: raw && typeof raw.v === 'number' ? raw.v : 0,
     fromLv: raw && typeof raw.lv === 'number' && raw.lv > 0 ? Math.floor(raw.lv) : 0,      // (v4.3 step B) 0: saved before step B
     flag: s.flag ? { s: s.flag.s, b: s.flag.b, p: s.flag.p, pc: s.flag.pc, e: s.flag.e, ec: s.flag.ec } : null,     // (v4.3) the village flag (the card shows it)
+    remap43: mig && mig.remapped && mig.r ? { coins: mig.r.coins, moved: mig.r.moved.length, kept: mig.r.kept.length } : null,
   };
 }
 

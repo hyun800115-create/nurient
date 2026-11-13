@@ -8,7 +8,9 @@ import { BALANCE } from '../data/balance.js';
 // ---- (v4.3 마을 깃발) the flag's keep-rule
 import { sanitizeFlag } from '../flag/design.js';
 // ---- (v4.3 step B, S) the content level and the pre-B copy's key (plain data: src/data/ids43.js)
-import { LV, PRE43_KEY } from '../data/ids43.js';
+import { LV, PRE43_KEY, WORKSHOP_PLOT43 } from '../data/ids43.js';
+// ---- (v4.3 step B, S4) R43: the one-time move of an old village onto plot table v2 (pure JSON, before sanitizeSave)
+import { needsRemap, remap43, check43, check43b } from './Remap43.js';
 
 export const SAVE_KEY = 'frostVillage.save.v1';
 export const SETTINGS_KEY = 'frostVillage.settings.v1';
@@ -75,8 +77,16 @@ export function storedIsNewer(raw) {
 const BUILDINGS = ['toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'house_a', 'house_b', 'house_c', 'watchtower', 'station',
   'town_hall', 'big_restaurant', 'deco_snowman', 'deco_bench', 'deco_lamp', 'deco_flowers', 'deco_rink', 'deco_playground', 'deco_fountain',
   // ---- (v4.2) 촌장 사무실, 서리 은행, 서리 물류창고 (their sites: ids v42_office / v42_bank / v42_depot)
-  'chief_office', 'bank42', 'depot42'];
+  'chief_office', 'bank42', 'depot42',
+  // ---- (v4.3 step B, 시장취임 Q3) 인력 사무소 (v4.4 builds it): kept only on its own hidden plot d_labour, which no v4.3 game
+  //  shows — so this build never restores one (a v4.4 village is refused by its lv anyway)
+  'labour_office'];
 const SITE_STATES = ['foundation', 'scaffold', 'done'];
+// (v4 review L3) one of each in a village (a second one is dropped, finished ones kept first); XL buildings need an XL plot
+const UNIQ = ['town_hall', 'big_restaurant', 'station', 'toolsmith', 'warehouse', 'boathouse', 'cannery', 'store', 'labour_office'];
+const XL_ONLY = ['town_hall', 'big_restaurant'];
+/** (v4.3 step B, S4) the site keep-rules R43's check43b compares against (Remap43.js) */
+export const SITE_RULES = Object.freeze({ BUILDINGS: Object.freeze(BUILDINGS.slice()), STATES: Object.freeze(SITE_STATES.slice()), UNIQ: Object.freeze(UNIQ.slice()) });
 const REGIONS = ['east', 'south', 'se', 'rail', 'town', 'west', 'west_s'];
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -234,7 +244,6 @@ export function sanitizeSave(raw) {
   if (isObj(raw.sites)) {
     // ((v4 review L3) a building on a plot that cannot take it (a town hall on a small plot, a station on the hall's
     //  plot) or a second one of a unique building (two town halls) is dropped; finished ones are kept first)
-    const XL_ONLY = ['town_hall', 'big_restaurant'], UNIQ = ['town_hall', 'big_restaurant', 'station', 'toolsmith', 'warehouse', 'boathouse', 'cannery', 'store'];
     const seenU = new Set(), plots = WORLD.plots || {};
     const ids = Object.keys(raw.sites).sort((a, b) => (isObj(raw.sites[b]) && raw.sites[b].st === 'done' ? 1 : 0) - (isObj(raw.sites[a]) && raw.sites[a].st === 'done' ? 1 : 0));
     for (const id of ids) {
@@ -242,6 +251,7 @@ export function sanitizeSave(raw) {
       if (!/^[a-z0-9_]{1,40}$/.test(id) || !isObj(d) || BUILDINGS.indexOf(d.b) < 0 || SITE_STATES.indexOf(d.st) < 0) continue;
       const p = plots[id];
       if (p && ((p.only && d.b !== p.only) || (!p.only && d.b === 'station') || (XL_ONLY.indexOf(d.b) >= 0 && p.size !== 'XL'))) continue;
+      if (d.b === 'labour_office' && id !== WORKSHOP_PLOT43.labour_office) continue;
       if (UNIQ.indexOf(d.b) >= 0) { if (seenU.has(d.b)) continue; seenU.add(d.b); }
       s.sites[id] = { b: d.b, st: d.st, got: counts(d.got, MATERIALS), t: Math.max(0, Math.min(600, num(d.t, 0))) };
     }
@@ -757,19 +767,72 @@ function keepCopy(st, raw) {
   else if (b !== raw) st.setItem(BACKUP_KEY + '.2', raw);
 }
 
-/** a save object as read from storage -> migrated to SAVE_VERSION and sanitized, or null (an unknown / future version).
- *  (마을 옮기기) Save.load and the dry run of a village code (src/core/Transfer.js) both go through here, so a v4.1 / v4.2
- *  save inside a code loads and migrates exactly like a stored one. */
-export function migrateSave(s) {
-  if (!s || typeof s !== 'object') return null;
+/**
+ * (v4.3 step B, S4 — map_save §4.2, V-N6) a save object as read from storage -> what the game can load:
+ *   { save }                       migrated to SAVE_VERSION and sanitized (save null: an unknown version)
+ *   { save, remapped: true, r }    an old village moved onto plot table v2 by R43 (Remap43.js) and proven lossless
+ *                                  (check43, then check43b after sanitizeSave); r = what was done (refunds, moves)
+ *   { save: null, fail }           R43 could not prove the move lossless (or threw): fail = { kind: 'v43', reason }.
+ *                                  Nothing is written by anyone: Save.load holds the save, Transfer refuses the code
+ *   { save: null, newer: true }    a village from a newer build (v > 8 or lv > 43)
+ * opts.fail ('throw' | 'check', V-N12; else globalThis.__FV_TEST_FAIL43): the test switch that forces a failure — it does
+ * nothing in normal play. The MIGRATE chain runs first (v7 -> v8), R43 after it, whatever the version number (R43 is keyed
+ * on the v43.lay marker only).
+ */
+export function migrateSaveEx(s, opts) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return { save: null };
   // ((v4.3 step B, F0s) a save from a newer build (lv > 43 at v 8) is a future version too: this build would cut it down,
   //  so it is not "readable" here (Save.load and dryRun hold / refuse it first; Admin.adminBackup must not count it as a
   //  readable copy it may write over)
-  if (isNewerSave(s)) return null;
+  if (isNewerSave(s)) return { save: null, newer: true };
+  const from = { v: Math.max(0, Math.floor(num(s.v, 0))), lv: Math.max(0, Math.floor(num(s.lv, 0))) };
   let v = typeof s.v === 'number' ? s.v : -1;
   while (v !== SAVE_VERSION && MIGRATE[v]) { try { s = MIGRATE[v](s); v = s.v; } catch (e) { break; } }
-  if (v !== SAVE_VERSION) return null;
-  return sanitizeSave(s);
+  if (v !== SAVE_VERSION) return { save: null };
+  if (!needsRemap(s)) return { save: sanitizeSave(s), remapped: false };
+  const o = opts || {};
+  const test = o.fail !== undefined ? o.fail : (typeof globalThis !== 'undefined' ? globalThis.__FV_TEST_FAIL43 : undefined);
+  const bad = (reason, r) => ({ save: null, fail: { kind: 'v43', reason: String(reason).slice(0, 160) }, r: r || null });
+  let rm;
+  try {
+    if (test === 'throw') throw new Error('test switch');
+    rm = remap43(s, { from });
+  } catch (e) { return bad('remap43 threw: ' + ((e && e.message) || e)); }
+  const c = test === 'check' ? { ok: false, reason: 'test switch' } : check43(s, rm.save, rm.r);
+  if (!c.ok) return bad('check43 ' + c.reason, rm.r);
+  let out = null;
+  try { out = sanitizeSave(rm.save); } catch (e) { out = null; }
+  if (!out) return bad('sanitize', rm.r);
+  const c2 = check43b(rm.save, out, SITE_RULES);
+  if (!c2.ok) return bad('check43b ' + c2.reason, rm.r);
+  return { save: out, remapped: true, r: rm.r };
+}
+
+/** a save object as read from storage -> migrated to SAVE_VERSION and sanitized, or null (an unknown / future version,
+ *  or ((v4.3 step B) an old village R43 could not move: migrateSaveEx says why)).
+ *  (마을 옮기기) Save.load and the dry run of a village code (src/core/Transfer.js) both go through here, so a v4.1 / v4.2
+ *  save inside a code loads and migrates exactly like a stored one. */
+export function migrateSave(s) {
+  return migrateSaveEx(s).save || null;
+}
+
+/**
+ * (v4.3 step B, S4 — map_save §4.5, V-N1) the pre-B village, kept once before R43 moves it: the stored text byte for
+ * byte in PRE43_KEY (frostVillage.save.backup.pre43: never in a code, never removed by 불러오기), or — when that slot holds
+ * another village already (one imported later) — in PRE43_KEY + '.2'. Never overwrites, never throws. -> the key it is
+ * in now, or null (no room, or both slots hold other villages: the move goes on anyway, check43 proved it lossless)
+ */
+export const PRE43_SLOTS = Object.freeze([PRE43_KEY, PRE43_KEY + '.2']);
+export function keepPre43(st, raw) {
+  try {
+    if (!st || typeof raw !== 'string' || !raw) return null;
+    for (const k of PRE43_SLOTS) {
+      const have = st.getItem(k);
+      if (have === raw) return k;
+      if (have == null) { st.setItem(k, raw); return st.getItem(k) === raw ? k : null; }
+    }
+    return null;
+  } catch (e) { return null; }
 }
 
 const win = () => (typeof window !== 'undefined' ? window : null);
@@ -789,12 +852,24 @@ export const Save = {
   failed: null,
   _hold: null,
   _listeners: [],
+  // ---- (v4.3 step B, S4 — map_save §4.2, V-N11) R43 at this load: remapped = the stored village was an old one, moved
+  //  onto plot table v2 in memory (remap = what was done: refunds, moves); pending43 = the game is still building it — no
+  //  write reaches storage until Game.build calls confirm43() (every site restored) or failWith() (the failure card);
+  //  pre43 = the key the pre-B copy is in (keepPre43), or null
+  remapped: false,
+  remap: null,
+  pending43: false,
+  pre43: null,
   /** the saved game (sanitized), or null for a fresh start. Other versions are migrated or backed up first. */
   load() {
     // ((v4.3 step B) a load decides again from what is stored now: an earlier load's or a second tab's hold is lifted)
     this.release();
     this.newer = null;
     this.failed = null;
+    this.remapped = false;
+    this.remap = null;
+    this.pending43 = false;
+    this.pre43 = null;
     // ((v4.2.0.1) lastUnreadable: a save WAS there but could not be used (cut off, a newer build) — an existing player, not a
     //  new one: the first-run tutorial does not start for them)
     this.lastUnreadable = false;
@@ -813,20 +888,50 @@ export const Save = {
       this.hold('newer', this.newer);
       return null;
     }
-    const out = migrateSave(s);
+    // ---- (v4.3 step B, S4 — R43) an old village (no v43.lay marker): its stored text is kept once as the pre-B copy, then
+    //  it is moved onto plot table v2 in memory. A move that cannot be proven lossless holds the save (the failure card);
+    //  the stored village stays byte-identical
+    const vNum = typeof s.v === 'number' ? s.v : -1;
+    if (needsRemap(s) && vNum >= 1 && vNum <= SAVE_VERSION) {
+      try { const st = getStore(); this.pre43 = st ? keepPre43(st, st.getItem(SAVE_KEY)) : null; } catch (e) { this.pre43 = null; }
+    }
+    const r = migrateSaveEx(s);
+    if (r.fail) {
+      this.failed = Object.assign({ at: 'load' }, r.fail);
+      this.lastUnreadable = true;
+      this.hold('failed43', this.failed);
+      return null;
+    }
+    const out = r.save;
     if (!out) {
       // unknown / future version: keep a copy before the next autosave overwrites it
       this.lastUnreadable = true;
       try { const st = getStore(); if (st) keepCopy(st, st.getItem(SAVE_KEY)); } catch (e) { /* ignore */ }
       return null;
     }
+    if (r.remapped) { this.remapped = true; this.remap = r.r; this.pending43 = true; }
     return out;
+  },
+  /** (v4.3 step B, S4) Game.build restored every site of a remapped village: writes go to storage again (the next autosave
+   *  stores the village on plot table v2) */
+  confirm43() { this.pending43 = false; },
+  /** (v4.3 step B, S4 — V-N11) a remapped village could not be built as it was proven: a site found no plot ('skip'), the
+   *  build threw ('restore'). Nothing was written since the load, so the stored village is still the pre-B one: hold it and
+   *  show the failure card — never a quarantine */
+  failWith(kind, info) {
+    const why = String(kind || 'restore') + (info ? ': ' + String((info && info.message) || info).slice(0, 120) : '');
+    this.pending43 = false;
+    this.failed = { kind: 'v43', reason: why, at: 'build' };
+    this.lastUnreadable = true;
+    this.hold('failed43', this.failed);
   },
   write(state) {
     // "Start over" on the crash card: the page is reloading and the crashed game's autosave
     // (pagehide / visibilitychange) must not put the old progress back. ((v4.3 step B) also every save hold)
     const W = win();
     if (W && W.__FV_NO_SAVE) return false;
+    // ((v4.3 step B, S4) a remapped village is still being built: nothing is stored until Game.build confirms it)
+    if (this.pending43) return false;
     // ---- (v4.3 step B, S1) a newer build saved this village meanwhile (a second tab, the updated app next to an old
     //  page): its save is never written over — the write is refused, the hold starts and the banner says so once
     const st = getStore();
@@ -922,7 +1027,7 @@ export const ChatSave = {
     return o.chat;
   },
   write(cid, chat) {
-    if (this.blocked || (typeof window !== 'undefined' && window.__FV_NO_SAVE)) return false;
+    if (this.blocked || (typeof window !== 'undefined' && window.__FV_NO_SAVE) || Save.pending43) return false;
     if (typeof cid !== 'string' || !isObj(chat)) return false;
     // ((v4.3 step B, S1) a newer build saved the village meanwhile (a second tab): its chat record is not written over
     //  either — a chat closed before the next autosave would otherwise do it; the stale hold starts here then)

@@ -6,8 +6,10 @@
 //            「게임 업데이트하기」 (the app: the Play page; the web build: reload), 「마을 코드 만들기」 (마을 옮기기 ›
 //            내보내기 with the STORED keys: MovePanel's saveNow gives the stored save while held), 「새 마을로 시작」 (asks
 //            first; the newer village goes to the 불러오기 spare as a code and to the backup slot, then a fresh village)
-//   'fail'   (Save.held 'failed43', S4's R43 failure)  「마을을 새 지도로 옮기지 못했어요」 — modal: 「다시 해 보기」 (reload),
-//            「마을 코드 만들기」 (the current stored keys, BP-15), 「새 마을로 시작」 (asks; the stored raw to the backup slot)
+//   'fail'   (Save.held 'failed43', S4's R43 failure: Save.load's check43 / check43b, or Game.build's restore skip / throw)
+//            「마을을 새 지도로 옮기지 못했어요」 — modal: 「다시 해 보기」 (reload), 「마을 코드 만들기」 (the current stored
+//            keys, BP-15: the stored save is the untouched pre-B village — a format-1 code; never the older PRE43 slot),
+//            「새 마을로 시작」 (asks; the stored raw to the backup slot); a small line says what failed (Save.failed.reason)
 //   'stale'  (Save.held 'stale': a newer build saved the village meanwhile — a second tab, the updated app)  a banner at
 //            the top 「새 버전에서 저장된 마을이에요 · 새로 고침해 주세요」 with 「새로 고침」; the game stays playable,
 //            nothing it does is written
@@ -137,8 +139,11 @@ export class SaveHoldCard {
       D.icon.textContent = '❄';
       D.title.textContent = t(kind === 'newer' ? 'hold_newerTitle' : 'hold_failTitle');
       D.body.textContent = t(kind === 'newer' ? 'hold_newerBody' : 'hold_failBody');
-      D.which.textContent = kind === 'newer' ? t('hold_newerWhich', { lv: (info.v | 0) + '.' + (info.lv | 0), now: SAVE_VERSION + '.' + LV }) : '';
-      D.which.hidden = kind !== 'newer';
+      // ((S4) the failure card says in a small line what went wrong (Save.failed.reason: 'check43 c: …', 'skip: d_tool' …):
+      //  a tester can read it out in a bug report)
+      const why = kind === 'fail' && info.reason ? String(info.reason).slice(0, 60) : '';
+      D.which.textContent = kind === 'newer' ? t('hold_newerWhich', { lv: (info.v | 0) + '.' + (info.lv | 0), now: SAVE_VERSION + '.' + LV }) : why ? t('hold_failWhich', { why }) : '';
+      D.which.hidden = kind === 'newer' ? false : !why;
       D.b1.textContent = kind === 'newer' ? t(isApp() ? 'hold_update' : 'hold_updateWeb') : t('hold_retry');
       D.b2.textContent = t('hold_code');
       D.b3.textContent = t('hold_new');

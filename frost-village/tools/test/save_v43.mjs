@@ -1,6 +1,8 @@
 // (v4.3 step B 「마을 새 단장 둘째 걸음」, WP-S) the step-B save: docs/redesign_v43/stepB/map_save.md §6.1
-//   node tools/test/save_v43.mjs [--node] [--out <dir>]        (--node: the Node checks only; the browser part needs the
-//                                                               shared lock: scratchpad/v43/stepB/lane_b.sh)
+//   node tools/test/save_v43.mjs [--node] [--out <dir>] [--s4-only] [--b1-all] [--g8-all] [--p-gate]
+//     --node: the Node checks only (the browser part needs the shared lock: scratchpad/v43/stepB/lane_b.sh); --s4-only: of
+//     the browser part only the R43 rows (B1–B3, B5); --b1-all / --g8-all: B1 / B2 on every pre-B fixture (B2 × throw and
+//     check) instead of the representative set; --p-gate: the P-GATE row is hard even before P is merged
 // Built with S1–S3 (lv, the newer-save hold, the write guard, x and the slices, the hold cards). S4 (remap43, check43,
 // keepPre43, the failure card's trigger) adds map_save §6.1 rows 2–4 and 11 and browser B1–B3 / B5 here.
 //
@@ -484,13 +486,317 @@ console.log('— 10 size at caps');
   console.log('       (info) with the v43 block at its own limits (32 seen keys, 28 toggles): ' + sizeMax + ' B');
 }
 
-// ================================================================== 11. pre43 (S4 writes it; here: it never travels)
-console.log('— 11 pre43 (part)');
-check('PRE43_KEY is not a game key (never in a code; 불러오기 never removes it)', !T.isGameKey(SV.PRE43_KEY));
+// ================================================================== S4: R43 (map_save §6.1 rows 2–4, 11; build_plan §3.5 S4)
+const RM = await import('../../src/core/Remap43.js');
+const { WORLD } = await import('../../src/data/world.js');
+const { priceOf } = await import('../../src/data/items.js');
+const { asStepB } = await import('./v43_helpers.mjs');
+const { migrateSaveEx } = SV;
+const fixtureSave = (f) => { const d = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8')); return d.keys ? JSON.parse(d.keys[SAVE_KEY]) : d; };
+const fixtureKeys = (f) => { const d = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8')); return d.keys ? d.keys : { [SAVE_KEY]: JSON.stringify(d) }; };
+const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const cnt = (v) => Math.max(0, Math.floor(Number(v) || 0));
+const PRICE = { item_plank: priceOf('item_plank'), item_ingot: priceOf('item_ingot') };
+/** every pre-B fixture there is (the node-made ones and those exported from old builds, S5) */
+const PREB = fs.readdirSync(FIX).filter((f) => /\.json$/.test(f) && !/^v43_(newer|samelv)/.test(f)).sort();
+const expectFail = (f) => { const d = JSON.parse(fs.readFileSync(path.join(FIX, f), 'utf8')); return d._expect === 'fail'; };
+
+const ST_IO = Object.fromEntries((WORLD.stations || []).map((q) => [q.id, [q.input, q.output]]));
+/** (map_save §4.4) coins and items over every place of a (sanitized) save; sites from `rawSites` when given (the pre-B
+ *  layout as it was stored: a building the new plot table would refuse before the move still holds its materials) */
+function census(s, rawSites) {
+  const C = { coins: 0, items: {} };
+  const add = (k, n) => { n = cnt(n); if (n) C.items[k] = (C.items[k] || 0) + n; };
+  const addAll = (o, pre) => { if (isO(o)) for (const k in o) add((pre || '') + k, o[k]); };
+  const coin = (n) => { C.coins += cnt(n); };
+  coin(s.coins);
+  for (const k of ['market', 'trade', 'bakery']) if (isO(s[k])) { coin(s[k].cash); addAll(s[k].stock); }
+  const v3 = s.v3 || {};
+  if (isO(v3.store)) { coin(v3.store.cash); addAll(v3.store.stock); }
+  addAll(v3.warehouse);
+  if (isO(v3.food)) addAll(v3.food.food);
+  if (isO(v3.dock)) addAll(v3.dock.catch);
+  if (isO(v3.workshops)) for (const w in v3.workshops) { addAll(v3.workshops[w].ins); addAll(v3.workshops[w].outs); }
+  if (isO(s.c1)) { if (isO(s.c1.hall)) { coin(s.c1.hall.tax); coin(s.c1.hall.stn); } if (isO(s.c1.rest)) { coin(s.c1.rest.cash); addAll(s.c1.rest.pantry); } }
+  if (isO(s.v4)) {
+    coin(s.v4.cash); coin(s.v4.rentAcc); addAll(s.v4.cargo);
+    if (isO(s.v4.shops)) for (const id in s.v4.shops) addAll(s.v4.shops[id].stock);
+    if (isO(s.v4.orders)) { for (const c of s.v4.orders.cards || []) addAll(c.got); if (isO(s.v4.orders.kept)) for (const k in s.v4.orders.kept) addAll(s.v4.orders.kept[k]); }
+    if (isO(s.v4.houses)) for (const id in s.v4.houses) addAll(s.v4.houses[id].got);
+  }
+  if (isO(s.v42)) {
+    const o = s.v42.office || {};
+    coin(o.bag); coin(o.safe); coin(o.hirePaid);
+    if (isO(s.v42.offerPaid)) for (const k in s.v42.offerPaid) coin(s.v42.offerPaid[k]);
+    const dp = s.v42.depot || {};
+    if (isO(dp.hp)) for (const k in dp.hp) coin(dp.hp[k]);
+    addAll(dp.load);
+    if (isO(s.v42.freight)) { addAll(s.v42.freight.dock); addAll(s.v42.freight.cars); }
+  }
+  if (isO(s.logistics)) { coin(s.logistics.cash); addAll(s.logistics.stock, 'lgx:'); }
+  if (isO(s.bank)) coin(s.bank.sv);
+  if (isO(s.progress)) { addAll(s.progress.paid, 'paid:'); if (isO(s.progress.got)) for (const id in s.progress.got) addAll(s.progress.got[id]); }
+  if (isO(s.player)) for (const k of s.player.stack || []) add(k, 1);
+  if (isO(s.labour)) addAll(s.labour.piles, 'pile:');
+  // (a station's input / output by its item: an old village's shop bread moves onto the bakery's rack at load — a3)
+  if (isO(s.stations)) for (const id in s.stations) { const io = ST_IO[id]; add(io ? io[0] : 'st:' + id + ':i', s.stations[id].i); add(io ? io[1] : 'st:' + id + ':o', s.stations[id].o); }
+  const sites = rawSites || s.sites || {};
+  // (a foundation's delivered materials; a scaffold's are in its frame — Site.beginScaffold empties its stock — so they are no
+  //  longer things the village holds)
+  for (const id in sites) { const d = sites[id]; if (isO(d) && SV.SITE_RULES.BUILDINGS.indexOf(d.b) >= 0 && d.st === 'foundation' && isO(d.got)) for (const m of ['item_plank', 'item_ingot']) add(m, d.got[m]); }
+  // (paid coins on step pads are coins too)
+  for (const k in C.items) if (/^paid:/.test(k)) { C.coins += C.items[k]; delete C.items[k]; }
+  return C;
+}
+const chain = (s) => { let o = clone(s), v = o.v; while (v !== SAVE_VERSION && MIGRATE[v]) { o = MIGRATE[v](o); v = o.v; } return o; };
+
+console.log('— 2 every pre-B fixture through migrateSaveEx (R43) — ' + PREB.length + ' fixtures');
+{
+  const HOMES = RM.MOVE43;
+  const HIDDEN = Object.keys(WORLD.plots).filter((id) => WORLD.plots[id].hidden === true);
+  const S0 = WORLD.v43.oldStart, SF = WORLD.v43.shopFront;
+  const bad = { fail: [], lay: [], census: [], homes: [], hidden: [], idem: [], keep: [], src: [], chief: [], mutate: [], expected: [] };
+  const report = [];
+  for (const f of PREB) {
+    const raw = fixtureSave(f);
+    const rawTxt = JSON.stringify(raw);
+    const r = migrateSaveEx(clone(raw));
+    if (JSON.stringify(raw) !== rawTxt) bad.mutate.push(f);
+    if (expectFail(f)) { if (!(r.fail && !r.save)) bad.expected.push(f); continue; }
+    if (!r.save || r.fail || !r.remapped) { bad.fail.push(f + ': ' + (r.fail ? r.fail.reason : 'no save')); continue; }
+    const s = r.save, R = r.r;
+    if (!(s.v43 && s.v43.lay === 2 && s.v43.refunds43)) bad.lay.push(f);
+    // the census: the same coins and items as the village loaded without the move, plus exactly the refunds
+    const pre = chain(raw);
+    const base = sanitizeSave(asStepB(pre));
+    const cA = census(base, pre.sites), cB = census(s);
+    const want = clone(cA.items);
+    // (a foundation's extras leave its got; what goes to the 창고 is there; a scaffold's come from its frame)
+    for (const m in R.fromGot) want[m] = (want[m] || 0) - R.fromGot[m];
+    for (const m in R.toWh) want[m] = (want[m] || 0) + R.toWh[m];
+    for (const m in want) if (!want[m]) delete want[m];
+    if (cB.coins !== cA.coins + R.coins || !same(Object.entries(want).sort(), Object.entries(cB.items).sort())) bad.census.push(f + ': coins ' + cA.coins + ' + ' + R.coins + ' vs ' + cB.coins + ' items ' + JSON.stringify(Object.keys(want).filter((k) => want[k] !== cB.items[k]).map((k) => [k, want[k], cB.items[k]])));
+    // every workshop / XL building on its home
+    for (const id in s.sites) { const d = s.sites[id]; if (HOMES[d.b] && HOMES[d.b] !== id) bad.homes.push(f + ': ' + d.b + ' on ' + id); }
+    for (const id of HIDDEN) if (s.sites[id]) bad.hidden.push(f + ': ' + id);
+    // a second load is a no-op
+    const again = migrateSaveEx(JSON.parse(JSON.stringify(SV.stamp(s))));
+    if (again.remapped || !again.save || !same(Object.assign({}, again.save), s)) bad.idem.push(f);
+    // what the move never touches
+    const keepSame = Object.keys(Object.assign({}, base, s)).filter((k) => ['sites', 'coins', 'v3', 'player', 'v43', 'progress'].indexOf(k) < 0 && !same(base[k], s[k]));
+    const pB = clone(base.progress), pS = clone(s.progress);
+    delete pS.flags.s4half; delete pB.flags.s4half;
+    const v3B = Object.assign({}, base.v3, { warehouse: null }), v3S = Object.assign({}, s.v3, { warehouse: null });
+    if (keepSame.length || !same(pB, pS) || !same(v3B, v3S)) bad.keep.push(f + ': ' + keepSame.concat(!same(pB, pS) ? ['progress'] : [], !same(v3B, v3S) ? ['v3'] : []).join(','));
+    if (!same(s.v43.src, { v: Math.floor(raw.v), lv: 0 })) bad.src.push(f + ': ' + JSON.stringify(s.v43.src));
+    const officeOpen = isO(s.sites.v42_office) && s.sites.v42_office.st !== 'done';
+    const at = officeOpen ? SF : S0;
+    if (s.player.x !== at[0] || s.player.y !== at[1] || !same(s.player.stack, base.player.stack)) bad.chief.push(f);
+    report.push(f.replace(/\.json$/, '') + ' ' + R.moved.length + '/' + R.kept.length + (R.coins ? ' +' + R.coins : ''));
+  }
+  console.log('       moved/kept (+coins): ' + report.join(' · '));
+  check('2: every pre-B fixture remaps (lay 2, refunds43) — check43 + check43b pass; migrateSaveEx never changes its input', !bad.fail.length && !bad.lay.length && !bad.mutate.length, bad.fail.concat(bad.lay, bad.mutate));
+  check('2: the census (coins + items over every place) equals the village loaded without the move, plus exactly the refunds', !bad.census.length, bad.census);
+  check('2: every workshop on its d_* plot, the hall on w_hall, the restaurant on w_rest; nothing on a hidden plot', !bad.homes.length && !bad.hidden.length, bad.homes.concat(bad.hidden));
+  check('2: a second load is a no-op (stamped output -> not remapped, the same save)', !bad.idem.length, bad.idem);
+  check('2: the move touches only sites / coins / 창고 / the chief\'s spot / v43 / s4half (onb, admin*, flag, bakery, flags, resWin, v42 incl. the depot crew (D20), v4, c1 … as before)', !bad.keep.length, bad.keep);
+  check('2: v43.src = { v of the stored save, lv 0 } (BP-23)', !bad.src.length, bad.src);
+  check('2: the chief restarts at WORLD.v43.oldStart (the shop front while the office site is unfinished); his stack kept', !bad.chief.length, bad.chief);
+  check('2: the hand-made N3 fixture (_expect fail) is refused (check43b), never loaded', !bad.expected.length, bad.expected);
+  // map_save §6.2: migrateSave of each v4.1 fixture carries v43.lay 2
+  const v41 = PREB.filter((f) => /^v41_/.test(f)).map((f) => migrateSave(fixtureSave(f)));
+  check('2 (save_v42 row): migrateSave of each v4.1 fixture carries v43.lay 2', v41.length === 5 && v41.every((s) => s && s.v43 && s.v43.lay === 2));
+  const exported = ['v4202_fresh_tut', 'v4202_25min', 'v4202_46min_admin', 'v421_meatcan', 'v43a22_late', 'v43a3_late', 'v43a3_fresh25'].filter((n) => !fs.existsSync(path.join(FIX, n + '.json')));
+  check('S5: the fixtures exported from the old builds are all here (4.2.0.2 ×3, 4.2.1 meat cans, a2.2, a3.1 ×2)', !exported.length, exported);
+}
+
+console.log('— 3 XL swap and reprice');
+{
+  const go = (f) => migrateSaveEx(fixtureSave(f));
+  const both = go('v43_xl_swap_both.json');
+  check('3: XL swap (hall on w_rest + restaurant on w_hall): swapped, both done, nothing refunded', both.save && both.save.sites.w_hall.b === 'town_hall' && both.save.sites.w_rest.b === 'big_restaurant' && both.save.sites.w_hall.st === 'done' && both.r.coins === 0 && both.r.moved.some((m) => m[0] === 'w_rest' && m[1] === 'w_hall'), both.fail || both.r && both.r.moved);
+  const h = go('v43_xl_swap_hall.json'), rs = go('v43_xl_swap_rest.json');
+  check('3: the hall alone on w_rest -> w_hall (w_rest empty); a restaurant foundation alone on w_hall -> w_rest with its 4 planks', h.save && h.save.sites.w_hall.b === 'town_hall' && !h.save.sites.w_rest && rs.save && rs.save.sites.w_rest.b === 'big_restaurant' && rs.save.sites.w_rest.st === 'foundation' && rs.save.sites.w_rest.got.item_plank === 4 && !rs.save.sites.w_hall);
+  const kp = migrateSaveEx(fixtureSave('v43_xl_swap_kept.json'));
+  const rk = RM.remap43(MIGRATE[7](fixtureSave('v43_xl_swap_kept.json')));
+  check('3: N3 (hall on w_rest, a house on w_hall): remap43 keeps the hall where it is and logs it (kept 1); check43b refuses the move -> fail', rk.r.kept.length === 1 && rk.r.kept[0][0] === 'w_rest' && rk.save.v43.refunds43.kept === 1 && rk.save.sites.w_rest.b === 'town_hall' && kp.fail && /check43b house_b on w_hall/.test(kp.fail.reason) && !kp.save, kp.fail);
+  const room = go('v43_reprice_room.json'), full = go('v43_reprice_full.json'), nowh = go('v43_reprice_nowh.json');
+  const P = PRICE;
+  check('3: reprice with 창고 room (hall foundation 25/8 + office scaffold, 20 places): +1,200 +1,400; extras 9/4 off the hall\'s got and 12/6 out of the office\'s frame: 20 planks to the 창고, 1 plank + 10 ingots as coins; the foundation\'s got = the new need, the scaffold\'s untouched; office t 9.5 -> 8; chief at the shop front',
+    room.save && room.r.coins === 2600 + P.item_plank + 10 * P.item_ingot && same(room.r.toWh, { item_plank: 20 }) && same(room.r.asCoins, { item_plank: 1, item_ingot: 10 }) && same(room.r.fromGot, { item_plank: 9, item_ingot: 4 }) && same(room.r.fromFrame, { item_plank: 12, item_ingot: 6 }) && same(room.save.sites.w_hall.got, { item_plank: 16, item_ingot: 4 }) && same(room.save.sites.v42_office.got, { item_plank: 20, item_ingot: 6 }) && room.save.sites.v42_office.t === 8 && room.save.v3.warehouse.item_plank === 20 && Object.values(room.save.v3.warehouse).reduce((a, b) => a + b, 0) === 300 && room.save.player.x === WORLD.v43.shopFront[0],
+    room.r && { coins: room.r.coins, toWh: room.r.toWh, asCoins: room.r.asCoins });
+  check('3: reprice with a full 창고 (hall scaffold): +1,200 and the 14 planks + 6 ingots its frame took above the new need, as coins; the scaffold stays a scaffold', full.save && full.r.coins === 1200 + 14 * P.item_plank + 6 * P.item_ingot && !Object.keys(full.r.toWh).length && full.save.sites.w_hall.st === 'scaffold' && same(full.r.fromFrame, { item_plank: 14, item_ingot: 6 }), full.r && full.r.coins);
+  // a scaffold as the old game saves it (its got 0: the materials are in the frame) gets the same refund
+  const real = RM.remap43({ v: 8, coins: 5, sites: { w_hall: { b: 'town_hall', st: 'scaffold', got: { item_plank: 0, item_ingot: 0 }, t: 20 } } });
+  check('3: a scaffold as an old build saves it (got 0 / 0, t 20): +1,200 and 14 planks + 6 ingots out of its frame (coins: no 창고), got untouched, t -> 14; check43 passes',
+    real.r.coins === 1200 + 14 * P.item_plank + 6 * P.item_ingot && same(real.save.sites.w_hall.got, { item_plank: 0, item_ingot: 0 }) && real.save.sites.w_hall.t === 14 && RM.check43({ v: 8, coins: 5, sites: { w_hall: { b: 'town_hall', st: 'scaffold', got: { item_plank: 0, item_ingot: 0 }, t: 20 } } }, real.save, real.r).ok, real.r);
+  check('3: reprice without a 창고 (hall 25/8 + office 12/2): +2,600 and 13 planks + 6 ingots as coins', nowh.save && nowh.r.coins === 2600 + 13 * P.item_plank + 6 * P.item_ingot && !Object.keys(nowh.r.toWh).length && same(nowh.save.v43.refunds43.items, { item_plank: 13, item_ingot: 6 }), nowh.r && nowh.r.coins);
+  check('3: refunds43 says it (coins, items, wh, moved, kept) and the coins are in the wallet', room.save.v43.refunds43.coins === room.r.coins && same(room.save.v43.refunds43.wh, { item_plank: 20 }) && room.save.coins === sanitizeSave(fixtureSave('v43_reprice_room.json')).coins + room.r.coins);
+  // D21: a finished hall / office keeps its old price
+  const done = migrateSaveEx(Object.assign(clone(S46), { sites: Object.assign({}, S46.sites, { v42_office: { b: 'chief_office', st: 'done' } }) }));
+  check('3: D21 — a finished hall and office are not repriced (no refund)', done.save && done.r.coins === 0 && !done.r.repriced.length);
+  // remap43 itself
+  const hand = { v: 8, coins: 10, sites: { w_hall: { b: 'big_restaurant', st: 'done' }, w_rest: { b: 'house_a', st: 'done' }, e_m1: { b: 'town_hall', st: 'done' }, e_m2: { b: 'town_hall', st: 'foundation', got: { item_plank: 40 } } }, progress: { flags: { rankEup: true } } };
+  const h1 = RM.remap43(clone(hand));
+  check('3: a mover that must stay keeps its own spot and nobody takes it (restaurant stays on w_hall: w_rest holds a house; then no hall may take w_hall)',
+    h1.save.sites.w_hall.b === 'big_restaurant' && h1.save.sites.e_m1.b === 'town_hall' && h1.save.sites.e_m2.b === 'town_hall' && h1.r.kept.length === 3 && !h1.r.moved.length && RM.check43(hand, h1.save, h1.r).ok, h1.r.kept);
+  check('3: a village already 읍 (flags.rankEup, or v4.rank 2) gets progress.flags.s4half; others do not', h1.save.progress.flags.s4half === true && RM.remap43({ v: 8, v4: { rank: 2 } }).save.progress.flags.s4half === true && !RM.remap43({ v: 8, progress: { flags: {} } }).save.progress.flags.s4half);
+  check('3: unfinished hall planks above the need: got 40 -> 16, 24 as coins (no finished 창고)', h1.save.sites.e_m2.got.item_plank === 16 && h1.r.asCoins.item_plank === 24 && h1.r.coins === 1200 + 24 * P.item_plank);
+  const whScaf = RM.remap43({ v: 8, sites: { w_hall: { b: 'town_hall', st: 'scaffold', got: { item_plank: 30, item_ingot: 10 } }, d_x: { b: 'warehouse', st: 'scaffold' } }, v3: { warehouse: {} } });
+  check('3: a 창고 still being built takes nothing: the extras are coins', !Object.keys(whScaf.r.toWh).length && whScaf.r.asCoins.item_plank === 14);
+  // check43 catches a remap that went wrong
+  const base = MIGRATE[7](fixtureSave('v43_reprice_room.json'));
+  const good = RM.remap43(base);
+  const tamper = [
+    ['a building vanished', (s) => { delete s.sites.d_tool; }],
+    ['a building appeared', (s) => { s.sites.s_m2 = { b: 'house_a', st: 'done' }; }],
+    ['coins off by one', (s) => { s.coins += 1; }],
+    ['a workshop left behind', (s) => { s.sites.e_m1 = s.sites.d_tool; delete s.sites.d_tool; }],
+    ['the 창고 got one more', (s) => { s.v3.warehouse.item_plank += 1; }],
+    ['a pad payment changed', (s) => { s.progress.paid = Object.assign({}, s.progress.paid, { zzz: 5 }); }],
+    ['a site kept extra planks', (s) => { s.sites.w_hall.got.item_plank += 1; }],
+    ['the store stock changed', (s) => { s.v3.store.stock.item_can = (s.v3.store.stock.item_can || 0) + 1; }],
+    ['no marker', (s) => { s.v43.lay = 1; }],
+  ];
+  const missed = tamper.filter(([, fn]) => { const s = clone(good.save); fn(s); return RM.check43(base, s, good.r).ok; }).map(([n]) => n);
+  check('3: check43 passes the real remap and catches every tampered one (' + tamper.length + ' kinds)', RM.check43(base, good.save, good.r).ok && !missed.length, missed);
+  const outS = sanitizeSave(good.save);
+  const brokenOut = clone(outS); delete brokenOut.sites.d_wh;
+  check('3: check43b passes sanitize\'s real output and catches a building it lost', RM.check43b(good.save, outS, SV.SITE_RULES).ok && !RM.check43b(good.save, brokenOut, SV.SITE_RULES).ok);
+}
+
+console.log('— 4 the failure path (V-N12 switch; Transfer migrateFail)');
+{
+  const raw = fixtureSave('v42_save_office_ttal.json');
+  const a = migrateSaveEx(clone(raw), { fail: 'throw' }), b = migrateSaveEx(clone(raw), { fail: 'check' });
+  check('4: opts.fail throw / check -> no save, fail { kind v43, reason }', !a.save && a.fail && a.fail.kind === 'v43' && /remap43 threw/.test(a.fail.reason) && !b.save && /check43/.test(b.fail.reason), [a.fail, b.fail]);
+  globalThis.__FV_TEST_FAIL43 = 'check';
+  const m = migrateSave(clone(raw));
+  const keys = fixtureKeys('v42_village_late.json');
+  const dr = T.dryRun(keys);
+  delete globalThis.__FV_TEST_FAIL43;
+  check('4: with the switch on, migrateSave gives null and Transfer.dryRun of that village\'s code gives migrateFail (with the reason)', m === null && !dr.ok && dr.error === 'migrateFail' && /check43/.test(dr.info.reason), dr);
+  const dk = T.dryRun(fixtureKeys('v43_xl_swap_kept.json'));
+  check('4: a code R43 cannot move (N3 fixture) -> migrateFail; a good old code dry-runs with summary.remap43', !dk.ok && dk.error === 'migrateFail' && (() => { const d = T.dryRun(fixtureKeys('v43_reprice_room.json')); return d.ok && d.summary.remap43 && d.summary.remap43.coins === 2600 + PRICE.item_plank + 10 * PRICE.item_ingot && d.summary.remap43.moved === 4; })());
+  check('4: a step-B village dry-runs with no remap (summary.remap43 null)', (() => { const d = T.dryRun({ [SAVE_KEY]: JSON.stringify(SV.stamp(migrateSave(clone(raw)))) }); return d.ok && d.summary.remap43 === null; })());
+  // Save.load: the hold
+  const rawTxt = JSON.stringify(raw);
+  for (const sw of ['throw', 'check']) {
+    window.__FV_NO_SAVE = undefined;
+    const st = memStorage({ [SAVE_KEY]: rawTxt, [CHAT_KEY]: 'chat-1' });
+    window.localStorage = st;
+    globalThis.__FV_TEST_FAIL43 = sw;
+    const heard = [];
+    const off = Save.onHold((why) => heard.push(why));
+    const out = Save.load();
+    delete globalThis.__FV_TEST_FAIL43;
+    const w = [Save.write({ coins: 1 }), ChatSave.write('abcd', { a: 1 })];
+    Save.quarantine();
+    const d = st.dump();
+    check('4: Save.load with the switch "' + sw + '": null, held failed43 (Save.failed.reason), lastUnreadable; the pre-B copy kept; every write refused; SAVE_KEY / chat byte-identical; no quarantine',
+      out === null && Save.held === 'failed43' && Save.failed && Save.failed.kind === 'v43' && Save.failed.at === 'load' && Save.lastUnreadable === true && same(heard, ['failed43']) && d[SV.PRE43_KEY] === rawTxt && d[SAVE_KEY] === rawTxt && d[CHAT_KEY] === 'chat-1' && w.every((x) => x === false) && !d[BAD_KEY] && !d[BACKUP_KEY],
+      { held: Save.held, failed: Save.failed, keys: Object.keys(d) });
+    off();
+    Save.release();
+  }
+  // G8 in Node: every pre-B fixture x { throw, check }: no save, Transfer refuses, Save.load holds it byte-identical
+  {
+    const g8 = [];
+    for (const f of PREB) {
+      const keys = fixtureKeys(f);
+      for (const sw of ['throw', 'check']) {
+        globalThis.__FV_TEST_FAIL43 = sw;
+        window.__FV_NO_SAVE = undefined;
+        const st = memStorage(keys);
+        window.localStorage = st;
+        const out = Save.load();
+        const w = Save.write({ coins: 1 });
+        const dr = T.dryRun(keys);
+        delete globalThis.__FV_TEST_FAIL43;
+        if (out !== null || Save.held !== 'failed43' || w !== false || st.getItem(SAVE_KEY) !== keys[SAVE_KEY] || st.getItem(SV.PRE43_KEY) !== keys[SAVE_KEY] || dr.error !== 'migrateFail') g8.push(f + '/' + sw);
+        Save.release();
+      }
+    }
+    check('4 (G8, Node): every pre-B fixture (' + PREB.length + ') x { throw, check }: Save.load holds it (SAVE_KEY byte-identical, PRE43 = the stored text, writes refused); Transfer.dryRun -> migrateFail', !g8.length, g8);
+  }
+  // a good old village: pending until Game.build confirms
+  {
+    window.__FV_NO_SAVE = undefined;
+    const st = memStorage({ [SAVE_KEY]: rawTxt });
+    window.localStorage = st;
+    const out = Save.load();
+    const pend = [Save.pending43, Save.remapped, Save.held];
+    const w0 = Save.write({ coins: 5 }), c0 = ChatSave.write('abcd', { a: 1 });
+    const stored0 = st.getItem(SAVE_KEY);
+    Save.confirm43();
+    const w1 = Save.write(Object.assign({}, out, { coins: 6 }));
+    check('4: a good old village: loaded remapped (Save.remapped, Save.remap), writes refused while pending43 (nothing stored), written after confirm43',
+      out && out.v43.lay === 2 && same(pend, [true, true, null]) && Save.remap && Save.remap.moved.length === 4 && w0 === false && c0 === false && stored0 === rawTxt && w1 === true && JSON.parse(st.getItem(SAVE_KEY)).v43.lay === 2 && st.getItem(SV.PRE43_KEY) === rawTxt,
+      { pend, w0, c0, w1 });
+    // failWith after a load: the stored village stays, the hold starts
+    const st2 = memStorage({ [SAVE_KEY]: rawTxt });
+    window.localStorage = st2;
+    Save.load();
+    Save.failWith('skip', 'd_tool');
+    const w2 = Save.write({ coins: 7 });
+    check('4: Save.failWith("skip") on a pending village: held failed43 (reason "skip: d_tool", at build), the write refused, SAVE_KEY byte-identical', Save.held === 'failed43' && /^skip: d_tool/.test(Save.failed.reason) && Save.failed.at === 'build' && !Save.pending43 && w2 === false && st2.getItem(SAVE_KEY) === rawTxt);
+    Save.release();
+    // Save.clear while failed43: the stored village is copied first (G-11)
+    Save.load();
+    Save.failWith('restore', new Error('x'));
+    Save.clear();
+    check('4: 「새 마을로 시작」 while failed43: the stored village goes to the backup slot first, then the hold lifts', st2.getItem(BACKUP_KEY) === rawTxt && !st2.getItem(SAVE_KEY) && Save.held === null && st2.getItem(SV.PRE43_KEY) === rawTxt);
+    window.__FV_NO_SAVE = undefined;
+  }
+  delete window.localStorage;
+}
+
+console.log('— 11 pre43');
+{
+  const { keepPre43, PRE43_KEY, PRE43_SLOTS } = SV;
+  const st = memStorage({});
+  const a = '{"v":7,"t":1,"coins":5}', b = '{"v":8,"t":2,"coins":6}', c = '{"v":8,"t":3,"coins":7}';
+  const r1 = keepPre43(st, a), r1b = keepPre43(st, a), r2 = keepPre43(st, b), r2b = keepPre43(st, b), r3 = keepPre43(st, c);
+  check('11: keepPre43 writes once, byte-identical; the same village again: nothing new; a second village -> .2; a third: nowhere (nothing overwritten)',
+    r1 === PRE43_KEY && r1b === PRE43_KEY && r2 === PRE43_KEY + '.2' && r2b === PRE43_KEY + '.2' && r3 === null && st.getItem(PRE43_KEY) === a && st.getItem(PRE43_KEY + '.2') === b && same(PRE43_SLOTS, [PRE43_KEY, PRE43_KEY + '.2']), [r1, r2, r3]);
+  const full = memStorage({}, { quota: 10 });
+  check('11: keepPre43 never throws (a full storage, no storage, no text)', keepPre43(full, a) === null && keepPre43(null, a) === null && keepPre43(st, '') === null && keepPre43(st, null) === null);
+  check('11: neither slot is a game key (never in a code)', PRE43_SLOTS.every((k) => !T.isGameKey(k)));
+  // applyVillage leaves them in place
+  window.__FV_NO_SAVE = undefined;
+  const st2 = memStorage({ [SAVE_KEY]: '{"v":8,"lv":43,"t":1,"coins":1}', [PRE43_KEY]: a, [PRE43_KEY + '.2']: b, 'frostVillage.title.v1': '{}' });
+  const res = await T.applyVillage({ [SAVE_KEY]: '{"v":8,"lv":43,"t":2,"coins":9}' }, { storage: st2 });
+  check('11: 불러오기 (applyVillage) leaves both pre43 slots as they are (and removes the old game keys the new village lacks)', res.ok && st2.getItem(PRE43_KEY) === a && st2.getItem(PRE43_KEY + '.2') === b && !st2.getItem('frostVillage.title.v1'), res);
+  window.__FV_NO_SAVE = undefined;
+  // a pre-B village's code is format 1 (an older build may read it); a step-B one format 2
+  const pre = await T.encodeVillage({ [SAVE_KEY]: a }, { fmt: 1 }), now = await T.encodeVillage({ [SAVE_KEY]: '{"v":8,"lv":43}' }), odd = await T.encodeVillage({ [SAVE_KEY]: a }, { fmt: 7 });
+  const dpre = await T.decodeVillage(pre.code);
+  check('11: encodeVillage fmt 1 -> SNOWBLOOM1 (read back here); anything else -> SNOWBLOOM2', /^SNOWBLOOM1\./.test(pre.code) && dpre.ok && dpre.keys[SAVE_KEY] === a && /^SNOWBLOOM2\./.test(now.code) && /^SNOWBLOOM2\./.test(odd.code));
+}
+
+console.log('— 12 [P-GATE] NEW43 = the live price (must stay green from P\'s merge on)');
+let pending = 0;
+{
+  const H = { get(t, k) { if (k === Symbol.toPrimitive) return () => 0; if (!(k in t)) t[k] = new Proxy(function () {}, H); return t[k]; }, construct() { return new Proxy({}, H); }, apply() { return new Proxy(function () {}, H); } };
+  if (!globalThis.Phaser) globalThis.Phaser = new Proxy(function () {}, H);
+  const { buildCost } = await import('../../src/entities/Site.js');
+  const pick = (c) => ({ coins: c.coins, item_plank: c.item_plank || 0, item_ingot: c.item_ingot || 0, time: c.time });
+  const live = { town_hall: pick(buildCost('town_hall', 'w_hall')), chief_office: pick(buildCost('chief_office', 'v42_office')) };
+  const plan = { town_hall: pick(RM.NEW43('town_hall')), chief_office: pick(RM.NEW43('chief_office')) };
+  const old = { town_hall: pick(RM.OLD43.town_hall), chief_office: pick(RM.OLD43.chief_office) };
+  const ok = same(live, plan);
+  const beforeP = same(live, old);
+  if (!ok && beforeP && !argv.includes('--p-gate')) {
+    pending++;
+    console.log('  PENDING [P-GATE] Site.buildCost still gives the pre-B prices (hall ' + live.town_hall.coins + ', office ' + live.chief_office.coins + '): P is not merged. From P\'s merge on this must read hall 1200 + 16 + 4, office 400 + 8 + 0 (NEW43, Remap43.js); run with --p-gate to make it hard');
+  } else {
+    check('12 [P-GATE]: NEW43(b) === Site.buildCost(b) for the hall (1,200 + 16 + 4) and the office (400 + 8): the remap repriced to what the game charges', ok, { live, plan });
+  }
+}
 
 delete globalThis.window;
 if (!NODE_ONLY) await browserPart();
-console.log('\nsave_v43: ' + passed + ' passed, ' + fails.length + ' failed');
+console.log('\nsave_v43: ' + passed + ' passed, ' + fails.length + ' failed' + (pending ? ', ' + pending + ' pending (P-GATE: P not merged)' : ''));
 process.exit(fails.length ? 1 : 0);
 
 // ================================================================ the real game (B4)
@@ -554,6 +860,8 @@ async function browserPart() {
   });
   const click = (page, id) => page.evaluate((i) => { const el = document.getElementById(i); if (el) el.click(); return !!el; }, id);
   try {
+    // (--s4-only: the R43 rows below only, without B4a–c)
+    if (!argv.includes('--s4-only')) {
     // ============================================================ B4a: a stored lv 46 village
     console.log('— B4a: a village from a newer build (lv 46)');
     const raw46 = JSON.stringify(Object.assign({ v: 8, lv: 46, t: 1790000000000 }, S46, { v: 8, lv: 46 }));
@@ -663,6 +971,227 @@ async function browserPart() {
       sC[SAVE_KEY] === newer && cc.bar && !cc.card && cc.held === 'stale' && /새로 고침/.test(cc.barText) && cc.holds.filter((k) => k === 'stale').length === 1 && cc.uiInput === true, { same: sC[SAVE_KEY] === newer, cc });
     errs.push(...C.log.errors);
     await C.ctx.close();
+    }
+
+    // ============================================================ S4: R43 in the real game (map_save §6.1 B1–B3, B5)
+    const ALL_B1 = argv.includes('--b1-all');
+    const G8_ALL = argv.includes('--g8-all');
+    const have = (f) => fs.existsSync(path.join(FIX, f));
+    const keysOf = (f) => fixtureKeys(f);
+    // (the remap's event: the game's own serialize at the moment R43's village stands, before any game time — the census)
+    const armRemapSnap = (page) => page.evaluate(() => { window.__remapSnap = null; window.__FV43.on('remap', (d) => { try { window.__remapSnap = { d, s: window.__FV.game.scene.getScene('Game').serialize() }; } catch (e) { window.__remapSnap = { d, err: String(e) }; } }); });
+    const bootArmed = async (page) => {
+      await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title') && window.__FV43, 180000);
+      await armRemapSnap(page);
+      await sleep(400);
+      await startGame(page);
+      await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player, 180000);
+      await sleep(800);
+      await installStepper(page);
+    };
+    const gameView = (page) => page.evaluate(() => {
+      const gs = window.__FV.scene;
+      const sites = {};
+      for (const id in gs.sites) { const s = gs.sites[id]; if (s.state !== 'plot') sites[id] = { b: s.building, st: s.state, shown: !!s.shown }; }
+      return { sites, skipped: (gs.restoreSkipped || []).slice(), held: window.__FV_SAVE_HELD || null, onb: gs.onboard ? gs.onboard.mode || null : null, maker: !!(gs.flags && gs.flags.mk), v43: gs.v43, remapEv: (window.__FV43.recent() || []).filter((e) => e.name === 'remap').map((e) => e.data && e.data.ok), snap: window.__remapSnap };
+    });
+
+    // ---------------- B1: each pre-B fixture boots remapped
+    console.log('— B1: old villages boot on the new map');
+    const B1 = PREB.filter((f) => !expectFail(f) && (ALL_B1 || /^(v35_save_38min|v41_save_smart_46min|v42_save_office_ttal|v42_village_late|v43a2_bread|v43a1_village|v43_xl_swap_both|v43_reprice_room|v4202_|v421_|v43a22_|v43a3_)/.test(f)));
+    const b1bad = { boot: [], sites: [], shown: [], census: [], stored: [], again: [], ui: [] };
+    const b1conv = [];
+    for (const f of B1) {
+      const keys = keysOf(f);
+      const raw = keys[SAVE_KEY];
+      const mig = migrateSaveEx(JSON.parse(raw));
+      const P = await newPage(keys, { viewport: { width: 360, height: 640 }, dpr: 1 });
+      try {
+        await bootArmed(P.page);
+        const v = await gameView(P.page);
+        if (!(v.remapEv.length === 1 && v.remapEv[0] === true && !v.held && v.v43 && v.v43.lay === 2 && !v.skipped.length)) b1bad.boot.push(f + ' ' + JSON.stringify({ ev: v.remapEv, held: v.held, skipped: v.skipped }));
+        if (v.onb && v.onb !== 'off' || v.maker) b1bad.ui.push(f + ' onb ' + v.onb + ' maker ' + v.maker);
+        // every site of the remapped save stands, as saved, and is shown (BP-17)
+        const want = mig.save.sites;
+        const miss = Object.keys(want).filter((id) => !v.sites[id] || v.sites[id].b !== want[id].b || (want[id].st === 'done') !== (v.sites[id].st === 'done'));
+        const extra = Object.keys(v.sites).filter((id) => !want[id]);
+        if (miss.length || extra.length) b1bad.sites.push(f + ' miss ' + miss.join(',') + ' extra ' + extra.join(','));
+        const hidden = Object.keys(v.sites).filter((id) => !v.sites[id].shown);
+        if (hidden.length) b1bad.shown.push(f + ': ' + hidden.join(','));
+        // census: the game's own serialize as the remapped village stands = the Node census of the remapped save
+        if (!v.snap || !v.snap.s) b1bad.census.push(f + ' no snapshot ' + (v.snap && v.snap.err));
+        else {
+          const cG = census(v.snap.s), cN = census(mig.save);
+          const dk = Object.keys(Object.assign({}, cG.items, cN.items)).filter((k) => (cG.items[k] || 0) !== (cN.items[k] || 0));
+          // (a3's own load steps may pay goods that find no room — an old shop's bread, an old trade post's goods — into a till
+          //  at today's price: an item may only turn into exactly its price in coins, nothing may appear or vanish)
+          const more = dk.filter((k) => (cG.items[k] || 0) > (cN.items[k] || 0));
+          const paid = dk.reduce((n, k) => n + Math.max(0, (cN.items[k] || 0) - (cG.items[k] || 0)) * (/^item_/.test(k) ? priceOf(k) : NaN), 0);
+          if (more.length || cG.coins - cN.coins !== paid) b1bad.census.push(f + ' coins ' + cN.coins + ' -> ' + cG.coins + ' items ' + JSON.stringify(dk.map((k) => [k, cN.items[k] || 0, cG.items[k] || 0])).slice(0, 300));
+          else if (dk.length) b1conv.push(f.replace(/\.json$/, '') + ': ' + dk.map((k) => k + ' ' + ((cN.items[k] || 0) - (cG.items[k] || 0))).join(', ') + ' -> +' + paid + ' coins');
+        }
+        // a few seconds later the village is stored on the new map (lay 2, lv 43); the pre-B text is kept as it was
+        await advance(P.page, 6);
+        const st = await stored(P.page);
+        const now = JSON.parse(st[SAVE_KEY] || 'null');
+        if (!(now && now.lv === 43 && now.v43 && now.v43.lay === 2 && st[SV.PRE43_KEY] === raw)) b1bad.stored.push(f + ' ' + JSON.stringify({ lv: now && now.lv, lay: now && now.v43 && now.v43.lay, pre43: st[SV.PRE43_KEY] === raw }));
+        // the next start: no remap again
+        await P.page.reload({ waitUntil: 'load' });
+        await bootArmed(P.page);
+        const v2 = await gameView(P.page);
+        if (v2.remapEv.length || v2.held || !v2.v43 || !v2.v43.refunds43 || (await stored(P.page))[SV.PRE43_KEY] !== raw) b1bad.again.push(f + ' ' + JSON.stringify({ ev: v2.remapEv, held: v2.held }));
+        if (f === 'v43_reprice_room.json') { await render(P.page); await shot(P.page, 'b1_reprice_room_360x640'); }
+      } catch (e) { b1bad.boot.push(f + ' threw ' + String(e && e.message).slice(0, 160)); }
+      errs.push(...P.log.errors);
+      await P.ctx.close();
+    }
+    console.log('       booted: ' + B1.map((f) => f.replace(/\.json$/, '')).join(' · '));
+    if (b1conv.length) console.log('       (a3 load steps paid goods into a till at price: ' + b1conv.join(' · ') + ')');
+    check('B1: every old village loads remapped once (EV43.remap ok, no hold, lay 2, restoreSkipped empty) — ' + B1.length + ' fixtures', !b1bad.boot.length, b1bad.boot);
+    check('B1: no first-run tutorial and no flag maker on an old village', !b1bad.ui.length, b1bad.ui);
+    check('B1: every site of the remapped save stands as saved (workshops on d_*, hall w_hall, restaurant w_rest), nothing more', !b1bad.sites.length, b1bad.sites);
+    check('B1: every restored site is shown (BP-17)', !b1bad.shown.length, b1bad.shown);
+    check('B1: the game\'s census as the village stands = the Node census of the remapped save (coins + items over every place; a3\'s load steps may only pay goods into a till at their price)', !b1bad.census.length, b1bad.census);
+    check('B1: then stored on the new map ({"v":8,"lv":43, lay 2); PRE43 holds the stored pre-B text byte for byte', !b1bad.stored.length, b1bad.stored);
+    check('B1: the next start does not remap again (no event, refunds43 kept, PRE43 unchanged)', !b1bad.again.length, b1bad.again);
+
+    // ---------------- B2: forced failure (G8): the stored village never changes
+    console.log('— B2: a move that fails (G8, __FV_TEST_FAIL43)');
+    const G8 = G8_ALL ? PREB.filter((f) => !expectFail(f)) : ['v42_village_late.json', 'v43_reprice_room.json'].concat(['v4202_46min_admin.json', 'v43a3_late.json'].filter(have));
+    const b2bad = { card: [], same: [], code: [], misc: [] };
+    let shotDone = false;
+    for (const f of G8) {
+      for (const sw of G8_ALL ? ['throw', 'check'] : [f === 'v43_reprice_room.json' ? 'throw' : 'check']) {
+        const keys = Object.assign({}, keysOf(f));
+        // (BP-15) an OLDER village in PRE43 already: the card's code must still be the stored one
+        keys[SV.PRE43_KEY] = '{"v":7,"t":1,"coins":5,"note":"an older village"}';
+        const P = await newPage(keys, { viewport: { width: 390, height: 844 }, dpr: 1, init: `window.__FV_TEST_FAIL43 = ${JSON.stringify(sw)};` });
+        try {
+          await bootArmed(P.page);
+          const s0 = await stored(P.page);
+          await advance(P.page, 1);
+          const c = await card(P.page);
+          const which = await P.page.evaluate(() => (document.getElementById('fh-which') || {}).textContent || '');
+          if (!(c.card && c.kind === 'fail' && /새 지도로 옮기지 못했어요/.test(c.title) && c.held === 'failed43' && c.uiInput === false && /문제: /.test(which) && !c.maker && (c.onb === null || c.onb === 'off'))) b2bad.card.push(f + '/' + sw + ' ' + JSON.stringify({ card: c.card, kind: c.kind, held: c.held, which }));
+          if (!shotDone) { await render(P.page); await shot(P.page, 'fail_390x844_ko'); shotDone = true; }
+          await advance(P.page, 60);
+          await hide(P.page);
+          await sleep(300);
+          await P.page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); });
+          const s1 = await stored(P.page);
+          if (!(s1[SAVE_KEY] === keys[SAVE_KEY] && same(s1, s0) && !s1[BAD_KEY] && !s1[BACKUP_KEY] && s1[SV.PRE43_KEY] === keys[SV.PRE43_KEY])) b2bad.same.push(f + '/' + sw + ' changed ' + Object.keys(Object.assign({}, s0, s1)).filter((k) => s0[k] !== s1[k]).join(','));
+          // 「마을 코드 만들기」: the STORED keys (BP-15), a format-1 code (a pre-B village)
+          await click(P.page, 'fh-b2');
+          await waitFor(P.page, () => { const t = document.getElementById('fm-code-out'); return t && /SNOWBLOOM\d\./.test(t.value); }, 30000);
+          const code = await P.page.evaluate(() => document.getElementById('fm-code-out').value);
+          const dc = await T.decodeVillage(code);
+          const dr = dc.ok ? T.dryRun(dc.keys) : null;
+          if (!(dc.ok && dc.keys[SAVE_KEY] === keys[SAVE_KEY] && /SNOWBLOOM1\./.test(code) && dr && dr.ok && dr.summary.remap43)) b2bad.code.push(f + '/' + sw + ' ' + JSON.stringify({ ok: dc.ok, same: dc.ok && dc.keys[SAVE_KEY] === keys[SAVE_KEY], fmt1: /SNOWBLOOM1\./.test(code), dr: dr && (dr.error || !!dr.summary.remap43) }));
+          await P.page.evaluate(() => document.getElementById('fm-close').click());
+          // with the switch, the same code in this page's 불러오기 dry run: migrateFail (Transfer refuses it)
+          const inPage = await P.page.evaluate(async (cd) => { const T2 = await import(new URL('src/core/Transfer.js', location.href).href); const d = await T2.decodeVillage(cd); return d.ok ? T2.dryRun(d.keys).error || 'ok' : 'decode ' + d.error; }, code);
+          if (inPage !== 'migrateFail') b2bad.misc.push(f + '/' + sw + ' in-page dryRun ' + inPage);
+        } catch (e) { b2bad.card.push(f + '/' + sw + ' threw ' + String(e && e.message).slice(0, 160)); }
+        errs.push(...P.log.errors.filter((x) => !/test switch/.test(x)));
+        await P.ctx.close();
+      }
+    }
+    console.log('       G8 boots: ' + G8.map((f) => f.replace(/\.json$/, '')).join(' · ') + (G8_ALL ? ' (× throw, check)' : ''));
+    check('B2: the failure card shows (「마을을 새 지도로 옮기지 못했어요」, the 문제 line), held failed43, input off, no tutorial / flag maker', !b2bad.card.length, b2bad.card);
+    check('B2: every stored key byte-identical after 60 s of game time + visibilitychange / pagehide; no .bad, no backup; the older PRE43 untouched', !b2bad.same.length, b2bad.same);
+    check('B2: 「마을 코드 만들기」 gives the STORED village (never the older PRE43, BP-15) as a format-1 code that dry-runs (and remaps) without the switch', !b2bad.code.length, b2bad.code);
+    check('B2: with the switch on, the same code\'s 불러오기 dry run is refused with migrateFail', !b2bad.misc.length, b2bad.misc);
+
+    // ---------------- B3: the remapped village cannot be built (restore throw / a skipped site)
+    console.log('— B3: a remapped village that cannot be built');
+    for (const sw of ['restore', 'skip']) {
+      const keys = keysOf('v42_village_late.json');
+      const P = await newPage(keys, { viewport: { width: 390, height: 844 }, dpr: 1, init: `window.__FV_TEST_FAIL43 = ${JSON.stringify(sw)};` });
+      try {
+        await waitFor(P.page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title') && window.__FV43, 180000);
+        await armRemapSnap(P.page);
+        await sleep(400);
+        await startGame(P.page);
+        await waitFor(P.page, () => window.__FV.game.scene.isActive('UI') && window.__FV.scene && window.__FV.scene.player && window.__FV_SAVE_HELD, 180000);
+        await sleep(800);
+        await installStepper(P.page);
+        await advance(P.page, 20);
+        await hide(P.page);
+        await sleep(300);
+        const c = await card(P.page);
+        const s = await stored(P.page);
+        const which = await P.page.evaluate(() => (document.getElementById('fh-which') || {}).textContent || '');
+        check('B3 (' + sw + '): the failure card (「' + (sw === 'restore' ? 'restore' : 'skip') + '」 in its 문제 line), no quarantine (.bad untouched), SAVE_KEY byte-identical after 20 s + pagehide, the bus said remap { ok: false }',
+          c.card && c.kind === 'fail' && c.held === 'failed43' && new RegExp(sw).test(which) && !s[BAD_KEY] && s[SAVE_KEY] === keys[SAVE_KEY] && s[SV.PRE43_KEY] === keys[SAVE_KEY] && (sw === 'restore' || (await P.page.evaluate(() => window.__FV43.recent().some((e) => e.name === 'remap' && e.data && e.data.ok === false)))),
+          { card: c.card, held: c.held, which, bad: !!s[BAD_KEY], same: s[SAVE_KEY] === keys[SAVE_KEY] });
+      } catch (e) { check('B3 (' + sw + ') ran', false, String(e && e.message).slice(0, 200)); }
+      errs.push(...P.log.errors.filter((x) => !/test switch/.test(x)));
+      await P.ctx.close();
+    }
+
+    // ---------------- B5: 마을 옮기기 with old / newer / unmovable codes; the 「새 단장 전 마을」 rows
+    console.log('— B5: 마을 옮기기');
+    {
+      const P = await newPage(keysOf('v42_village_late.json'), { viewport: { width: 390, height: 844 }, dpr: 2 });
+      await boot(P.page);
+      await advance(P.page, 6);
+      const openMove = async (tab) => {
+        await P.page.evaluate((tb) => { window.__FV.lastMoveCode = null; const ui = window.__FV.game.scene.getScene('UI'); ui.movePanel = null; return import(new URL('src/scenes/MovePanel.js', location.href).href).then((m) => m.openMovePanel(ui, tb)); }, tab || 'out');
+        await waitFor(P.page, () => window.__FV.moveOpen === true, 10000);
+      };
+      await openMove('out');
+      await waitFor(P.page, () => window.__FV.lastMoveCode && document.getElementById('fm-code-out').value.length > 50, 30000);
+      const out0 = await P.page.evaluate(() => ({ code: document.getElementById('fm-code-out').value, pre: !document.getElementById('fm-pre43').hidden, rows: document.getElementById('fm-pre43').innerText }));
+      check('B5: after the move, 내보내기 makes a format-2 code of the village now and lists 「새 단장 전 마을」 with its save time', /SNOWBLOOM2\./.test(out0.code) && out0.pre && /새 단장 전 마을/.test(out0.rows) && /예전 지도/.test(out0.rows), out0.rows.slice(0, 120));
+      await render(P.page);
+      await shot(P.page, 'move_pre43_390x844_ko');
+      await P.page.click('#fm-pre43-1');
+      await waitFor(P.page, () => window.__FV.lastMoveCode && window.__FV.lastMoveCode.src && document.getElementById('fm-code-out').value.length > 50, 30000);
+      const pc = await P.page.evaluate(() => ({ code: document.getElementById('fm-code-out').value, back: !document.getElementById('fm-pre43-back').hidden, lead: document.querySelector('#fm-view-out .fm-p').textContent }));
+      const dpc = await T.decodeVillage(pc.code);
+      const raw0 = keysOf('v42_village_late.json')[SAVE_KEY];
+      check('B5: 「이 마을 코드 만들기」: a format-1 code whose save is the pre-B text byte for byte (the other keys of now), headed 새 단장 전 마을; 「지금 마을 코드 보기」 goes back',
+        dpc.ok && dpc.keys[SAVE_KEY] === raw0 && /SNOWBLOOM1\./.test(pc.code) && /새 단장 전 마을 코드/.test(pc.code.split('\n')[0]) && pc.back && /예전 버전/.test(pc.lead), { ok: dpc.ok, head: pc.code.split('\n')[0] });
+      await P.page.click('#fm-pre43-back');
+      await waitFor(P.page, () => window.__FV.lastMoveCode && !window.__FV.lastMoveCode.src, 30000);
+      // 불러오기
+      await P.page.click('#fm-tab-in');
+      const tryCode = async (text) => {
+        await P.page.fill('#fm-code-in', text);
+        await P.page.evaluate(() => { window.__FV.lastMoveCheck = null; });
+        await P.page.click('#fm-load');
+        await waitFor(P.page, () => window.__FV.lastMoveCheck, 30000);
+        await sleep(100);
+        return P.page.evaluate(() => ({ check: window.__FV.lastMoveCheck, msg: document.getElementById('fm-msg-in').textContent, card: !document.getElementById('fm-confirm').hidden, cardText: document.getElementById('fm-confirm').innerText }));
+      };
+      const enc = async (keys, o) => (await T.encodeVillage(keys, o)).code;
+      const v7 = await tryCode(await enc(keysOf(have('v4202_25min.json') ? 'v4202_25min.json' : 'v42_village_late.json'), { fmt: 1 }));
+      const rp = await tryCode(await enc(keysOf('v43_reprice_room.json'), { fmt: 1 }));
+      check('B5: an old (v7) code and a reprice code are found, the card says they move onto the new map (and the coins back)', v7.check.ok && v7.card && /새 지도로 옮겨요/.test(v7.cardText) && rp.check.ok && /새 지도로 옮겨요: 건물 4채가 새 자리로 · 2,705코인을 돌려받아요/.test(rp.cardText), [v7.cardText.slice(0, 200), rp.cardText.slice(0, 200)]);
+      if (have('v43a3_late.json')) { const a3 = await tryCode(await enc(keysOf('v43a3_late.json'), { fmt: 1 })); check('B5: an a3.1 code is found and moves', a3.check.ok && /새 지도로 옮겨요/.test(a3.cardText), a3.cardText.slice(0, 200)); }
+      await P.page.click('#fm-no');
+      const nw = await tryCode(await enc(keysOf('v43_newer_lv46.json')));
+      const mf = await tryCode(await enc(keysOf('v43_xl_swap_kept.json'), { fmt: 1 }));
+      check('B5: an lv 46 code -> newerSave text; a code R43 cannot move -> migrateFail text; nothing changed', !nw.check.ok && nw.check.error === 'newerSave' && /더 새 버전/.test(nw.msg) && !mf.check.ok && mf.check.error === 'migrateFail' && /새 지도로 옮기지 못했어요/.test(mf.msg) && (await stored(P.page))[SV.PRE43_KEY] === raw0, [nw.check, mf.check, mf.msg]);
+      // a format-2 code reads; a format-3 one is 'newer'
+      const c2 = await enc({ [SAVE_KEY]: (await stored(P.page))[SAVE_KEY] });
+      const head = c2.split('.').slice(0, 3).join('.'), body = c2.slice(head.length + 1, c2.lastIndexOf('.'));
+      const t3 = 'SNOWBLOOM3' + head.slice('SNOWBLOOM2'.length) + '.' + body;
+      const c3 = t3 + '.' + T.crc32(t3);
+      const r2 = await tryCode(c2), r3 = await tryCode(c3);
+      check('B5: a SNOWBLOOM2 code is read; a SNOWBLOOM3 code answers "newer"', r2.check.ok && !r3.check.ok && r3.check.error === 'newer', [r2.check.ok, r3.check.error]);
+      // import the reprice village for real: the page reloads into it, remapped with its refunds
+      await P.page.click('#fm-no').catch(() => {});
+      await tryCode(await enc(keysOf('v43_reprice_room.json'), { fmt: 1 }));
+      await Promise.all([P.page.waitForNavigation({ waitUntil: 'load', timeout: 60000 }), P.page.click('#fm-yes')]);
+      await bootArmed(P.page);
+      const v = await gameView(P.page);
+      const sNow = await stored(P.page);
+      check('B5: 바꾸기 with the old reprice village: it loads remapped (refunds43 2,705 coins), the 불러오기 spare holds the village before; PRE43 keeps the first pre-B village (no second copy needed: .2 holds the imported one)',
+        v.remapEv.length === 1 && v.remapEv[0] === true && v.v43.refunds43 && v.v43.refunds43.coins === 2705 && sNow[SV.PRE43_KEY] === raw0 && sNow[SV.PRE43_KEY + '.2'] === keysOf('v43_reprice_room.json')[SAVE_KEY] && !!sNow[T.MOVE_BACKUP_KEY], { ev: v.remapEv, r: v.v43 && v.v43.refunds43, pre2: !!sNow[SV.PRE43_KEY + '.2'] });
+      errs.push(...P.log.errors);
+      await P.ctx.close();
+    }
   } catch (e) {
     check('browser part ran to the end', false, String((e && e.stack) || e).slice(0, 600));
   }

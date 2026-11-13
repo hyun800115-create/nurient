@@ -549,6 +549,8 @@ export const STRINGS = {
     hold_retry: '다시 해 보기',
     hold_staleText: '새 버전에서 저장된 마을이에요 · 새로 고침해 주세요',
     hold_reload: '새로 고침',
+    // ((S4) the failure card's small line: what went wrong, for a bug report)
+    hold_failWhich: '문제: {why}',
     // <<< v43B:S end
 
     // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
@@ -1068,6 +1070,7 @@ export const STRINGS = {
     hold_retry: 'Try again',
     hold_staleText: 'A newer version saved this village · please reload',
     hold_reload: 'Reload',
+    hold_failWhich: 'Problem: {why}',
     // <<< v43B:S end
 
     // >>> v43B:P start (progression: office card, 직원 tab, hall goal, mkt_s4 row)
