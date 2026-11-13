@@ -2886,7 +2886,10 @@ export class Game extends Phaser.Scene {
       finishSite(id) { const st = gs.sites[id]; if (!st || st.state === 'plot' || st.state === 'done') return false; st.finish(false); return true; },
       /** v3 shortcut for tests: open every land and put a building on chosen plots (instant) */
       unlockV3(plan) {
-        const P = plan || { e_m1: 'toolsmith', e_dock: 'boathouse', e_m2: 'warehouse', s_m1: 'cannery', s_m2: 'store', v_house1: 'house_a', v_house2: 'house_b' };
+        // ((v4.3 step B, L2) the default plan puts each workshop on its own plot (plot table v2: d_tool / d_wh / d_cannery /
+        //  d_store, world.js); was e_m1 / e_m2 / s_m1 / s_m2, generic plots that offer houses and decor only now. The keys go in
+        //  this order: d_cannery (east) before d_store, whose plot opens with the cannery (b:cannery))
+        const P = plan || { d_tool: 'toolsmith', e_dock: 'boathouse', d_wh: 'warehouse', d_cannery: 'cannery', d_store: 'store', v_house1: 'house_a', v_house2: 'house_b' };
         hooks.unlockAll();
         const pr = gs.progress;
         for (const tw of ['tower_east', 'tower_south', 'tower_se']) {

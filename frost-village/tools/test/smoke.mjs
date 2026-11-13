@@ -424,8 +424,8 @@ try {
     step('(v3) mine food box: hungry miners eat the bread the chief brings', hungry > 0 && s.hungry === 0 && s.food.eaten > 0, `hungry ${hungry}->${s.hungry} food=${JSON.stringify(s.food)}`);
 
     // ---- the rest of the buildings (instant), then a boat trip, the cannery and the store
-    //  ((v4.3 step B, plot table v2) the other workshops on their own plots: the hook's default plan still names the old
-    //   generic plots (e_m1 …: L2 moves it) and would put a second toolsmith on e_m1 beside the one on d_tool)
+    //  ((v4.3 step B, plot table v2) the other workshops on their own plots: the hook's default plan (d_tool / d_wh / d_cannery /
+    //   d_store since L2) would put the toolsmith on d_tool a second time; this plan leaves it out)
     await page.evaluate(() => { window.__FV.give(20000); window.__FV.unlockV3({ e_dock: 'boathouse', d_wh: 'warehouse', d_cannery: 'cannery', d_store: 'store', v_house1: 'house_a', v_house2: 'house_b' }); window.__FV.teleport(2200, 900); });
     await sleep(1500);
     await waitFor(page, () => window.__FV.state().pads.includes('boat_rowboat'), 10000).catch(() => {});

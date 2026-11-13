@@ -61,7 +61,7 @@ def('npc_kid_girl', {
 });
 
 def('npc_kid_prankster', {
-  name: '장난꾸러기 준', short: '준', en: 'Jun', group: 'kid', sex: 'm', age: 9, job: '초등학생 (자칭 눈싸움 대장)', home: '대장간 뒤 작은 집',
+  name: '장난꾸러기 준', short: '준', en: 'Jun', group: 'kid', sex: 'm', age: 9, job: '초등학생 (자칭 눈싸움 대장)', home: '그네 옆 작은 집',   // ((v4.3 step B, L2) 첫 집 h43_2 가 마을 마당 그네 옆으로 (예전 '대장간 뒤 작은 집': 대장간은 이제 서쪽 d_tool)
   traits: ['장난꾸러기', '눈싸움 대장', '들키면 도망감'], likes: ['눈덩이', '비밀 기지', '사탕'], dislikes: ['혼나는 거', '목욕'],
   level: CASUAL, chatty: 0.6, mood: 'excited', emotes: ['laugh', 'snowball', 'sweat', 'idea'],
   interj: ['히히', '쉿', '헤헷'],

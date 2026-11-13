@@ -33,9 +33,11 @@ export const NAMED = {
   npc_kid_girl: N({ age: 8, sex: 'f', group: 'kid', jobId: 'student', house: 'h43_1', homeAt: ['playground'], values: ['friendship', 'art'], given: { ko: '하린', en: 'Harin' },
     ko: { name: '꼬마 하린', short: '하린', job: '초등학생', home: '분수 옆 빨간 지붕 집', traits: ['명랑함', '춤추기 좋아함', '눈사람 만들기 대장'], likes: ['눈사람', '춤', '강아지 누리', '딸기 우유'] },
     en: { job: 'primary school pupil', home: 'the red-roofed house by the fountain', traits: ['cheerful', 'loves to dance', 'snowman champion'], likes: ['snowmen', 'dancing', 'Nuri the dog', 'strawberry milk'] } }),
+  // ((v4.3 step B, L2) 준's home line: his family's first house h43_2 stands by the green's swing now (world.js 1560, 1640: L1 moved it
+  //  out of the 한마당 reserve), the forge is on d_tool far west ("대장간 뒤" no longer true)
   npc_kid_prankster: N({ age: 9, sex: 'm', group: 'kid', jobId: 'student', house: 'h43_2', homeAt: ['playground'], values: ['adventure', 'food'], given: { ko: '준', en: 'Jun' },
-    ko: { name: '장난꾸러기 준', short: '준', job: '초등학생 (자칭 눈싸움 대장)', home: '대장간 뒤 작은 집', traits: ['장난꾸러기', '눈싸움 대장', '들키면 도망감'], likes: ['눈덩이', '비밀 기지', '사탕'] },
-    en: { job: 'primary school pupil (self-made snowball captain)', home: 'the little house behind the forge', traits: ['prankster', 'snowball captain', 'runs when caught'], likes: ['snowballs', 'secret bases', 'candy'] } }),
+    ko: { name: '장난꾸러기 준', short: '준', job: '초등학생 (자칭 눈싸움 대장)', home: '그네 옆 작은 집', traits: ['장난꾸러기', '눈싸움 대장', '들키면 도망감'], likes: ['눈덩이', '비밀 기지', '사탕'] },
+    en: { job: 'primary school pupil (self-made snowball captain)', home: 'the little house by the swing', traits: ['prankster', 'snowball captain', 'runs when caught'], likes: ['snowballs', 'secret bases', 'candy'] } }),
   npc_kid_boy: N({ age: 8, sex: 'm', group: 'kid', jobId: 'student', house: 'h43_2', homeAt: ['playground'], values: ['adventure', 'friendship'], given: { ko: '도윤', en: 'Doyun' },
     ko: { name: '꼬마 도윤', short: '도윤', job: '초등학생', home: '분수 옆 파란 지붕 집', traits: ['개구쟁이', '눈싸움 좋아함'], likes: ['눈싸움', '술래잡기', '썰매'] },
     en: { job: 'primary school pupil', home: 'the blue-roofed house by the fountain', traits: ['playful', 'loves snowball fights'], likes: ['snowball fights', 'tag', 'sledding'] } }),

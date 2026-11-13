@@ -40,7 +40,7 @@ export class Roads {
       const pts = [[a.x, a.y]].concat(via, [[b.x, b.y]]);
       let len = 0;
       for (let k = 1; k < pts.length; k++) len += gd(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1]);
-      const edge = { a: a.i, b: b.i, via, len, zone: o.zone || null, region: o.region || null, walk: o.walk !== false, draw: o.draw !== false };
+      const edge = { a: a.i, b: b.i, via, len, zone: o.zone || null, region: o.region || null, walk: o.walk !== false, draw: o.draw !== false, spine: !!o.spine };
       this.edges.push(edge);
       a.edges.push(edge); b.edges.push(edge);
     }
@@ -397,7 +397,10 @@ export class Roads {
     for (const e of this.edges) {
       if (!e.draw || (e.zone || null) !== (zone || null) || (e.region || null) !== (region || null)) continue;
       const a = this.nodes[e.a], b = this.nodes[e.b];
-      out.push([[a.x, a.y]].concat(e.via, [[b.x, b.y]]));
+      const pts = [[a.x, a.y]].concat(e.via, [[b.x, b.y]]);
+      // ((v4.3 step B, L2) a piece of the 눈꽃 큰길 (world.js roads `spine`): Ground.drawRoads paints it wider
+      if (e.spine) pts.spine = true;
+      out.push(pts);
     }
     return out;
   }

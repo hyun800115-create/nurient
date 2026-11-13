@@ -110,12 +110,14 @@ try {
   step('2 a house can be built with nobody waiting for a home (no more 이주민이 없다)', h0.house && !h0.house.locked, h0);
 
   // ---- 3. empty houses bring settlers; too many empty beds pause the houses
-  await ev(() => { window.__FV.unlockV3(); window.__FV.give(40000); });
+  //  ((v4.3 step B, L2) unlockV3's default plan now fills the d_* plots: this test keeps them free (steps 4 and 7 open their menus
+  //   and follow the tutorial's arrow there), so the workshops stand on generic plots as an old village's do until S's remap)
+  await ev(() => { window.__FV.unlockV3({ e_m1: 'toolsmith', e_dock: 'boathouse', e_m2: 'warehouse', s_m1: 'cannery', s_m2: 'store', v_house1: 'house_a', v_house2: 'house_b' }); window.__FV.give(40000); });
   await adv(2);
 
   // ---- 4. ((v4.3 step B, plot table v2) fixed workshop plots, generic plots for houses and decor, hidden plots
-  //      (every land open: unlockV3 above. Its test plan still puts the workshops on e_m1 / e_m2 / s_m1 / s_m2 — the hook
-  //       builds without the menu; L2 moves that plan to the d_* plots — so their own plots show the card locked: built)
+  //      (every land open: unlockV3 above, with the workshops on generic plots (the hook builds without the menu), so their own
+  //       d_* plots are free: each shows its one card, locked — the workshop stands elsewhere)
   await ev(() => { window.__FV.doneStep('boat_rowboat'); window.__FV.scene.refreshSites(); });     // (the cannery's plot opens with the rowboat)
   await adv(1);
   const p4 = await ev(async () => {

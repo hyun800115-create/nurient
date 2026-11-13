@@ -102,7 +102,10 @@ export class Office {
   /** the code presets of the staff (once the townsfolk manifest is here) */
   ensurePresets() { if (!this.presets && TF.ok) { TF.addPresets(STAFF_LOOKS); this.presets = true; } }
 
-  /** the decor that made room for a site ('office' / 'bank' / 'rail' in WORLD.v42.removeDecor / moveDecor) */
+  /** ((v4.3 step B, L2 — BP-18) the hall's plot (w_hall) shows, or a hall stands (built now or an old village's, restored at once) */
+  hallSiteUp() { const gs = this.gs, sh = gs.sites && gs.sites.w_hall; return !!((sh && sh.shown) || (gs.civic && gs.civic.hall)); }
+
+  /** the decor that made room for a site ('office' / 'bank' / 'hall' / 'rail' in WORLD.v42.removeDecor / moveDecor) */
   clearDecor(when) {
     if (this.cleared[when]) return;
     this.cleared[when] = true;
@@ -419,6 +422,8 @@ export class Office {
   // ------------------------------------------------------------------ update
   afterRestore() {
     this.syncHut(false);
+    // ((v4.3 step B, L2 — BP-18) an old village's finished hall comes back at once: its site's decor goes with it, before the first frame
+    if (!this.cleared.hall && this.hallSiteUp()) this.clearDecor('hall');
     if (!this.building) return;
     for (const r of ROLES) if (this.hired(r)) this.spawn(r, true);
     this.showHire();
@@ -431,6 +436,8 @@ export class Office {
     const so = gs.sites && gs.sites.v42_office, sb = gs.sites && gs.sites.v42_bank;
     if (so && so.shown && !this.cleared.office) this.clearDecor('office');
     if (sb && sb.shown && !this.cleared.bank) this.clearDecor('bank');
+    // ((v4.3 step B, L2 — BP-18) the hall's plot beside the office (w_hall): its decor ('hall') goes when the plot shows or a hall stands
+    if (!this.cleared.hall && this.hallSiteUp()) this.clearDecor('hall');
     if (!B) return;
     // (a pad paid in full hires inside its update and is gone afterwards: never read it back then)
     const hp = this.hirePad;

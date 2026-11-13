@@ -184,5 +184,57 @@ console.log('plot table v2 (village roads)');
   ok(!far.length, 'the roads reach every fixed workshop plot and the hall\'s plot (last leg ≤ 6 m) and the first houses (≤ 10 m) from the plaza: ' + legs.join(', '), far);
 }
 
+// ================================================================ (v4.3 step B, L2) 눈꽃 큰길, the hall's front square, the old office node
+// Node only: the new nodes hut_door / hall_front / deck_head exist (w_b1 renamed, w_office gone from both graphs); the 큰길's
+// pieces (roads `spine`) are drawn edges and run hall_front → w_rest → w_gate_n → w_b2 → hut_door → plaza_w, the south branch
+// plaza_s → cross_n → green → cross_s (X-8) and the east half plaza_e → east_link → east_gate (region east); Roads.drawn carries
+// the flag for Ground.drawRoads; the hall's front node stands in the front square (w_hall clear) but off the hall's ground and off
+// its pads (TownHall SPOT); deck_head is a walk-only beach node that makes no route longer; the vehicles' p:hall is hall_front
+console.log('눈꽃 큰길 (L2)');
+{
+  const N = WORLD.roads.nodes, E = WORLD.roads.edges;
+  ok(['hut_door', 'hall_front', 'deck_head'].every((k) => Array.isArray(N[k])), 'the new nodes hut_door, hall_front, deck_head exist');
+  const allIds = Object.keys(N).concat(Object.keys((WORLD.v42.roads || {}).nodes || {}));
+  const allEdges = E.concat((WORLD.v42.roads || {}).edges || []);
+  ok(!allIds.includes('w_office') && !allEdges.some((e) => e[0] === 'w_office' || e[1] === 'w_office') && !allIds.includes('w_b1'), 'no w_office (node or edge, v2 or v4.2 graph) and no w_b1 (renamed hut_door)');
+  ok(WORLD.v42.office.node === 'hut_door', 'WORLD.v42.office.node names hut_door');
+  const key = (a, b) => [a, b].sort().join('|');
+  const spine = E.filter((e) => e[2] && e[2].spine).map((e) => key(e[0], e[1]));
+  const WANT = [['hall_front', 'w_rest'], ['w_gate_n', 'w_rest'], ['w_b2', 'w_gate_n'], ['hut_door', 'w_b2'], ['plaza_w', 'hut_door'],
+    ['plaza_s', 'cross_n'], ['cross_n', 'green'], ['green', 'cross_s'], ['plaza_e', 'east_link'], ['east_link', 'east_gate']].map(([a, b]) => key(a, b));
+  ok(spine.length === WANT.length && WANT.every((k) => spine.includes(k)), 'the 큰길 = ' + WANT.length + ' drawn pieces: hall front → w_rest → w_gate_n → beach road → hut door → plaza_w; plaza_s → cross_s; plaza_e → east_gate', spine);
+  ok(E.filter((e) => e[2] && e[2].spine).every((e) => e[2].draw !== false && e[2].walk !== false && !e[2].zone), 'every 큰길 piece is drawn and walked, in no zone (TXD-3: Ground paints it, ground_road only)');
+  const east = E.filter((e) => e[2] && e[2].spine && e[2].region);
+  ok(east.length === 2 && east.every((e) => e[2].region === 'east'), 'the east half is the only region piece (east): painted when the east land opens');
+  const VR = new Roads(() => true, WORLD.roads, () => true);
+  const vil = VR.drawn(null, null).filter((p) => p.spine).length, eh = VR.drawn(null, 'east').filter((p) => p.spine).length;
+  ok(vil === 8 && eh === 2 && WORLD.paths.filter((p) => p.spine).length === 8, 'Roads.drawn and WORLD.paths carry the spine flag (village 8, east 2)', { vil, eh });
+  // the hall's front node: in the front square, off the hall's ground and off the hall's pads
+  const H = WORLD.plots.w_hall, hf = N.hall_front;
+  const inSq = (H.clear || []).some(([dx, dy, r]) => Math.hypot(H.x + dx - hf[0], (H.y + dy - hf[1]) * 2) < r);
+  const onHall = Math.abs(hf[0] - H.x) / 262.5 + Math.abs(hf[1] - H.y) / 131 < 1;
+  const SPOT = { tax: [-20, 168], boardPad: [-200, 128], venue: [-150, 196], rankPad: [-186, 208] };
+  const onPad = Object.entries(SPOT).filter(([k, [dx, dy]]) => { const hw = k === 'rankPad' ? 95 : 61; return Math.abs(hf[0] - H.x - dx) / hw + Math.abs(hf[1] - H.y - dy) / (hw / 2) < 1; }).map(([k]) => k);
+  ok(inSq && !onHall && !onPad.length, 'hall_front (' + hf + ') stands in the hall\'s front square, off its ground and off the tax / board / ceremony pads', { inSq, onHall, onPad });
+  const HR = new Roads(() => true, WORLD.roads, () => true);
+  const hp = HR.path(HR.byId.hall_front.i, HR.byId.plaza_c.i);
+  ok(!!hp, 'the hall\'s front square is on the road graph (hall_front → plaza_c)');
+  // deck_head: walk-only (draw: false) and no route gets longer than with the beach_w — beach_n edge alone
+  const dh = E.filter((e) => e[0] === 'deck_head' || e[1] === 'deck_head');
+  ok(dh.length === 2 && dh.every((e) => e[2] && e[2].draw === false) && E.some((e) => key(e[0], e[1]) === key('beach_w', 'beach_n')), 'deck_head: two walk-only beach edges, beach_w — beach_n kept');
+  const noDh = new Roads(() => true, { nodes: N, edges: E.filter((e) => e[0] !== 'deck_head' && e[1] !== 'deck_head') }, () => true);
+  let longer = 0;
+  const ids = Object.keys(N).filter((k) => k !== 'deck_head');
+  for (const a of ids) for (const b of ids) {
+    if (a >= b) continue;
+    const p1 = HR.path(HR.byId[a].i, HR.byId[b].i), p0 = noDh.path(noDh.byId[a].i, noDh.byId[b].i);
+    if (p1 && p0 && p1.len > p0.len + 0.5) longer++;
+  }
+  ok(longer === 0, 'with deck_head no route between two other nodes is longer', longer);
+  const { PLACES } = await import(path.join(ROOT, 'src/vehicles/layout.js'));
+  ok(PLACES['p:hall'] && PLACES['p:hall'].x === hf[0] && PLACES['p:hall'].y === hf[1], 'vehicles p:hall = hall_front (X-9)', PLACES['p:hall']);
+  ok(PLACES['p:mail_east'] && PLACES['p:mail_east'].x === N.east_link[0] && PLACES['p:mail_east'].y === N.east_link[1], 'vehicles p:mail_east = east_link (did not move)');
+}
+
 console.log(`\nroadnet: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
