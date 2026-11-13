@@ -4,6 +4,7 @@
 //  C. standing on an upgrade pad keeps buying level after level (standT not reset on rearm)
 //   node tools/test/review_robust_pads.mjs
 import { newPage, bootToGame, launch, start, sleep, waitFor, tapStart, writeJSON } from './review_robust_lib.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const srv = await start(0, { prefix: '/fv/' });
 const URL = srv.url + 'index.html';
@@ -54,7 +55,8 @@ const FR = `const W = (n, cond) => new Promise((res) => { const g = window.__FV.
   for (const target of [150, 400]) {
     const { page, ctx } = await newPage(browser);
     const save = { v: 1, coins: 1000, progress: { done: { hire_fisherman: true, zone_forest: true, hire_lumberjack: true, zone_farm: true, hire_farmer: true, zone_mine: true, hire_miner: true }, paid: {}, up: {} }, stations: {}, market: { stock: {}, cash: 0 }, trade: { stock: {}, cash: 0 }, player: { x: 900, y: 1150, stack: [] } };
-    await page.addInitScript(([k, v]) => { if (!sessionStorage.getItem('__seeded')) { sessionStorage.setItem('__seeded', '1'); localStorage.setItem(k, v); } }, [KEY, JSON.stringify(save)]);
+    // ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) pad payments, not the R43 remap (the chief would restart at the hut door)
+    await page.addInitScript(([k, v]) => { if (!sessionStorage.getItem('__seeded')) { sessionStorage.setItem('__seeded', '1'); localStorage.setItem(k, v); } }, [KEY, JSON.stringify(asStepB(save))]);
     await bootToGame(page, URL, { fresh: false });
     await hide(page);
     const m = await page.evaluate(new Function('target', `return (async () => { ${FR}

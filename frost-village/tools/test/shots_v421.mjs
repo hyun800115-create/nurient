@@ -1,7 +1,9 @@
 // (v4.2.1 물류 손질 / L0) the designer's screenshots (docs/logistics_plan.md §B1) -> docs/previews/screens_v421/
 //   node tools/test/shots_v421.mjs [--only 01,02] [--size 390x844] [--dpr 2] [--lang ko] [--suffix _360]
-// 01 the 창고 card at village complete (the 25-min save, the build menu on a free M plot)
-// 02 the forced no-plot case: the goal line '빈 땅이 생기면 창고를 지을 수 있어요'
+// 01 the 창고 card at village complete (the 25-min save, the build menu on the 창고's own plot d_wh)
+// 02 the forced no-plot case: the goal line '빈 땅이 생기면 창고를 지을 수 있어요' (d_wh hidden for the shot)
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: rewrite) plot table v2: the 창고 stands only on d_wh (D6 / D19), so 01 and 02
+//  use that plot; the fixtures load as they are, through the R43 remap (what a tester's old village looks like))
 // 03 a raw porter waiting at a full station (the 광석 짐꾼 by the ore pile: the smelter's input full; he does not walk away)
 // 04 the 창고 crew carrying fish from the fish pile to the 통조림 공장 (the link)
 // 05 a 창고 직원 walking in with the arrival banner
@@ -33,13 +35,13 @@ const { launch, openPage, tapStart, sleep, waitFor } = await import(path.join(HE
 const SCENES = [
   { name: '01_warehouse_card', save: 'v41_save_smart_25min.json', secs: 1, menu: true, setup: () => {
     const gs = window.__FV.scene; if (gs.economy.coins < 2000) gs.economy.add(2000 - gs.economy.coins);
-    const id = ['w_m1', 'w_m2', 'e_m2'].find((k) => gs.sites[k] && gs.sites[k].state === 'plot' && gs.sites[k].shown);
+    const id = ['d_wh'].find((k) => gs.sites[k] && gs.sites[k].state === 'plot' && gs.sites[k].shown);
     const st = gs.sites[id]; window.__FV.teleport(st.dropX, st.dropY + 60); window.__FV.openMenu(id);
     return { x: st.x, y: st.y, z: 1.0 };
   } },
   { name: '02_warehouse_wait_plot', save: 'v41_save_smart_25min.json', secs: 2, setup: () => {
     const gs = window.__FV.scene, pr = gs.progress;
-    for (const k in gs.sites) { const st = gs.sites[k]; if (st.kind === 'plot' && st.state === 'plot' && (st.size === 'M' || st.size === 'L') && !st.only) { if (st.setShown) st.setShown(false); else st.shown = false; } }
+    for (const k in gs.sites) { const st = gs.sites[k]; if (st.kind === 'plot' && st.state === 'plot' && (st.size === 'M' || st.size === 'L') && (!st.only || st.only === 'warehouse')) { if (st.setShown) st.setShown(false); else st.shown = false; } }
     // (the goal that waits for a plot, as when nothing else is left to do)
     pr.nextGoal = () => ({ id: 'warehouse', kind: 'build', waitPlot: true });
     // (empty hands, away from the stalls and cash pads: no carry / cash hint takes the line over)
@@ -48,7 +50,7 @@ const SCENES = [
     for (const c of gs.tutorial.cashes(true)) { const n = c.takeAll ? c.takeAll(null) : 0; if (n > 0) gs.economy.add(n); }
     // (forced case, for the shot only: the cash / buy-a-pad leads off, so the goal line is the one that shows)
     gs.tutorial.cashHint = () => false; gs.tutorial.nextAction = () => false; pr.affordablePad = () => null;
-    const w = gs.sites.w_m1 || gs.sites.w_m2; window.__FV.teleport(w.x + 40, w.y + 160);
+    const w = gs.sites.d_wh || gs.sites.w_m1 || gs.sites.w_m2; window.__FV.teleport(w.x + 40, w.y + 160);
     return { x: w.x + 20, y: w.y + 60, z: 1.0 };
   } },
   { name: '03_raw_porter_waits', save: 'v41_save_smart_46min.json', secs: 8, setup: () => {

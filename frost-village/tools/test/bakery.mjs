@@ -351,6 +351,8 @@ try {
           shopBread: g.market.stock.countOf('item_bread'), coins: g.economy.coins, tills, stage: g.market.stage,
           plates: (g.market.plates || []).filter((q) => q.on).map((q) => q.key + ':' + (q.icon && q.icon.frame ? q.icon.frame.name : '')),
           lanes: Object.keys(g.market.lanes).filter((k) => g.market.lanes[k].open), meatFlag: !!g.progress.flags.firstMeatSale, mk3: !!g.progress.done.mkt_s3, b3: !!(g.market.seats.B && g.market.seats.B.clerk),
+          // ((v4.3 step B, S6) what R43 made of it: the marker, and where the 창고 stands now
+          lay: g.v43 ? g.v43.lay : null, wh: Object.keys(g.sites).filter((k) => g.sites[k].building === 'warehouse'),
         };
       });
       const pd = sv.progress.done || {}, farm = !!pd.zone_farm;
@@ -363,6 +365,10 @@ try {
         ok(placed === oldBread && B.saved === 0 && B.rackAt === Math.min(36, oldO) + B.rack, f + ': the shop\'s ' + oldBread + ' bread moved to the bakery (stall ' + B.stall + ', rack ' + B.rack + ', 창고 ' + B.wh + ', coins ' + B.coins + '), the oven\'s ' + oldO + ' on its rack', B);
       }
       ok(r.shopBread === 0, f + ': no bread on the shop\'s rack', r.shopBread);
+      // ((v4.3 step B, S6 — map_save §6.2) the old village loads through the real R43 remap: marked lay 2, and a 창고 it had
+      //  stands on its own plot d_wh (where the bread above may have gone)
+      const hadWh = Object.values(sv.sites || {}).some((d) => d && d.b === 'warehouse');
+      ok(r.lay === 2 && (hadWh ? r.wh.join() === 'd_wh' : r.wh.length === 0), f + ': (R43) loaded remapped (lay ' + r.lay + '); ' + (hadWh ? 'its 창고 on d_wh' : 'no 창고'), { lay: r.lay, wh: r.wh });
       ok(r.coins >= (sv.coins || 0) && r.tills >= oldTills, f + ': coins never lower (wallet ' + r.coins + ' ≥ ' + (sv.coins || 0) + ', tills ' + r.tills + ' ≥ ' + oldTills + ')');
       const lost = Object.keys(pd).filter((k) => pd[k] && r.done.indexOf(k) < 0);
       ok(!lost.length, f + ': every step it had is still done', lost);

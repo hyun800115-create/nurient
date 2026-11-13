@@ -18,6 +18,11 @@
 // 9 save + reload: v8 ((v4.2.1) the number only), the crew kept, nothing new in the save; 0 page errors.
 // --fresh N: N seeded fresh games (smart bot) to village complete + 3 min: the 창고 card never shows before village
 //   complete, and an M plot is free when it first shows (docs/logistics_plan.md §5.2: 5 seeds).
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap, never asStepB) the fixtures load as they are, through the real R43
+//  remap: the crew, the raw porters and the cannery work on the step-B layout (each workshop on its d_* plot), which is what
+//  a tester's old village gets; step 0 asserts that load (lay 2, the workshops at home). Plot table v2 (L1): the 창고 has
+//  its own plot d_wh (only: warehouse) and the generic M plots offer no workshop, so step 1's card is d_wh's card, "a plot is
+//  free" is d_wh free and shown, and "no free plot" hides d_wh (and the generic M / L plots, for the pre-P freePlotFor))
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -74,14 +79,16 @@ try {
     await park();
     const c = await ev(() => {
       const gs = window.__FV.scene, pr = gs.progress, out = {};
-      const card = () => { const ch = gs.buildChoices({ size: 'M' }).find((q) => q.key === 'warehouse'); return ch ? { locked: ch.locked, reason: ch.reason, text: ch.text } : null; };
+      const whSite = gs.sites.d_wh || { size: 'M', only: 'warehouse', id: 'd_wh' };
+      const card = () => { const ch = gs.buildChoices(whSite).find((q) => q.key === 'warehouse'); return ch ? { locked: ch.locked, reason: ch.reason, text: ch.text } : null; };
       out.complete = pr.complete;
       out.open = card();
       // before village complete (hire_hunter not done): locked, with a reason that no longer names the south tower
       pr.done.hire_hunter = false; out.before = card(); out.goalBefore = pr.nextGoal() ? pr.nextGoal().id : null; pr.done.hire_hunter = true;
       out.goal = pr.nextGoal() ? pr.nextGoal().id : null;
       out.toolsmith = gs.isBuilt('toolsmith');
-      out.freeM = Object.keys(gs.sites).filter((k) => { const st = gs.sites[k]; return st.kind === 'plot' && st.state === 'plot' && st.shown && (st.size === 'M' || st.size === 'L') && !st.only; });
+      out.freeM = Object.keys(gs.sites).filter((k) => { const st = gs.sites[k]; return st.kind === 'plot' && st.state === 'plot' && st.shown && (st.only === 'warehouse' || ((st.size === 'M' || st.size === 'L') && !st.only)); });
+      out.dWh = gs.sites.d_wh ? { state: gs.sites.d_wh.state, shown: gs.sites.d_wh.shown, only: gs.sites.d_wh.only } : null;
       out.line = gs.tutorial.goalText ? gs.tutorial.goalText() : null;
       // no free plot: the goal waits (passive) and the line says so
       const hid = out.freeM.map((k) => gs.sites[k]); for (const st of hid) st.shown = false;
@@ -94,13 +101,13 @@ try {
     });
     step('1 [' + fx + '] the 창고 card is locked before village complete ("마을이 다 갖춰지면")', c.before && c.before.locked && c.before.reason === 'lock_warehouse' && /갖춰지면/.test(c.before.text || '') && !/망루/.test(c.before.text || ''), c.before);
     step('1 [' + fx + '] the 창고 card opens at village complete', c.complete && c.open && !c.open.locked, c.open);
-    step('1 [' + fx + '] an M plot is free when it shows; the 창고 is the next goal after the 대장간', c.toolsmith && c.freeM.length > 0 && c.goal === 'warehouse', { goal: c.goal, freeM: c.freeM });
+    step('1 [' + fx + '] its own plot d_wh is free and shown when it shows; the 창고 is the next goal after the 대장간', c.toolsmith && c.dWh && c.dWh.state === 'plot' && c.dWh.shown && c.dWh.only === 'warehouse' && c.goal === 'warehouse', { goal: c.goal, dWh: c.dWh, freeM: c.freeM });
     step('1 [' + fx + '] no free plot: the goal waits (another goal shows) and its line says 빈 땅이 생기면', c.goalNoPlot !== 'warehouse' && c.lineNoPlot && /빈 땅이 생기면/.test(c.lineNoPlot.text || '') && c.goalBack === 'warehouse', { goalNoPlot: c.goalNoPlot, line: c.lineNoPlot && c.lineNoPlot.text });
     if (fx === 'v41_save_smart_25min.json') {
       // build it on the first free M plot: the 창고 stands, its 2 porters come, and 짐꾼 2 can be offered
       const b = await ev((plots) => {
         const gs = window.__FV.scene, F = window.__FV; gs.economy.coins = Math.max(gs.economy.coins, 5000);
-        const id = plots[0], ok = F.build(id, 'warehouse');
+        const id = 'd_wh', ok = F.build(id, 'warehouse');
         F.supply(id); F.finishSite(id);
         return { id, ok, built: gs.isBuilt('warehouse'), porters: gs.warehouse ? gs.warehouse.porters.length : 0 };
       }, c.freeM);
@@ -131,6 +138,9 @@ try {
     window.__can = { byCrew: 0, byRaw: 0, other: 0 };
     if (C) { const f = C.sink.feed; C.sink.feed = function (ch) { const ty = ch.stack.items.length ? ch.stack.items[ch.stack.items.length - 1].type : null; const r = f.call(this, ch); if (r && (ty === 'item_fish_raw' || ty === 'item_fish_big')) { if (ch.wh) window.__can.byCrew++; else if (ch.role === 'raw') window.__can.byRaw++; else window.__can.other++; } return r; }; }
   });
+  // ((v4.3 step B, S6 — BP-21) the 46-min save went through the real R43 remap: lay 2, every workshop on its d_* plot
+  const r43 = await ev(() => { const gs = window.__FV.scene, v = gs.v43 || {}, at = (b) => Object.keys(gs.sites).filter((k) => gs.sites[k].building === b).join(); return { lay: v.lay, moved: v.refunds43 ? v.refunds43.moved : null, toolsmith: at('toolsmith'), warehouse: at('warehouse'), cannery: at('cannery'), store: at('store') }; });
+  step('0 (step B) the 46-min save loads through R43 (never asStepB): lay 2, ' + r43.moved + ' moved, 대장간 / 창고 / 통조림 공장 / 잡화점 on d_tool / d_wh / d_cannery / d_store', r43.lay === 2 && r43.moved > 0 && r43.toolsmith === 'd_tool' && r43.warehouse === 'd_wh' && r43.cannery === 'd_cannery' && r43.store === 'd_store', r43);
   const st0 = await ev(() => { const gs = window.__FV.scene; return { complete: gs.progress.complete, frules: !!gs.v42.frules, raw: gs.rawPorters.length, crew: gs.warehouse.porters.length, cannery: !!gs.workshops.find((w) => w.kind === 'cannery') }; });
   step('2 the 46-min save: village complete, the v4.2 rules on, raw porters on every line', st0.complete && st0.frules && st0.raw >= 5 && st0.cannery, st0);
   // ---- 2. raw porters stay on their line (MINUTES game minutes, the chief parked)
@@ -303,7 +313,7 @@ try {
     await ev(() => Object.assign(window.__bot.opts, { policy: 'smart', upg: 'greedy', minBatch: 3, think: 0, mag: 1 }));
     const F = await ev(async () => {
       const gs = window.__FV.scene, pr = gs.progress;
-      const card = () => { const c = gs.buildChoices({ size: 'M' }).find((q) => q.key === 'warehouse'); return !!(c && !c.locked); };
+      const card = () => { const c = gs.buildChoices(gs.sites.d_wh || { size: 'M', only: 'warehouse', id: 'd_wh' }).find((q) => q.key === 'warehouse'); return !!(c && !c.locked); };
       const out = { earlyCard: false, completeAt: null, cardAt: null, freeM: null, goalAt: null };
       for (let t = 0; t < 40 * 60; t += 10) {
         window.__step.run(10, window.__bot.tick);

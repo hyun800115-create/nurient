@@ -16,6 +16,9 @@
 //   full and the 잡화점 farther than farPx his load goes to the 짐 싣는 곳
 // 6 save mid-trip + reload: v8 (Save.js MIGRATE[7]: the number only), nothing lost (saveLost 0), the flag, both porters back, the cannery's raw meat and
 //   meat cans kept, the bag's raw meat back on the rack; no new top-level save field; 0 page errors
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: remap, never asStepB) both fixtures load as they are, through the real R43
+//  remap: the cannery stands on d_cannery and the 잡화점 on d_store (D6 / D19), so the meat-can walks and porter rates here are
+//  the ones a tester's old village gets; step 2 asserts that load (lay 2, the workshops at home)
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -90,6 +93,9 @@ try {
   // ======================================================================= 2–6 the 46-min save
   await boot(fixture('v41_save_smart_46min.json'));
   await park();
+  // ((v4.3 step B, S6 — BP-21) the 46-min save went through the real R43 remap: lay 2, every workshop on its d_* plot
+  const r43 = await ev(() => { const gs = window.__FV.scene, v = gs.v43 || {}, at = (b) => Object.keys(gs.sites).filter((k) => gs.sites[k].building === b).join(); return { lay: v.lay, moved: v.refunds43 ? v.refunds43.moved : null, toolsmith: at('toolsmith'), warehouse: at('warehouse'), cannery: at('cannery'), store: at('store') }; });
+  step('2 (step B) the 46-min save loads through R43 (never asStepB): lay 2, ' + r43.moved + ' moved, the cannery on d_cannery, the 잡화점 on d_store', r43.lay === 2 && r43.moved > 0 && r43.cannery === 'd_cannery' && r43.store === 'd_store' && r43.toolsmith === 'd_tool' && r43.warehouse === 'd_wh', r43);
   await ev(() => {
     const gs = window.__FV.scene, C = gs.workshops.find((w) => w.kind === 'cannery');
     // raw meat reaching the cannery's input before the line exists (any carrier) is counted
@@ -246,8 +252,10 @@ try {
   const keys0 = Object.keys(JSON.parse(fixture('v41_save_smart_46min.json')));
   step('6 save mid-trip (the 고기 짐꾼 carrying ' + s6.carry + '): v8, saveLost 0, the flag, his load saved on the rack', tTrip >= 0 && s6.v === 8 && s6.lost === 0 && s6.flag && s6.pile >= Math.min(s6.rackNow + s6.carry, 80), { t: tTrip, lost: s6.lost, carry: s6.carry, pile: s6.pile, rackNow: s6.rackNow, ws: s6.ws });
   // ((v4.3 step B, B0) `v43` is step B's own block (the R43 marker; build_plan.md §2), not a meat-can field; (S) so are the
-  //  content level `lv` every save is stamped with and F0's `x` drawer)
-  step('6 no new top-level save field', s6.top.filter((k) => keys0.indexOf(k) < 0 && ['v42', 'bank', 'logistics', 'v43', 'lv', 'x'].indexOf(k) < 0).length === 0, s6.top.filter((k) => keys0.indexOf(k) < 0));
+  //  content level `lv` every save is stamped with and F0's `x` drawer; ((S6) and a3's `bakery` (the 빵집's own block since
+  //  v4.3 a3, bakery.mjs) — the list printed is what is new against the v4.1 fixture, the ones outside these blocks fail)
+  const newTop = s6.top.filter((k) => keys0.indexOf(k) < 0 && ['v42', 'bank', 'logistics', 'v43', 'lv', 'x', 'bakery'].indexOf(k) < 0);
+  step('6 no new top-level save field (beyond v42 / bank / logistics / v43 / lv / x / bakery)', newTop.length === 0, { notAllowed: newTop, newVsV41: s6.top.filter((k) => keys0.indexOf(k) < 0) });
   await boot(s6.save);
   await park();
   const r6 = await ev(() => {

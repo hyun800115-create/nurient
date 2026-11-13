@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MIGRATE, sanitizeSave, sanitizeV4, SAVE_VERSION } from '../../src/core/Save.js';
+import { MIGRATE, sanitizeSave, sanitizeV4, SAVE_VERSION, migrateSave } from '../../src/core/Save.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.join(HERE, 'fixtures');
@@ -37,6 +37,12 @@ for (const f of fixtures) {
   check(f + ': coins, steps, upgrades kept', s.coins === raw.coins && doneA.every((k) => s.progress.done[k]) && doneB.length >= doneA.length && JSON.stringify(s.progress.up) === JSON.stringify(raw.progress.up), { coins: [raw.coins, s.coins], done: [doneA.length, doneB.length] });
   check(f + ': stations, shelves, residents, land, sites kept', JSON.stringify(s.stations) === JSON.stringify(sanitizeSave(clone(raw)).stations) && (s.life ? s.life.moved.length : 0) === ((raw.life && raw.life.moved) || []).length && JSON.stringify(s.territory) === JSON.stringify(sanitizeSave(clone(raw)).territory) && Object.keys(s.sites || {}).length === Object.keys(raw.sites || {}).length);
   check(f + ': labour piles and the dog kept', JSON.stringify(s.labour) === JSON.stringify(sanitizeSave(clone(raw)).labour) && JSON.stringify(s.dog) === JSON.stringify(sanitizeSave(clone(raw)).dog));
+  // ((v4.3 step B, S6 — the B0 suite audit: remap) the game's load path (migrateSave) runs R43 too: a v3.5 village has no
+  //  hall / office, so no refund (coins equal); its workshops stand on their d_* plots; nothing appears or vanishes
+  const g = migrateSave(clone(raw));
+  const kinds = (o) => Object.values(o.sites || {}).map((d) => d.b + ':' + d.st).sort().join();
+  const homes = g ? Object.entries(g.sites || {}).filter(([, d]) => ['toolsmith', 'warehouse', 'cannery', 'store'].includes(d.b)).every(([id, d]) => id === { toolsmith: 'd_tool', warehouse: 'd_wh', cannery: 'd_cannery', store: 'd_store' }[d.b]) : false;
+  check(f + ': (step B) migrateSave: lay 2, no refund (coins ' + (g && g.coins) + '), every workshop on its d_* plot, the same buildings', !!g && g.v43 && g.v43.lay === 2 && g.v43.refunds43.coins === 0 && g.coins === s.coins && homes && kinds(g) === kinds(s) && JSON.stringify(g.progress.done) === JSON.stringify(s.progress.done), g && { v43: g.v43, sites: Object.keys(g.sites || {}) });
 }
 
 // ---------------------------------------------------------------- a full v4 block round trip

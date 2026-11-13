@@ -258,6 +258,10 @@ try {
   s = await st();
   const mig = { coins: s.coins, ops: Object.fromEntries(Object.entries(s.ops).map(([k, v]) => [k, v.hired])), raw: s.rawPorters.map((r) => r.station), done: s.done.filter((d) => /^(op|raw)_/.test(d)) };
   step('v3 save migrates: lines that ran on their own keep operator + raw porter, the toolsmith its operator', s.coins === 777 && ['grill', 'sawmill', 'bakery', 'smelter', 'smokehouse', 'toolsmith'].every((k) => mig.ops[k]) && mig.raw.length === 5, JSON.stringify(mig));
+  // ((v4.3 step B, S6 — map_save §6.2, the B0 suite audit: the save has no marker, so the real R43 remap moves it) the
+  //  toolsmith it built on e_m1 stands on its own plot d_tool now (asserted by kind), e_m1 is empty
+  const tl = await ev(() => { const gs = window.__FV.scene; return { at: Object.keys(gs.sites).filter((k) => gs.sites[k].building === 'toolsmith'), e_m1: gs.sites.e_m1 ? gs.sites.e_m1.building || null : 'none', lay: gs.v43 ? gs.v43.lay : null }; });
+  step('v3 save (R43): its toolsmith (built on e_m1) stands on d_tool, e_m1 holds nothing, the village marked lay 2', tl.at.join() === 'd_tool' && !tl.e_m1 && tl.lay === 2, JSON.stringify(tl));
   // ((v4.3 밀밭 · 빵집) the field was open: the bakery (its cottage + stall) and its 판매원 come free, the baker works in it
   step('v3 save with the field: the bakery and its clerk come free (bld_bakery, hire_clerk_bakery), the baker hired in it', s.done.includes('bld_bakery') && s.done.includes('hire_clerk_bakery') && s.bakery && s.bakery.built && s.bakery.clerk && mig.ops.bakery, JSON.stringify({ done: s.done.filter((d) => /bakery/.test(d)), bakery: s.bakery }));
   await adv(20);

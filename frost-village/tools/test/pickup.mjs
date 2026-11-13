@@ -11,9 +11,13 @@ import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, advance } from './fv_step.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8');
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) the take paths at the grill, the boathouse, the fish pile and a pine
+//  (none of them moves on plot table v2): the fixture carries the step-B marker, so the R43 remap (workshops to their d_*
+//  plots, the chief back at the hut door) is no part of this test
+const SAVE = asStepB(fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8'));
 let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ok   ' + msg); } else { fail++; console.log('  FAIL ' + msg + (extra !== undefined ? ' ' + JSON.stringify(extra).slice(0, 300) : '')); } };
 

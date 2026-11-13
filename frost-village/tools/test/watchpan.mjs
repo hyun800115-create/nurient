@@ -27,13 +27,16 @@ import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, tapStart, sleep, waitFor } from './pw.mjs';
 import { installStepper, render } from './fv_step.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const SHOTS = opt('--shots', '');
-const SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8');
-const OFFICE_SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v42_save_office_ttal.json'), 'utf8');
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) 관망's free camera and the core edge on the saved villages: the fixtures carry
+//  the step-B marker, so the R43 remap (workshops to their d_* plots, the chief back at the hut door) is no part of it
+const SAVE = asStepB(fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8'));
+const OFFICE_SAVE = asStepB(fs.readFileSync(path.join(HERE, 'fixtures', 'v42_save_office_ttal.json'), 'utf8'));
 let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ok   ' + msg + (extra !== undefined && process.env.FV_VERBOSE ? '  ' + JSON.stringify(extra).slice(0, 300) : '')); } else { fail++; console.log('  FAIL ' + msg + (extra !== undefined ? ' ' + JSON.stringify(extra).slice(0, 500) : '')); } };
 const t0 = Date.now();

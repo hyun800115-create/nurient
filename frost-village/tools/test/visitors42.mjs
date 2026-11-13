@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { start } from './serve.mjs';
 import { launch, openPage, sleep, waitFor, tapStart } from './pw.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -16,15 +17,19 @@ const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] :
 const BASE = opt('--base', '');
 const MIN = Number(opt('--minutes', '20'));
 const SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8');
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) this build loads the same village as the v4.1 copy, under the step-B marker:
+//  the comparison is riders a minute, and the R43 remap (workshops moved, the chief at the hut door) must not be part of it.
+//  The v4.1 copy gets the fixture as it is (it has no remap and drops the unknown v43 key anyway)
+const SAVE_B = asStepB(SAVE);
 let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ok   ' + msg); } else { fail++; console.log('  FAIL ' + msg + (extra !== undefined ? ' ' + JSON.stringify(extra).slice(0, 400) : '')); } };
 if (!BASE || !fs.existsSync(path.join(BASE, 'index.html'))) { console.log('visitors42: --base <v4.1 copy> is required (skipped)'); process.exit(0); }
 
-async function run(root, label) {
+async function run(root, label, save) {
   const srv = await start(0, { prefix: '/vz/', root });
   const browser = await launch();
   const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: { width: 390, height: 844 }, dpr: 1 });
-  await page.evaluate((sv) => { try { localStorage.clear(); localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, SAVE);
+  await page.evaluate((sv) => { try { localStorage.clear(); localStorage.setItem('frostVillage.save.v1', sv); } catch (e) { /* */ } }, save);
   await page.reload({ waitUntil: 'load' });
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 300000);
   await sleep(300);
@@ -58,8 +63,8 @@ async function run(root, label) {
 
 const t0 = Date.now();
 console.log(`visitors per game minute: v4.1 copy vs this build, the 46-min save, ${MIN} game minutes`);
-const a = await run(path.resolve(BASE), 'v4.1');
-const b = await run(ROOT, 'v4.2');
+const a = await run(path.resolve(BASE), 'v4.1', SAVE);
+const b = await run(ROOT, 'v4.2', SAVE_B);
 // (the first 3 minutes are the save's own crowd settling: compare the rest)
 const rate = (r) => { const m = r.byMin.slice(3, MIN); let s = 0; for (let i = 0; i < m.length; i++) s += m[i] || 0; return s / Math.max(1, MIN - 3); };
 const ra = rate(a), rb = rate(b), k = rb / Math.max(0.01, ra);

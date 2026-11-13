@@ -391,7 +391,11 @@ try {
   // ((v4.3 verify CM-1) a chief saved on his landing (autosave / app pause while he fishes) reloads on it: CD-1's unstick
   //  check knows his own ground (it moved him 36 px off the planks, beyond his reach, before)
   if (want('old')) {
-    const sv = JSON.parse(fx('v41_save_smart_46min.json'));
+    // ((v4.3 step B, S6 — the B0 suite audit: asStepB for these rows) the save the game writes while he fishes is a step-B
+    //  save (v43.lay 2): marked so, the reload keeps his spot. An unmarked pre-B village goes through R43, which restarts the
+    //  chief at the hut door on purpose (map_save V-N9, WORLD.v43.oldStart; save_v43 checks it)
+    const { asStepB } = await import('./v43_helpers.mjs');
+    const sv = asStepB(JSON.parse(fx('v41_save_smart_46min.json')));
     const W = (await import(new URL('../../src/data/world.js', import.meta.url).href)).WORLD;
     const reel = W.deck.reel;
     for (const pos of [reel, [W.deck.landing.at[0], W.deck.landing.at[1] + 10]]) {

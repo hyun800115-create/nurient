@@ -249,8 +249,9 @@ console.log('— 6 the x drawer');
 const { keepX, X_CAPS, X_TOTAL, X_MAX_KEYS, X_UNKNOWN_CAP, X43, saveWarnings } = SV;
 const warnsSince = (n0) => saveWarnings.slice(n0);
 {
-  check('caps (Q26): log 512, mgmt 256, needs 1024, daily 512, rewards 512, money 896, book 1024, mail 512, wk 1024, unknown 512; total 6,400; ≤ 24 keys',
-    same(X_CAPS, { log: 512, mgmt: 256, needs: 1024, daily: 512, rewards: 512, money: 896, book: 1024, mail: 512, wk: 1024 }) && X_UNKNOWN_CAP === 512 && X_TOTAL === 6400 && X_MAX_KEYS === 24);
+  check('caps (Q26 + BP-47): log 512, mgmt 256, needs 1024, daily 512, rewards 512, money 896, book 1024, mail 512, wk 1024, g43 48, unknown 512; named 6,320 of total 6,400; ≤ 24 keys',
+    same(X_CAPS, { log: 512, mgmt: 256, needs: 1024, daily: 512, rewards: 512, money: 896, book: 1024, mail: 512, wk: 1024, g43: 48 }) && X_UNKNOWN_CAP === 512 && X_TOTAL === 6400 && X_MAX_KEYS === 24
+    && Object.values(X_CAPS).reduce((a, b) => a + b, 0) === 6320);
   // random drawers within the caps (made through JSON.stringify, as the game writes them)
   const KN = Object.keys(X_CAPS);
   const val = (cap, depth = 0) => {
@@ -327,6 +328,24 @@ const warnsSince = (n0) => saveWarnings.slice(n0);
   // through sanitizeSave
   const sv = sanitizeSave({ v: 8, coins: 1, x: { log: [[2, 1, 1200, 3, 0]], money: { w: [1, 2] }, fest: { last: 1 } } });
   check('sanitizeSave keeps x (its own copy), and leaves it out when there is nothing in it', same(sv.x, { log: [[2, 1, 1200, 3, 0]], money: { w: [1, 2] }, fest: { last: 1 } }) && !('x' in sanitizeSave({ v: 8, x: {} })) && !('x' in sanitizeSave({ v: 8, x: [1] })) && !('x' in sanitizeSave({ v: 8 })));
+  // ((S6, postdepot_addendum.md BP-47) x.g43 = { d, t, k, u }: G's counters and baselines under the named cap 48
+  {
+    const g = { d: 2, t: 1, k: 3, u: 0 }, gMax = { d: 10, t: 10, k: 9999, u: 5 };
+    const raw = { v: 8, lv: 43, coins: 1, v43: { lay: 2 }, x: { log: [[2, 1, 1200, 3, 0]], g43: g } };
+    const s1 = sanitizeSave(clone(raw));
+    const H = new X43(s1.x);
+    const s2 = sanitizeSave(JSON.parse(JSON.stringify(Object.assign({}, s1, { x: H.serialize() }))));
+    const w0g = saveWarnings.length;
+    const xo = keepX({ g43: Object.assign({ note: 'z'.repeat(40) }, gMax), log: [1] });
+    const Hg = new X43(undefined);
+    const setOk = Hg.set('g43', gMax), setBig = Hg.set('g43', Object.assign({ note: 'z'.repeat(40) }, gMax));
+    check('x.g43 round-trips: keepX and sanitizeSave keep { d, t, k, u } byte for byte (and at its largest, ' + JSON.stringify(gMax).length + ' B ≤ 48); load -> X43 -> serialize -> sanitize again gives the same drawer',
+      same(keepX({ g43: g }), { g43: g }) && same(keepX({ g43: gMax }), { g43: gMax }) && JSON.stringify(gMax).length <= 48 && same(s1.x.g43, g) && same(s2.x, s1.x) && same(s2.x, raw.x),
+      { s1: s1.x, s2: s2.x });
+    check('x.g43 over 48 B (an object with no array to trim) is dropped with a warning, the rest of the drawer stays; X43.set refuses it (false) and keeps no g43',
+      !('g43' in xo) && same(xo.log, [1]) && warnsSince(w0g).some((w) => w.k === 'x.g43' && w.what === 'drop') && setOk === true && setBig === false && !('g43' in (Hg.serialize() || {})),
+      { xo, w: warnsSince(w0g), setOk, setBig, ser: Hg.serialize() });
+  }
   // the holder
   const base = { log: [1], fest: { a: 1 } };
   const H = new X43(base);

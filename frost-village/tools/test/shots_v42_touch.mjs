@@ -19,7 +19,10 @@ const [W, H] = opt('--size', '390x844').split('x').map(Number);
 const DPR = Number(opt('--dpr', '3'));
 const LANG = opt('--lang', 'ko');
 const SUFFIX = opt('--suffix', '');
-const SAVE = fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8');
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) restaurant tables / porters look sheets on the saved village (the R43 remap is
+//  no part of them)
+const { asStepB } = await import(path.join(HERE, 'v43_helpers.mjs'));
+const SAVE = asStepB(fs.readFileSync(path.join(HERE, 'fixtures', 'v41_save_smart_46min.json'), 'utf8'));
 const { start } = await import(path.join(REPO, 'tools/test/serve.mjs'));
 const { launch, openPage, tapStart, sleep, waitFor } = await import(path.join(HERE, 'pw.mjs'));
 

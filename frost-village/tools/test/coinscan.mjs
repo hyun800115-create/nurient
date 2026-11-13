@@ -19,6 +19,9 @@ export async function installCoinScan(page) {
       if (g.market) add('market', g.market.cash);
       if (g.trade) add('trade', g.trade.cash);
       if (g.store) add('store', g.store.cash);
+      // ((v4.3 step B, S6) a3's 빵집 stall has its own till (V42.villageTills 'bakery'): 딸랑이 empties it on his rounds, so the
+      //  matrix's late scenario looked it up here and crashed on a name it did not know)
+      if (g.bakery && g.bakery.built && g.bakery.stall) add('bakery', g.bakery.stall.cash);
       const C = g.civic;
       if (C && C.restaurant) add('rest', C.restaurant.cash);
       if (C && C.hall) add('tax', C.hall.tax);

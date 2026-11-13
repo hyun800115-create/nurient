@@ -2,7 +2,13 @@
 // designer lowering a cost below a saved partial payment, cost 0, reload during payment,
 // reload mid-transfer (item conservation), reset flow.
 //   node tools/test/review_robust_save.mjs [only=<name>]
+// ((v4.3 step B, S6 — the B0 suite audit, BP-21: asStepB) every hand-built save carries the step-B marker: these rows check
+//  coins / paid / positions exactly, and the R43 remap (the chief back at the hut door) must not be part of them. The R43
+//  rows themselves live in save_v43.mjs and review_robust_save_fast.mjs. (S6) Two content-level rows: a newer build's
+//  village (lv 46, v 9) is held — the game runs, a save and 1.5 s later the stored text is byte-identical — asserted
+//  (FAIL lines, exit 1); the rest is the report it always was
 import { newPage, bootToGame, launch, start, sleep, waitFor, tapStart, writeJSON, OUT } from './review_robust_lib.mjs';
+import { asStepB } from './v43_helpers.mjs';
 
 const only = (process.argv.find((a) => a.startsWith('only=')) || '').slice(5);
 const skip = ((process.argv.find((a) => a.startsWith('skip=')) || '').slice(5)).split(',').filter(Boolean);
@@ -119,7 +125,7 @@ if ((!only || only === 'throwingStorage') && !skip.includes('throwingStorage')) 
 
 // ---------------------------------------------------------------- B. corrupted / odd saves
 const base = { v: 1, t: Date.now(), coins: 120, progress: { done: { hire_fisherman: true }, paid: {}, up: { capacity: 0, speed: 0 } }, stations: {}, market: { stock: {}, cash: 0 }, trade: { stock: {}, cash: 0 }, player: { x: 900, y: 1150, stack: [] } };
-const J = (o) => JSON.stringify(o);
+const J = (o) => JSON.stringify(asStepB(o));
 const variants = {
   invalidJson: '{"v":1,"coins":12',
   emptyString: '',
@@ -149,6 +155,11 @@ const variants = {
   cashHuge: J({ ...base, market: { stock: {}, cash: 1e15 } }),
 };
 for (const [name, raw] of Object.entries(variants)) await withSave(name, raw);
+// ((v4.3 step B, S6) a newer build's village: held, the game runs on it, nothing is written over the stored text
+const NEWER43 = { futureLv46: J({ ...base, v: 8, lv: 46, coins: 999 }), futureV9: J({ ...base, v: 9, coins: 999 }) };
+for (const [name, raw] of Object.entries(NEWER43)) {
+  await withSave(name, raw, { after: (page) => page.evaluate(async ([k, v]) => { try { window.__FV.save(); } catch (e) { /* */ } await new Promise((r) => setTimeout(r, 1500)); return { same: localStorage.getItem(k) === v, held: window.__FV_SAVE_HELD || null }; }, [KEY, raw]) });
+}
 
 // what got written back after an ignored old-version save?
 if (!only || only === 'oldOverwrite') {
@@ -318,4 +329,15 @@ await withSave('settingsCorrupt', J(base), {
 });
 
 writeJSON('save_results.json', results);
+// ((v4.3 step B, S6) the asserted rows
+let bad43 = 0;
+for (const n of Object.keys(NEWER43)) {
+  const r = results[n];
+  if (!r) continue;
+  const ok = !r.bootError && r.after && r.after.same === true && r.after.held === 'newer' && !(r.errors || []).length;
+  console.log((ok ? '  ok   ' : '  FAIL ') + n + ': held as newer, the game runs, the stored text byte-identical after a save' + (ok ? '' : '  ' + JSON.stringify({ boot: r.bootError, after: r.after, err: r.errors }).slice(0, 300)));
+  if (!ok) bad43++;
+}
+console.log(bad43 ? '\nsave: ' + bad43 + ' step-B rows FAILED' : '\nsave: step-B rows ok');
 await browser.close(); await srv.close();
+process.exit(bad43 ? 1 : 0);

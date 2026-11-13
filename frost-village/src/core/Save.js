@@ -538,7 +538,9 @@ export function sanitizeV43(raw) {
  * member), dropped only when it still does not fit; each trim / drop goes to saveWarnings. Values are deep copies in
  * their stored order, so a drawer within its caps is written back byte for byte. Never throws; never drops the save.
  */
-export const X_CAPS = Object.freeze({ log: 512, mgmt: 256, needs: 1024, daily: 512, rewards: 512, money: 896, book: 1024, mail: 512, wk: 1024 });
+// ((S6, postdepot_addendum.md BP-47) g43: the post-depot chain's counters and baselines { d, t, k, u } (≈ 30 B); a named cap
+//  so an unknown key is trimmed before it when a later build fills the drawer. The named caps sum to 6,320 of X_TOTAL.)
+export const X_CAPS = Object.freeze({ log: 512, mgmt: 256, needs: 1024, daily: 512, rewards: 512, money: 896, book: 1024, mail: 512, wk: 1024, g43: 48 });
 export const X_UNKNOWN_CAP = 512;
 export const X_TOTAL = 6400;
 export const X_MAX_KEYS = 24;
@@ -630,7 +632,7 @@ export function keepSlice(v, cap, k) {
 /**
  * (map_save §4.8) the game's holder of the `x` drawer (gs.x43). serialize() gives the loaded drawer back as it came (the
  * same object) until something sets a key; set() fits the whole drawer again (the caps above), so a key that does not fit
- * is trimmed or left out, never the save. In v4.3 only the play log (P1) writes (x.log).
+ * is trimmed or left out, never the save. In v4.3 the play log (P1) writes x.log and the post-depot chain (G) x.g43.
  */
 export class X43 {
   constructor(saved) { this.base = isObj(saved) ? saved : null; this.o = null; }
