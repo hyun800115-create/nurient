@@ -12,6 +12,15 @@
 // texStorage2D / deleteTexture, the live GL bytes; the two must agree within 10 %.
 // Fails if a "must" (new game 368, full v4 455) is exceeded for more than 2 s of samples, or the return to the
 // start of the tour ends more than 5 MiB above where it began (after the residency TTLs).
+// ((v4.3 step B, TX-a — docs/redesign_v43/stepB/build_plan.md §3.6, map_tx.md T-1 … T-4) + the core district's round
+//  trip: at our station its pages (props_buildings, deck43, bakery43, the shop's stage page, bld_east) are out of memory,
+//  back at the plaza every one is in again, no picture is left on the stand-in, the stations show their art and play
+//  their loop, the deck / sled / stall are drawn from their pages; the same in 관망 (the free camera at the station: the
+//  core goes after LOOK_TTL; back with the chief it is back). The return to the start compares without the ground pool
+//  and the residents' on-demand pages (both capped pools, sampled at random moments: W0's 353.2 → 370.7 was +15.5 of
+//  social pages and +2 ground slots, the area pages came back byte for byte). Then a soak (--soak SEC, default 600 game s,
+//  0 skips): the camera stops at the plaza, the east dock, the station, the track and the town square in turn, 40 s each;
+//  once settled (15 s) no area page may load or go (no churn), and a later cycle does no more area loads than the first.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,6 +35,7 @@ const BOT = Number(opt('--bot', '0'));
 const GFX = opt('--gfx', '');
 const VP = (opt('--vp', '390x844x2')).split('x').map(Number);
 const OUT = opt('--out', path.join(HERE, '..', '..', 'docs', 'build_reports', 'texbudget_v4.json'));
+const SOAK = Number(opt('--soak', '600'));
 const results = [];
 const check = (name, ok, info = '') => { results.push({ name, ok: !!ok, info }); console.log((ok ? '  ok  ' : ' FAIL ') + name + (info !== '' ? '  — ' + (typeof info === 'string' ? info : JSON.stringify(info)) : '')); };
 
@@ -64,8 +74,16 @@ const ev = (fn, a) => page.evaluate(fn, a);
 const nudge = (fn, ms = 120000) => waitFor(page, `(() => { const L = window.__FV.scene.load; if (L && L.isLoading()) L.update(); return (${fn})(); })()`, ms).then(() => true).catch(() => false);
 const samples = [];
 const sample = async (label) => {
-  const s = await ev(() => { const st = window.__FV.texStats ? window.__FV.texStats() : null; return { st, gl: window.__glTex ? window.__glTex() : null }; });
-  const r = { label, MiB: s.st ? s.st.totalMiB : null, gl: s.gl ? s.gl.MiB : null, glTex: s.gl ? s.gl.texMiB : null, glRT: s.gl ? s.gl.rtMiB : null, byCls: s.st && s.st.byCls, social: s.st && s.st.social, areas: s.st && s.st.areas, ground: s.st && s.st.ground };
+  const s = await ev(() => {
+    const st = window.__FV.texStats ? window.__FV.texStats() : null;
+    // ((v4.3 step B) MiB of the on-demand pages in memory (the residents' social pages, chief2's sheet, the office inside...:
+    //  Residency.want's pool, capped and let go 30 s after their last use)
+    let dem = 0;
+    const A = window.__FV.assets ? window.__FV.assets() : null, T = window.__FV.game.textures;
+    if (A && A.demanded) for (const k of A.demanded) if (T.exists(k)) for (const so of T.get(k).source) dem += so.width * so.height * 4 * (so.memScale || 1);
+    return { st, gl: window.__glTex ? window.__glTex() : null, dem: +(dem / 1048576).toFixed(1) };
+  });
+  const r = { label, MiB: s.st ? s.st.totalMiB : null, gl: s.gl ? s.gl.MiB : null, glTex: s.gl ? s.gl.texMiB : null, glRT: s.gl ? s.gl.rtMiB : null, byCls: s.st && s.st.byCls, social: s.st && s.st.social, demand: s.dem, areas: s.st && s.st.areas, ground: s.st && s.st.ground };
   samples.push(r);
   console.log(`  [${label}] ${r.MiB} MiB (GL ${r.gl}: textures ${r.glTex} + render targets ${r.glRT})`);
   return r;
@@ -73,6 +91,9 @@ const sample = async (label) => {
 /** advance `sec` game s sampling every `every` s; returns the samples */
 const run = async (label, sec, every = 5) => { const out = []; for (let t = 0; t < sec; t += every) { await advance(page, every); out.push(await sample(label + ' +' + (t + every) + 's')); } return out; };
 const overFor = (list, must) => list.filter((r) => r.MiB > must).length * 5;
+// ((v4.3 step B, TX-a) a sample without the two pools that are capped and sampled at random moments: the ground slots and
+//  the on-demand pages (residents' social pages, chief2's sheet): what is left is what the areas and the boot load hold
+const fixed = (r) => +(r.MiB - ((r.byCls && r.byCls.ground) || 0) - (r.demand || 0)).toFixed(1);
 let fatal = null;
 try {
   await ev((g) => { try { localStorage.clear(); if (g) localStorage.setItem('frostVillage.settings.v1', JSON.stringify({ gfx: g })); } catch (e) { /* */ } }, GFX);
@@ -121,23 +142,63 @@ try {
   const m = await ev(() => { const k = window.__FV.scene.market; return { x: k.x + 120, y: k.y + 180 }; });
   // the textures (MiB) on the GPU now: what a failed 'return to the start' kept is printed
   const texList = () => ev(() => { const g = window.__FV.game, o = {}; for (const k in g.textures.list) { if (k[0] === '_') continue; let b = 0; for (const s of g.textures.list[k].source) b += (s.width || 0) * (s.height || 0) * 4; if (b > 262144) o[k] = +(b / 1048576).toFixed(2); } return o; });
+  // ((v4.3 step B, TX-a) the core district's pages and what shows them
+  const coreState = () => ev(() => {
+    const gs = window.__FV.scene, A = window.__FV.assets(), T = gs.textures, st = window.__FV.texStats();
+    const stage = gs.market ? gs.market.stage : 1;
+    const pages = ['props_buildings', 'deck43', 'bakery43', 'market_s' + stage, 'bld_work', 'bld_east'];
+    const res = {};
+    for (const k of pages) res[k] = T.exists(k);
+    const pageOf = (key) => { const d = A.m.sprites[key]; return d && d.atlas ? A.pageOfFrame(d.atlas, d.frame) : null; };
+    // (a picture still on the stand-in although its page is in memory: a re-skin that never came; one whose page is out
+    //  (bld_east far south in the a3.1 layout) waits as it should)
+    const blanks = (gs.lazyImgs || []).filter((q) => q.img && q.img.active && q.img.texture && q.img.texture.key === 'fv_blank' && pages.indexOf(pageOf(q.key)) >= 0 && T.exists(pageOf(q.key))).map((q) => q.key);
+    const stations = Object.values(gs.stations || {}).concat(gs.workshops || []).filter((s) => s.img && s.enabled !== false && s.img.visible)
+      .map((s) => { const pk = pageOf(s.cfg && s.cfg.sprite || s.sprite); return { id: s.id || s.kind, tex: s.img.texture && s.img.texture.key, page: pk, pageIn: !!pk && T.exists(pk), working: !!s.working, hasLoop: !!s.workAnim, loop: !!(s.img.anims && s.img.anims.isPlaying) }; });
+    const M = gs.market, D = gs.deck;
+    const tk = (o) => (o && o.texture ? o.texture.key : null);
+    return { stage, res, held: [...A.held].filter((k) => pages.indexOf(k) >= 0), blanks, stations,
+      sled: M && M.sled && M.sled.visible ? tk(M.sled) : null, stall: M ? tk(M.img) : null, deck: D && D.img && D.img.visible ? tk(D.img) : null,
+      live: st.live, line: st.line, rt: st.rtMiB, swaps: st.swaps, stageDrops: st.stageDrops, areaLoads: st.areaLoads, areaEvicts: st.areaEvicts };
+  });
+  /** the core district's art is all back: every page that was in memory at `before` is again, nothing waits on a stand-in */
+  const coreBack = (before) => nudge(`(() => { const T = window.__FV.scene.textures, A = window.__FV.assets(); return ${JSON.stringify(Object.keys(before.res).filter((k) => before.res[k]))}.every((k) => T.exists(k)); })`, 60000);
   const plaza0 = await at('full v4 plaza', m.x, m.y, 1.2, 30);
   const tex0 = await texList();
+  const core0 = await coreState();
+  console.log('    (core at the plaza: ' + JSON.stringify(core0.res) + ', line ' + core0.line + ' MiB source-sum, render targets ' + core0.rt + ' MiB, live ' + JSON.stringify(core0.live) + ')');
   await at('east dock', 2700, 700, 1.2);
   await at('our station', 3420, 1640, 1.2);
+  const coreSt = await coreState();
+  console.log('    (core at our station: ' + JSON.stringify(coreSt.res) + ', swaps ' + coreSt.swaps + ')');
   await at('along the track', 3900, 1900, 1.2);
   await at('town square', 4900, 2450, 1.2, 30);
   await at('town zoom 0.6', 4900, 2450, 0.6);
   await ev(() => window.__FV.zoom('overview'));
   tour.push(...(await run('overview', 15)));
   const plaza1 = await at('back at the plaza', m.x, m.y, 1.2, 45);
+  const back1 = await coreBack(core0);
+  const core1 = await coreState();
+  console.log('    (core back at the plaza: ' + JSON.stringify(core1.res) + ', blanks ' + core1.blanks.length + ', stations ' + JSON.stringify(core1.stations) + ')');
   const peak = Math.max(...tour.map((r) => r.MiB));
   check('full v4, any view <= 455 MiB (must)', overFor(tour, 455) <= 2, peak);
   check('full v4, plaza <= 300 MiB (target)', plaza0.MiB <= 300, plaza0.MiB);
   check('full v4 tour peak <= 300 MiB (target)', peak <= 300, peak);
   const tex1 = await texList();
-  const kept = Object.keys(tex1).filter((k) => !(k in tex0)).map((k) => k + ' ' + tex1[k]), gone = Object.keys(tex0).filter((k) => !(k in tex1)).map((k) => k + ' ' + tex0[k]);
-  check('return to the start of the tour <= start + 5 MiB', plaza1.MiB <= plaza0.MiB + 5, { start: plaza0.MiB, end: plaza1.MiB, extra: kept.slice(0, 12), gone: gone.slice(0, 12) });
+  // ((v4.3 step B, TX-a) without the two capped pools sampled at random moments — the ground slots (≤ 28 MiB, trimmed 15 s
+  //  after a tile is last needed) and the residents' on-demand pages (≤ 5 pages, 30 s TTL): W0 failed this by +15.5 MiB
+  //  of social pages and +2 of ground slots while every area page had come back as it was. The raw numbers are printed)
+  const pool = (k) => /^fv_(gslot|layer)/.test(k) || /@(social|soc)\d*$/.test(k);
+  const kept = Object.keys(tex1).filter((k) => !(k in tex0) && !pool(k)).map((k) => k + ' ' + tex1[k]), gone = Object.keys(tex0).filter((k) => !(k in tex1) && !pool(k)).map((k) => k + ' ' + tex0[k]);
+  check('return to the start of the tour <= start + 5 MiB (without the ground pool and the on-demand pages)', fixed(plaza1) <= fixed(plaza0) + 5,
+    { start: fixed(plaza0), end: fixed(plaza1), raw: [plaza0.MiB, plaza1.MiB], ground: [plaza0.byCls && plaza0.byCls.ground, plaza1.byCls && plaza1.byCls.ground], demand: [plaza0.demand, plaza1.demand], extra: kept.slice(0, 12), gone: gone.slice(0, 12) });
+  // ((v4.3 step B, TX-a) the core district's round trip: plaza → station → … → plaza
+  const coreOut = ['props_buildings', 'deck43', 'bakery43', 'market_s' + coreSt.stage].filter((k) => core0.res[k]);
+  check('our station: the core district\'s pages are out of memory (' + coreOut.join(', ') + ')', coreOut.every((k) => !coreSt.res[k]), coreSt.res);
+  check('back at the plaza: every core page that was in memory is in again', back1 && Object.keys(core0.res).every((k) => !core0.res[k] || core1.res[k]), { before: core0.res, after: core1.res });
+  check('back at the plaza: no core picture is left on the stand-in', core1.blanks.length === 0, core1.blanks.slice(0, 8));
+  check('back at the plaza: the stations whose page is in show their art, the working ones play their loop', core1.stations.some((s) => s.pageIn) && core1.stations.every((s) => !s.pageIn || (s.tex === s.page && (!s.working || !s.hasLoop || s.loop))), core1.stations);
+  check('back at the plaza: the deck, the stall and the stage sled are drawn from their pages', (!core0.deck || core1.deck === 'deck43') && /^market_s\d/.test(core1.stall || '') && (!core0.sled || /^market_s\d/.test(core1.sled || '')), { deck: core1.deck, stall: core1.stall, sled: core1.sled });
   const agree = tour.filter((r) => r.glTex).map((r) => Math.abs(r.glTex - r.MiB) / Math.max(1, r.MiB));
   check('GL texture bytes agree with the source-sum within 10 % (median)', agree.length && agree.sort((a, b) => a - b)[Math.floor(agree.length / 2)] <= 0.10, agree.length ? +agree[Math.floor(agree.length / 2)].toFixed(3) : 'no GL probe');
   // the renderer's own render targets (screen-sized) come on top; without Phaser's FX pipeline (disablePreFX) ~17 MiB
@@ -185,9 +246,11 @@ try {
       list.push(await sample('관망 at ' + label));
       return at;
     };
+    const pcore = {};
     for (const [label, x, y, z] of stops) {
       if (z) await ev((zz) => { window.__FV.zoom(zz); }, z);
       const at = await dragTo(label, x, y, ptour);
+      if (label === 'our station') pcore.station = await coreState();
       if (at.on) reached++;
       console.log(`    (the free camera at ${at.x}, ${at.y}: ${at.d} px from ${label}${at.d > 40 ? ', as near as the bounds let it' : ''})`);
     }
@@ -197,12 +260,20 @@ try {
     // 「촌장님 보기」 at the plaza, then the TTLs
     await ev(() => window.__FV.v42.pilotCam('attach'));
     const back = await run('관망 back with the chief', 45);
+    const texB = await texList();
     const pend = back[back.length - 1];
+    // ((v4.3 step B, TX-a) the free camera crossed the core edge: at the station (5 s after it got there, LOOK_TTL 3 s) the
+    //  core's pages had gone; back with the chief they are in again and nothing waits on a stand-in
+    const pback = await coreBack(core0);
+    pcore.back = await coreState();
+    check('관망: the free camera at our station — the core district\'s pages went (LOOK_TTL)', !!pcore.station && coreOut.every((k) => !pcore.station.res[k]), pcore.station && pcore.station.res);
+    check('관망: back with the chief the core pages are in again, none on the stand-in', pback && Object.keys(core0.res).every((k) => !core0.res[k] || pcore.back.res[k]) && pcore.back.blanks.length === 0, { res: pcore.back.res, blanks: pcore.back.blanks.slice(0, 6) });
     // ((v4.3 review) without the ground slots: a fixed pool (≤ 28 MiB, trimmed 15 s after a tile is last needed; these
     //  samples draw no frame, so the last drawn view still counts as 'in view'): 19 slots at the start, 28 at the end
     //  was 9 MiB of the pool's own size, not a page left behind)
-    const ng = (r) => +(r.MiB - ((r.byCls && r.byCls.ground) || 0)).toFixed(1);
-    check('관망 tour: back with the chief <= the start + 5 MiB (without the ground pool)', ng(pend) <= ng(p0) + 5, { start: ng(p0), end: ng(pend), all: [p0.MiB, pend.MiB], ground: [p0.byCls && p0.byCls.ground, pend.byCls && pend.byCls.ground] });
+    //  ((v4.3 step B, TX-a) and without the on-demand pages, as the tour's return above: r3 failed it by +9.5 of social pages
+    //   and chief2's sheet (+3.1) with every area page back as it was)
+    check('관망 tour: back with the chief <= the start + 5 MiB (without the ground pool and the on-demand pages)', fixed(pend) <= fixed(p0) + 5, { start: fixed(p0), end: fixed(pend), all: [p0.MiB, pend.MiB], ground: [p0.byCls && p0.byCls.ground, pend.byCls && pend.byCls.ground], demand: [p0.demand, pend.demand] });
 
     // ((v4.3 review F3) the chief seated at his office desk — chief2's sheet (3 MiB) in use — while the camera looks
     //  around at the busiest views: the sheet goes though he sits in it (Residency.evict(k, true)), the GL must holds)
@@ -227,6 +298,10 @@ try {
       P.begin('office');
       window.__FV.teleport(B.spots.deskPad.x, B.spots.deskPad.y);
       P.ri = P.route.length; P.arrived = true; P.pose(P.act);
+      // ((TX-a verify) and his joystick is let go: the pilot's vector still held the last step of the walk he was on (the
+      //  evening act), Player.update reads it before the pilot's next steer zeroes it, and any move stands him up — he
+      //  never sat (G, the 중사양 runs; 4 of 6 trials in tx/verify/probe_seat_mid.log))
+      P.vec.x = P.vec.y = 0;
       // (he stays at his desk for the test: the chooser holds off — its own minimum time is shorter than this case)
       P.decT = 1e9;
       window.__seatTb = () => { const p = gs.player, k = P.sheetKey(), tex = window.__FV.game.textures; return { k, seat: !!p.seat, sits: /^(sit|doze)/.test(p.animRes || ''), loaded: k ? tex.exists(k) : null, away: P.state().sheetAway, drops: P.state().sheetDrops, officeOpen: !!B.cw.revealed, officeAway: !!B.away, inside: tex.exists('office_bld@inside'), insideDrops: B.awayDrops || 0 }; };
@@ -238,6 +313,10 @@ try {
       const s0 = await ev(() => window.__seatTb());
       check('관망: the chief sits at his office desk in his chief2 sheet', sat && s0.seat, s0);
       const stour = [await sample('관망 seated at the desk')];
+      // ((v4.3 step B, TX-a) what the desk view holds that the plaza (back with the chief) did not, and RoadPaint's set
+      { const texD = await texList(), add = Object.keys(texD).filter((k) => !(k in texB)).map((k) => k + ' ' + texD[k]), gone = Object.keys(texB).filter((k) => !(k in texD)).map((k) => k + ' ' + texB[k]);
+        const rp = await ev(() => { const P = window.__FV.scene.v4 && window.__FV.scene.v4.paint; return P ? { released: !!P.released, farT: +(P.farT || 0).toFixed(1) } : null; });
+        console.log('    (at the desk vs back with the chief: +' + JSON.stringify(add) + ' −' + JSON.stringify(gone) + ', RoadPaint ' + JSON.stringify(rp) + ')'); }
       const far = [];
       for (const [label, x, y] of [['our station', 3420, 1640], ['town square', 4900, 2450], ['town, far east', 5900, 1300], ['our station again', 3420, 1640]]) {
         await dragTo(label + ' (he sits at his desk)', x, y, stour);
@@ -255,6 +334,42 @@ try {
       check('관망 seated: back with him, he sits in his sheet again and the office is open with its inside', back2, await ev(() => window.__seatTb()));
     }
     await ev(() => window.__FV.v42.pilot(false));
+  }
+
+  // ((v4.3 step B, TX-a) soak: the camera stops at the plaza and at four far views in turn (40 s each, the plaza between
+  //  them); once a stop has settled (15 s: the TTLs) no area page may load or go — the swap rule and the core's tight
+  //  near / far must not ping-pong — and a later cycle does no more area loads than the first. GL total sampled throughout
+  if (SOAK > 0) {
+    await ev(([x, y]) => { const F = window.__FV; if (F.v42 && F.v42.pilot) F.v42.pilot(false); F.camera(); F.zoom(1.2); F.teleport(x, y); }, [m.x, m.y]);
+    await advance(page, 20);
+    const stopsS = [['east dock', 2700, 700], ['our station', 3420, 1640], ['along the track', 3900, 1900], ['town square', 4900, 2450]];
+    // (each cycle starts and ends at the plaza, so every cycle starts from the same state)
+    const cycle = [];
+    for (const s0 of stopsS) cycle.push(s0, ['plaza', m.x, m.y]);
+    const cycles = Math.max(1, Math.round(SOAK / (cycle.length * 40)));
+    const soak = [], perCycle = [], churn = [], perStop = [];
+    const cnt = () => ev(() => { const st = window.__FV.texStats(); return { l: st.areaLoads, e: st.areaEvicts, loads: st.loads, ev: st.evictions, swaps: st.swaps, refused: st.refused }; });
+    let b0 = await cnt();
+    for (let c = 0; c < cycles; c++) {
+      const c0 = await cnt();
+      for (const [label, x, y] of cycle) {
+        await ev(([xx, yy]) => window.__FV.teleport(xx, yy), [x, y]);
+        await advance(page, 15);
+        const a = await cnt();
+        for (let t = 0; t < 25; t += 5) { await advance(page, 5); soak.push(await sample('soak ' + (c + 1) + ' ' + label)); }
+        const b = await cnt();
+        if (b.l !== a.l || b.e !== a.e) churn.push({ cycle: c + 1, label, loads: b.l - a.l, evicts: b.e - a.e });
+        perStop.push({ cycle: c + 1, label, areaLoads: a.l - b0.l, settledLoads: b.loads - a.loads, settledRefused: b.refused - a.refused, glMax: Math.max(...soak.slice(-5).map((r) => r.gl || 0)) });
+        b0 = b;
+      }
+      const c1 = await cnt();
+      perCycle.push({ areaLoads: c1.l - c0.l, areaEvicts: c1.e - c0.e, loads: c1.loads - c0.loads, evictions: c1.ev - c0.ev, swaps: c1.swaps - c0.swaps, refused: c1.refused - c0.refused });
+    }
+    console.log('    (soak per cycle: ' + JSON.stringify(perCycle) + ')');
+    console.log('    (soak per stop: ' + JSON.stringify(perStop) + ')');
+    check('soak ' + cycles * cycle.length * 40 + ' s: no area page loads or goes while the camera stands (after 15 s)', churn.length === 0, churn.slice(0, 6));
+    check('soak: a later cycle loads no more area pages than the first (no loop)', perCycle.every((p) => p.areaLoads <= perCycle[0].areaLoads + 2), perCycle);
+    check('soak: GL total (textures + render targets) <= 455 MiB (must)', soak.filter((r) => r.gl > 455).length * 5 <= 2, Math.max(...soak.map((r) => r.gl || 0)));
   }
 } catch (e) { fatal = e; console.log('FATAL', e && e.stack || e); }
 check('no page errors', !log.errors.length && !fatal, log.errors.slice(0, 3));

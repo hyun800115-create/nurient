@@ -1,0 +1,156 @@
+{
+ "frames": {
+  "shop_general": {
+   "frame": {
+    "x": 818,
+    "y": 377,
+    "w": 381,
+    "h": 373
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 2,
+    "y": 19,
+    "w": 381,
+    "h": 373
+   },
+   "sourceSize": {
+    "w": 420,
+    "h": 424
+   }
+  },
+  "shop_general_front": {
+   "frame": {
+    "x": 1201,
+    "y": 377,
+    "w": 233,
+    "h": 271
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 43,
+    "y": 66,
+    "w": 233,
+    "h": 271
+   },
+   "sourceSize": {
+    "w": 420,
+    "h": 424
+   }
+  },
+  "station_cannery": {
+   "frame": {
+    "x": 0,
+    "y": 382,
+    "w": 406,
+    "h": 338
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 4,
+    "y": 61,
+    "w": 406,
+    "h": 338
+   },
+   "sourceSize": {
+    "w": 448,
+    "h": 432
+   }
+  },
+  "station_cannery_work_0": {
+   "frame": {
+    "x": 409,
+    "y": 380,
+    "w": 406,
+    "h": 371
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 4,
+    "y": 28,
+    "w": 406,
+    "h": 371
+   },
+   "sourceSize": {
+    "w": 448,
+    "h": 432
+   }
+  },
+  "station_cannery_work_1": {
+   "frame": {
+    "x": 818,
+    "y": 0,
+    "w": 407,
+    "h": 375
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 4,
+    "y": 24,
+    "w": 407,
+    "h": 375
+   },
+   "sourceSize": {
+    "w": 448,
+    "h": 432
+   }
+  },
+  "station_cannery_work_2": {
+   "frame": {
+    "x": 409,
+    "y": 0,
+    "w": 407,
+    "h": 378
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 4,
+    "y": 21,
+    "w": 407,
+    "h": 378
+   },
+   "sourceSize": {
+    "w": 448,
+    "h": 432
+   }
+  },
+  "station_cannery_work_3": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 407,
+    "h": 380
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 4,
+    "y": 19,
+    "w": 407,
+    "h": 380
+   },
+   "sourceSize": {
+    "w": 448,
+    "h": 432
+   }
+  }
+ },
+ "meta": {
+  "app": "frost-village/tools/pack_utils.py",
+  "version": "1.0",
+  "image": "bld_east.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 1440,
+   "h": 752
+  },
+  "scale": "1",
+  "repack43b": "tools/blender/prop_repack.py (v4.3 step B T-3a): split of bld_buildings by district"
+ }
+}

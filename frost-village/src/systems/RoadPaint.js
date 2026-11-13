@@ -12,6 +12,7 @@
 // tiles; a tile baked without them is re-baked when they arrive).
 
 import { Assets } from '../core/Assets.js';
+import { Residency } from '../core/Residency.js';
 import { RailPath } from './RailPath.js';
 import { WORLD, L4 } from '../data/world.js';
 import { rng } from '../core/Placeholders.js';
@@ -187,21 +188,42 @@ export class RoadPaint {
   }
   ready(keys) { for (const k of keys) if (!Assets.has(k) && !this.gs.textures.exists(k)) return false; return true; }
 
+  /** ((v4.3 step B, TX-a T-2) the view RoadPaint goes by: Residency's (around the camera's follow target), so the two
+   *  agree on where the camera is — the world view is only refreshed when a frame is drawn (a camera cut, the test's
+   *  fixed-step clock) */
+  view() {
+    const gs = this.gs;
+    return Residency.gs === gs ? Residency.view(gs) : gs.cameras.main.worldView;
+  }
+  /** px beyond NEAR of the streets and of the rails? (both: then no ground tile near the view needs the pictures) */
+  farFrom(v) {
+    const near = (q) => !(v.right < q.x - NEAR || v.x > q.x + q.w + NEAR || v.bottom < q.y - NEAR || v.y > q.y + q.h + NEAR);
+    return !near(this.streetRect) && !near(this.railRect);
+  }
+
   /** called by Neighbours every frame: release the pictures while the camera is far from the streets */
   update(dt) {
-    const gs = this.gs, v = gs.cameras.main.worldView, r = this.streetRect, rr = this.railRect;
+    const gs = this.gs, v = this.view(), r = this.streetRect, rr = this.railRect;
     const far = (q) => v.right < q.x - FAR || v.x > q.x + q.w + FAR || v.bottom < q.y - FAR || v.y > q.y + q.h + FAR;
     if (far(r) && far(rr) && !gs.ground.dirty.size) this.farT += dt; else this.farT = 0;
     // ((v4.3 perf) between FAR (800) and NEAR (1300) px the view is both "far" and "near": the pictures went after
     //  10 s far, came back the next frame (near), and went again the frame after (farT still > 10) — 7 pictures
     //  fetched, decoded and uploaded every other frame at the 46-min plaza (11-21 % of the main thread in texImage2D).
     //  They now go only once the view is beyond NEAR too, and coming near starts the far clock again.)
-    const near = (q) => !(v.right < q.x - NEAR || v.x > q.x + q.w + NEAR || v.bottom < q.y - NEAR || v.y > q.y + q.h + NEAR);
-    const isNear = near(r) || near(rr);
+    const isNear = !this.farFrom(v);
     if (this.farT > RELEASE_AFTER && !this.released && !isNear) this.release();
     // (the ground tiles are a pool: a street tile is baked again when the camera comes back; fetch the pictures
     //  while the camera approaches, so the tile is baked with its street, not re-baked a moment later)
     if (this.released && isNear) { this.released = false; this.farT = 0; this.want(BAKE_ONLY.filter((k) => this.needs(k))); }
+  }
+
+  /** ((v4.3 step B, TX-a T-2) Residency's swap rule: an area coming back near the texture line takes this set's room at
+   *  once when the view `v` is beyond NEAR of the streets and the rails (no 10 s wait). true when it went */
+  releaseIfFar(v) {
+    if (this.released || !this.farFrom(v || this.view())) return false;
+    if (!BAKE_ONLY.some((k) => this.gs.textures.exists(k))) return false;
+    this.release();
+    return true;
   }
 
   /** a bake-only picture this painter uses now (the 읍 cobble only after the upgrade) */

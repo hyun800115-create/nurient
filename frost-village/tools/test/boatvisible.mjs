@@ -78,7 +78,7 @@ try {
     if (SHOTS) { await page.evaluate(() => window.__FV.zoom(0.8)); await render(page, 3); await page.screenshot({ path: path.join(SHOTS, 'p1_pier_before_trip.png') }); }
     // the loop pictures of the area (the watchtowers' work loop), to look at again after the trip
     await page.evaluate(() => {
-      const gs = window.__FV.scene, pages = ['bld_buildings', 'bld_buildings_2'];
+      const gs = window.__FV.scene, pages = ['bld_work', 'bld_east', 'bld_buildings_2'];
       window.__loops = gs.children.list.filter((o) => o.texture && pages.includes(o.texture.key) && o.anims && o.anims.isPlaying && o.anims.currentAnim);
     });
     // far away (the town): the village area's pictures go after their TTL
