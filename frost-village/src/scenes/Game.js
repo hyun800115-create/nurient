@@ -464,7 +464,9 @@ export class Game extends Phaser.Scene {
       if (st === n) return true;
       if (n === 2) return pr.isDone('hire_fisherman');
       if (n === 3) return pr.isDone('zone_hunt');
-      if (n === 4) return pr.isDone('mkt_s4') || !!(pr.flags && pr.flags.rankEup);
+      // ((v4.3 step B, M — postdepot_addendum BP-50) stage 4 is the post-depot chain's row 9 now: its page comes once the row
+      //  shows its pad (flags.g43s4: G sets it when row 9 becomes current, or at 읍 with goals43.s4Early), not from 읍 on)
+      if (n === 4) return pr.isDone('mkt_s4') || !!(pr.flags && pr.flags.g43s4);
       return false;
     }
     // ((v4.3 밀밭 · 빵집) the bakery cottage, its stall and the field's 농막 / props: once the field is next (the lumberjack hired)

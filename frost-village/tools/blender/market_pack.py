@@ -37,7 +37,11 @@ SIGN = {'market_s1': {'text': 'sign_market_1', 'color': '#6E3E1E'},
         'market_s2': {'text': 'sign_market_2', 'color': '#6E3E1E', 'plates': ['plate_mat', 'plate_food'],
                       'counters': ['mat', 'food']},
         'market_s3': {'text': 'sign_market_3', 'color': '#6E3E1E', 'plates': ['plate_mat', 'plate_fish', 'plate_breadmeat'],
-                      'counters': ['mat', 'fish', 'breadmeat']}}
+                      'counters': ['mat', 'fish', 'breadmeat']},
+        # ((v4.3 step B, M) stage 4 「눈꽃마을 시장」: the same three counters (bread sells at the bakery), the 자재 counter with a
+        #  second window (staff2 / customer2 / register2 points)
+        'market_s4': {'text': 'sign_market_4', 'color': '#6E3E1E', 'plates': ['plate_mat', 'plate_fish', 'plate_meat'],
+                      'counters': ['mat', 'fish', 'meat']}}
 # ((v4.3) the stage pages after the first load while the village plays (Assets.js MARKET_LATE): stage 1 is in the boot set)
 
 CONVENTIONS = {
@@ -82,6 +86,10 @@ def entries(k, m, frame_atlas):
         s['registerPoints'] = pts.get('register', [])
         s['plates'] = [{'quad': pts['plate%d' % i], 'text': t} for i, t in enumerate(sg.get('plates', []))
                        if 'plate%d' % i in pts]
+    # ((v4.3 step B, M) the 자재 counter's second window (stage 4): its clerk post, merchant spot and register pad
+    for mk, fld in (('staff2', 'staff2Points'), ('customer2', 'customer2Points'), ('register2', 'register2Points')):
+        if pts.get(mk):
+            s[fld] = pts[mk]
     ov = m['overlay']['key']
     o = {'atlas': frame_atlas[ov], 'frame': ov, 'anchor': m['anchor'], 'kind': 'overlay', 'of': first,
          'frameSize': m['frameSize'],
@@ -120,7 +128,81 @@ def preview(keys, builds, frames, path):
 
 
 # ((v4.3 review CD-2) props packed on more pages than their own: prop key -> the extra pages
-ALSO = {'market_sled': ['market_s3']}
+#  ((v4.3 step B, M — TX-5) + the stage-4 page: at stage 4 neither earlier page is loaded)
+ALSO = {'market_sled': ['market_s3', 'market_s4']}
+
+
+def page_frames(name):
+    """((v4.3 step B, M) the frames of a page already in assets/market, untrimmed (sourceSize), as packed - a prop that is
+    not in the render cache (the sled) rides on a new page from there, pixel for pixel"""
+    jp, pp = os.path.join(OUT, name + '.json'), os.path.join(OUT, name + '.png')
+    if not (os.path.exists(jp) and os.path.exists(pp)):
+        return {}
+    js = json.load(open(jp, encoding='utf-8'))
+    sheet = Image.open(pp).convert('RGBA')
+    fr = js['frames'] if isinstance(js['frames'], dict) else {f['filename']: f for f in js['frames']}
+    out = {}
+    for n, f in fr.items():
+        r, ss, src = f['frame'], f['spriteSourceSize'], f['sourceSize']
+        if f.get('rotated'):
+            continue
+        full = Image.new('RGBA', (src['w'], src['h']), (0, 0, 0, 0))
+        full.paste(sheet.crop((r['x'], r['y'], r['x'] + r['w'], r['y'] + r['h'])), (ss['x'], ss['y']))
+        out[n] = full
+    return out
+
+
+def pack_compact(frames, pad=2):
+    """((v4.3 step B, M) a new stage page as small as it gets (it is resident while the village plays at that stage): the
+    tallest frame at the left, the others in columns beside it (each column no taller than it), or pack_atlas's shelves at
+    their best width - whichever sheet is smaller. Same atlas format as pack_utils.pack_atlas"""
+    items = []
+    for name, im in frames:
+        im = im.convert('RGBA')
+        box = pu._trim_box(im)
+        items.append((name, im.size, box, im.crop(box)))
+    order = sorted(range(len(items)), key=lambda i: (-items[i][3].height, -items[i][3].width))
+
+    def columns():
+        H = items[order[0]][3].height
+        place, x, y, colw, used = {}, 0, 0, 0, 0
+        for i in order:
+            w, h = items[i][3].size
+            if y > 0 and y + h > H:
+                x, y, colw = x + colw + pad, 0, 0
+            place[i] = (x, y)
+            used = max(used, x + w)
+            y += h + pad
+            colw = max(colw, w)
+        return place, used, H
+
+    def shelves(mw):
+        place, x, y, sh, used = {}, 0, 0, 0, 0
+        for i in order:
+            w, h = items[i][3].size
+            if x + w > mw and x > 0:
+                x, y, sh = 0, y + sh + pad, 0
+            place[i] = (x, y)
+            used = max(used, x + w)
+            x += w + pad
+            sh = max(sh, h)
+        return place, used, y + sh
+    cands = [columns()]
+    for mw in range((max(it[3].width for it in items) + 3) // 4 * 4, 2049, 8):
+        cands.append(shelves(mw))
+    place, used, total = min(cands, key=lambda c: pu._pow2ish(c[1]) * pu._pow2ish(c[2]))
+    sw, sh = pu._pow2ish(used), pu._pow2ish(total)
+    sheet = Image.new('RGBA', (sw, sh), (0, 0, 0, 0))
+    af = {}
+    for i, (name, (w0, h0), box, crop) in enumerate(items):
+        px_, py_ = place[i]
+        sheet.paste(crop, (px_, py_))
+        af[name] = {'frame': {'x': px_, 'y': py_, 'w': crop.width, 'h': crop.height}, 'rotated': False,
+                    'trimmed': (crop.width, crop.height) != (w0, h0),
+                    'spriteSourceSize': {'x': box[0], 'y': box[1], 'w': crop.width, 'h': crop.height},
+                    'sourceSize': {'w': w0, 'h': h0}}
+    return sheet, {'frames': af, 'meta': {'app': 'frost-village/tools/blender/market_pack.py', 'version': '1.0', 'image': '',
+                                          'format': 'RGBA8888', 'size': {'w': sw, 'h': sh}, 'scale': '1'}}
 
 
 def main():
@@ -145,7 +227,28 @@ def main():
             frames[n] = frames[builds[q]['frames'][0]]
     man_path = os.path.join(OUT, 'manifest.json')
     old = json.load(open(man_path, encoding='utf-8')) if os.path.exists(man_path) else {}
-    have = {e for k in keys for e in (builds[k]['frames'][0], builds[k]['overlay']['key'])} | {builds[k]['frames'][0] for k in props} | {n for q in props for n in dup[q]}
+    # ((v4.3 step B, M) a prop of ALSO that is not in the render cache (only the new stage was rendered): its copy for a new
+    #  page comes from a page already packed (the sled: market_sled_s3 on market_s3), with its manifest entry
+    reuse = {}
+    for q, pages in ALSO.items():
+        if q in builds:
+            continue
+        for a in pages:
+            if a not in keys:
+                continue
+            src_n = None
+            for b in [q] + ['%s_%s' % (q, p.split('_')[-1]) for p in pages]:
+                spr = (old.get('sprites') or {}).get(b)
+                if spr and spr.get('atlas') not in keys:
+                    fr = page_frames(spr['atlas']).get(spr['frame'])
+                    if fr is not None:
+                        src_n = (b, spr, fr)
+                        break
+            if src_n:
+                n = '%s_%s' % (q, a.split('_')[-1])
+                frames[n] = src_n[2]
+                reuse[n] = (a, dict(src_n[1]))
+    have = {e for k in keys for e in (builds[k]['frames'][0], builds[k]['overlay']['key'])} | {builds[k]['frames'][0] for k in props} | {n for q in props for n in dup[q]} | set(reuse)
     # ((v4.3) a stage of the current manifest that is not in the cache is KEPT as it is (its atlas files and manifest
     #  entries untouched: the shipped stage 1 stays byte-identical) - only when its files are there)
     kept_atl, kept_spr = [], {}
@@ -169,8 +272,12 @@ def main():
     for k in keys:
         m = builds[k]
         names = [m['frames'][0], m['overlay']['key']] + [builds[q]['frames'][0] for q in props if builds[q]['atlas'] == k] \
-            + ['%s_%s' % (q, k.split('_')[-1]) for q in props if k in ALSO.get(q, [])]
-        sheet, atlas = pu.pack_atlas([(n, frames[n]) for n in names], max_width=2048, trim=True, padding=2)
+            + ['%s_%s' % (q, k.split('_')[-1]) for q in props if k in ALSO.get(q, [])] + [n for n in reuse if reuse[n][0] == k]
+        # ((v4.3 step B, M) stages from 4 on: the smallest sheet (pack_compact); the shipped stages keep their packing
+        if int(k.rsplit('_s', 1)[1]) >= 4:
+            sheet, atlas = pack_compact([(n, frames[n]) for n in names])
+        else:
+            sheet, atlas = pu.pack_atlas([(n, frames[n]) for n in names], max_width=2048, trim=True, padding=2)
         png, js = os.path.join(OUT, k + '.png'), os.path.join(OUT, k + '.json')
         pu.save_atlas(sheet, atlas, png, js, quantize=False)
         size = os.path.getsize(png)
@@ -193,6 +300,13 @@ def main():
                           'footprint': pm.get('footprint'), 'footprintM': pm.get('footprintM'), 'frameSize': pm['frameSize'],
                           'topPx': pm['topPx'].get(pm['frames'][0]) if isinstance(pm['topPx'], dict) else pm['topPx'],
                           'front': pm.get('front', '-Y'), 'notes': pm.get('notes', '')}
+        for n in reuse:
+            if reuse[n][0] == k:
+                e = dict(reuse[n][1])
+                e.update({'atlas': k, 'frame': n})
+                e['notes'] = 'The old sled on the %s page (copied pixel for pixel from %s): at stage %s the earlier pages are ' \
+                             'not loaded.' % (k, reuse[n][1].get('atlas'), k.split('_s')[-1])
+                sprites[n] = e
         print('%-10s %4dx%-4d %d frames %6.1f KB  (GPU %.2f MiB)' % (k, sheet.width, sheet.height,
                                                                    len(atlas['frames']), os.path.getsize(png) / 1024.0,
                                                                    sheet.width * sheet.height * 4 / 1048576.0))

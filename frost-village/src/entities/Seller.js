@@ -897,9 +897,12 @@ export class TradePost {
 //   at stage 3 the fish lane), M = the 자재 점원 (hire_clerk_trade), B = the stage-3 고기 clerk (hire_clerk_s3).
 // ((v4.3 밀밭 · 빵집) bread is sold only at the bakery's own stall: the food counters sell fish + meat (SHOP_FOODS) and the
 //  stage-3 third counter is the meat counter (seat B, 고기 점원: hire_clerk_s3)
+// ((v4.3 step B, M — build_plan §3.9, X-1) stage 4 「눈꽃마을 시장」 keeps the three counters (bread stays at the bakery) and
+//  grows them: the 자재 창구 gets a second window (seat M2: its register pad stays for the chief; the second merchant buys while
+//  two people stand at the 자재 registers), shelfMax 80, spawnMul 1.2 (balance.js market43, 4th entries)
 const LANE_TYPES = { food: SHOP_FOODS, fish: ['item_fish_cooked'], meat: ['item_meat_cooked'] };
-export const SHOP_COUNTERS = { 1: ['food'], 2: ['mat', 'food'], 3: ['mat', 'fish', 'meat'] };
-export const SHOP_STAGE_MAX = 3;
+export const SHOP_COUNTERS = { 1: ['food'], 2: ['mat', 'food'], 3: ['mat', 'fish', 'meat'], 4: ['mat', 'fish', 'meat'] };
+export const SHOP_STAGE_MAX = 4;
 const SEAT_OF = { food: 'A', fish: 'A', meat: 'B', mat: 'M' };
 const M43 = () => BALANCE.market43 || {};
 const LANE_BUBBLE = (slot) => (slot <= 0 ? 0.74 : slot === 1 ? 0.64 : 0.56);
@@ -1018,9 +1021,19 @@ class MatCounter {
     this.merchant = new Character(gs, 'villager_c', shop.x, shop.y, { dir: 1 });
     this.merchant.noXray = true;
     this.buyT = 0; this.happyT = 0; this.waitT = 0; this.waitIcon = null;
-    this.flying = {};
+    this.flying = {};          // goods on their way to a merchant (both merchants: saved back on the rack)
     this.front = [-60, 30];
     this.register = null;
+    // ((v4.3 step B, M) stage 4: the second window (open2), its register (seat M2, set by the shop) and the second merchant
+    //  — he buys only while two people stand at the 자재 registers (the 자재 점원 and the chief, or the chief and a v4.4
+    //  second 자재 clerk), at the trade post's rate of whoever serves his window)
+    this.open2 = false;
+    this.register2 = null;
+    this.merchant2 = new Character(gs, 'villager_a', shop.x, shop.y, { dir: 1 });
+    this.merchant2.noXray = true;
+    this.merchant2.sprite.setVisible(false); this.merchant2.shadow.setVisible(false);
+    this.m2 = { buyT: 0, happyT: 0, bought: 0 };
+    this.faceAt2 = null;
     this.sink = {
       id: 'trade_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
       accepts: (ty) => GOODS.indexOf(ty) >= 0,
@@ -1046,7 +1059,24 @@ class MatCounter {
     this.merchant.sprite.setVisible(on); this.merchant.shadow.setVisible(on);
     if (this.register) this.register.setEnabled(on);
     if (this.waitIcon && !on) this.waitIcon.setVisible(false);
+    const on2 = on && this.open2;
+    this.merchant2.sprite.setVisible(on2); this.merchant2.shadow.setVisible(on2);
+    if (this.register2) this.register2.setEnabled(on2);
   }
+  /** ((v4.3 step B, M) the second window opens (stage 4) or closes; its merchant's spot and the post he faces */
+  setOpen2(v, merchant, faceTo) {
+    this.open2 = !!v;
+    if (v && merchant) {
+      const m = this.merchant2;
+      m.x = merchant.x; m.y = merchant.y; m.vx = m.vy = 0;
+      this.faceAt2 = faceTo || null;
+      if (faceTo) m.faceTo(faceTo.x, faceTo.y);
+      m.sync(0);
+    }
+    this.setOpen(this.open);
+  }
+  /** people serving at the 자재 registers now (0, 1, 2): the 자재 점원's window and, at stage 4, the second window */
+  servers() { return (this.register && this.register.staffed ? 1 : 0) + (this.open2 && this.register2 && this.register2.staffed ? 1 : 0); }
   /** the stage moved the counter: its rack, the merchant's spot */
   placeAt(shelf, merchant, faceTo) {
     this.shelf.x = shelf.x; this.shelf.y = shelf.y;
@@ -1060,9 +1090,10 @@ class MatCounter {
     m.faceTo(faceTo.x, faceTo.y);
     m.sync(0);
   }
-  revealObjects() { return [this.shelf.img, this.merchant.sprite].concat(this.register ? this.register.revealObjects() : []); }
+  revealObjects() { return [this.shelf.img, this.merchant.sprite].concat(this.register ? this.register.revealObjects() : [], this.open2 ? [this.merchant2.sprite] : [], this.open2 && this.register2 ? this.register2.revealObjects() : []); }
   payTarget() { return this.merchant; }
-  get waitingPay() { return this.enabled && this.stock.count > this.kept() && !(this.register && this.register.staffed); }
+  /** (the first merchant waits: nobody at a 자재 register — the second window's pad serves him too) */
+  get waitingPay() { return this.enabled && this.stock.count > this.kept() && this.servers() === 0; }
   kept() { return TradePost.prototype.kept.call(this); }
   feedFrom(ch) { return TradePost.prototype.feedFrom.call(this, ch); }
   buyable(keep) { return TradePost.prototype.buyable.call(this, keep); }
@@ -1078,7 +1109,12 @@ class MatCounter {
     if (!this.enabled) return;
     this.townLook(dt);
     this.buyT -= dt;
-    const staffed = this.register.staffed;
+    // ((v4.3 step B, M) who serves: the 자재 점원's window (register), else the second window (register2, stage 4) — the first
+    //  merchant is served by either; the second merchant only while both stand there (two people at the 자재 registers)
+    const r2 = this.open2 ? this.register2 : null;
+    const s1 = !!(this.register && this.register.staffed), s2 = !!(r2 && r2.staffed);
+    const srv = s1 ? this.register : s2 ? r2 : null;
+    const staffed = !!srv;
     const selling = this.stock.count > this.kept();
     if (selling && !staffed) this.waitT += dt; else this.waitT = 0;
     const showWait = selling && !staffed;
@@ -1092,26 +1128,47 @@ class MatCounter {
       if (showWait) { this.waitIcon.x = m.x; this.waitIcon.setScale(this.waitIcon.__bs * (1 + Math.max(0, Math.sin(gs.time.now / 140)) * 0.15)); this.waitIcon.y = m.y + m.headTop - 30 + Math.sin(gs.time.now / 300) * 3; }
     }
     const keep = gs.v42 && gs.v42.frules ? Math.max(0, Math.floor(Number(BALANCE.v42.trade && BALANCE.v42.trade.displayKeep) || 0)) : 0;
-    const buyable = keep > 0 ? this.buyable(keep) : null;
+    let buyable = keep > 0 ? this.buyable(keep) : null;
     if (this.buyT <= 0 && this.stock.count > 0 && staffed && (!keep || buyable.length)) {
-      this.buyT = this.register.clerk ? BALANCE.trade.buyInterval * BALANCE.register.clerkTradeSlow : BALANCE.trade.buyInterval;
-      const it = keep ? this.stock.pop(buyable) : this.stock.pop();
-      this.flying[it.type] = (this.flying[it.type] || 0) + 1;
-      gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: m.x, y: m.y - 40 }, {
-        dur: 260, height: 50, scaleTo: 0.5,
-        onDone: (s) => {
-          this.flying[it.type]--;
-          gs.effects.releaseItem(s);
-          this.cash.add(priceOf(it.type), m.x, m.y - 50);
-          gs.events.emit('traded', priceOf(it.type));
-        },
-      });
-      if (this.happyT <= 0) { m.play('happy', true); this.register.onPay(m); }
-      this.happyT = 0.7;
-      this.bought = (this.bought || 0) + 1;
+      this.buyT = srv.clerk ? BALANCE.trade.buyInterval * BALANCE.register.clerkTradeSlow : BALANCE.trade.buyInterval;
+      this.sell(m, keep ? buyable : null, srv, this);
     }
     if (this.happyT > 0) { this.happyT -= dt; if (this.happyT <= 0) { if (this.faceAt) m.faceTo(this.faceAt.x, this.faceAt.y); m.play('idle'); } }
     m.sync(dt);
+    // the second merchant (stage 4)
+    if (r2) {
+      const m2 = this.merchant2, M2 = this.m2;
+      M2.buyT -= dt;
+      if (s1 && s2) {
+        buyable = keep > 0 ? this.buyable(keep) : null;
+        if (M2.buyT <= 0 && this.stock.count > 0 && (!keep || buyable.length)) {
+          M2.buyT = r2.clerk ? BALANCE.trade.buyInterval * BALANCE.register.clerkTradeSlow : BALANCE.trade.buyInterval;
+          this.sell(m2, keep ? buyable : null, r2, M2);
+        }
+      }
+      if (M2.happyT > 0) { M2.happyT -= dt; if (M2.happyT <= 0) { if (this.faceAt2) m2.faceTo(this.faceAt2.x, this.faceAt2.y); m2.play('idle'); } }
+      m2.sync(dt);
+    }
+  }
+
+  /** one plank / ingot flies from the rack to merchant `m`, who pays into the shop's till (the trade post's loop); `who`
+   *  keeps his happy clock (this = the first merchant, this.m2 = the second) */
+  sell(m, buyable, reg, who) {
+    const gs = this.gs;
+    const it = buyable ? this.stock.pop(buyable) : this.stock.pop();
+    this.flying[it.type] = (this.flying[it.type] || 0) + 1;
+    gs.effects.fly(it.spr, it.spr.x, it.spr.y, { x: m.x, y: m.y - 40 }, {
+      dur: 260, height: 50, scaleTo: 0.5,
+      onDone: (s) => {
+        this.flying[it.type]--;
+        gs.effects.releaseItem(s);
+        this.cash.add(priceOf(it.type), m.x, m.y - 50);
+        gs.events.emit('traded', priceOf(it.type), who === this ? 1 : 2);
+      },
+    });
+    if (who.happyT <= 0) { m.play('happy', true); reg.onPay(m); }
+    who.happyT = 0.7;
+    who.bought = (who.bought || 0) + 1;
   }
 }
 
@@ -1154,16 +1211,23 @@ export class StageMarket {
     this.lastKeys = [];
     this.lanes = { food: new Lane(this, 'food'), fish: new Lane(this, 'fish'), meat: new Lane(this, 'meat') };
     this.mat = new MatCounter(this);
-    // the seats' registers (A: the first clerk, M: the 자재 점원, B: the stage-3 고기 clerk), all built on the stall's art
+    // the seats' registers (A: the first clerk, M: the 자재 점원, B: the stage-3 고기 clerk, M2: (v4.3 step B, M) the 자재
+    //  counter's second window at stage 4 — the chief's pad there; a v4.4 second 자재 clerk would take it), all built on the
+    //  stall's art. The second window answers like a seller: its merchant is the second one
     const clerkOf = { A: cfg.clerk, M: (cfg.mat && cfg.mat.clerk) || ['npc_clerk_b', 'npc_merchant'], B: cfg.clerk3 || cfg.clerk };
+    clerkOf.M2 = clerkOf.M;
+    const shop = this;
+    this.mat2win = { id: 'mat2', gs, front: [-60, 30], get x() { return shop.x; }, get y() { return shop.y; }, payTarget: () => shop.mat.merchant2 };
     this.seats = {};
-    for (const k of ['A', 'M', 'B']) {
-      const rc = Object.assign({}, cfg, { noOverlay: true, clerk: clerkOf[k] });
-      this.seats[k] = new Register(gs, k === 'M' ? this.mat : this.lanes.food, rc, spr);
+    for (const k of ['A', 'M', 'B', 'M2']) {
+      const rc = Object.assign({}, cfg, { noOverlay: true, clerk: clerkOf[k] }, k === 'M2' ? { labelKey: 'register_mat2' } : null);
+      this.seats[k] = new Register(gs, k === 'M' ? this.mat : k === 'M2' ? this.mat2win : this.lanes.food, rc, spr);
     }
+    this.seats.M2.setEnabled(false);
     this.register = this.seats.A;                    // (the first clerk's register: gs.market.register as before)
     this.register.overlay = this.front;              // (4.2.0.2 code reads the stall's front layer there)
     this.mat.register = this.seats.M;
+    this.mat.register2 = this.seats.M2;
     this.sign = null; this.plates = [];
     this.sink = {
       id: this.id + '_shelf', isWarehouse: false, enabled: true, x: this.shelf.x + 30, y: this.shelf.y + 22,
@@ -1173,7 +1237,32 @@ export class StageMarket {
       feed: (ch) => this.feedFrom(ch),
     };
     if (gs.logistics) gs.logistics.add(this.sink);
+    // ((v4.3 step B, M) an interior (gs.interiors, as the fishing deck): at stage 4 the strip in front of the counters (see occupy)
+    this.front4 = null;
+    (gs.interiors || (gs.interiors = [])).push(this);
     this.setStage(1, true);
+  }
+
+  /**
+   * ((v4.3 step B, M) (gs.interiors) the stage-4 row is 7 m long and drawn at the depth of its middle: whoever stands in front
+   * of its WEST counters (the 자재 창구 — the chief on register 2, the two merchants) has a smaller y than that middle, so he
+   * would be drawn behind the counters and the x-ray would fade the whole shop while the chief serves there. A character in
+   * the strip in front of the counters (world.js stages[st].front, art-local metres [x0, x1, y0, y1]) is drawn just above the
+   * shop's layers (its order among the others there kept) and does not make the shop see-through (noXray while there).
+   */
+  occupy(ch) {
+    const F = this.front4;
+    let inside = false;
+    if (F && this.enabled) {
+      const a = (ch.x - this.x) / 45.25, b = (ch.y - this.y) / 22.63, lx = (a + b) / 2, ly = (a - b) / 2;
+      inside = lx >= F[0] && lx <= F[1] && ly >= F[2] && ly <= F[3];
+    }
+    if (inside) {
+      if (!ch.__mkFront) { ch.__mkFront = true; ch.__mkNoX = !!ch.noXray; ch.noXray = true; }
+      return { depth: ch.y >= this.y + 2 ? ch.y : this.y + 1.5 + Math.max(0, Math.min(1, (ch.y - this.y + 160) / 162)) * 0.4, lift: 0 };
+    }
+    if (ch.__mkFront) { ch.__mkFront = false; ch.noXray = ch.__mkNoX; }
+    return null;
   }
 
   // ---------------------------------------------------------------- stages
@@ -1190,7 +1279,7 @@ export class StageMarket {
   get primary() { return this.stage >= 3 ? this.lanes.fish : this.lanes.food; }
   /** a seller's register by the step's seller id ('market' = seat A, 'trade' = the 자재 창구, 'meat' = seat B; 'breadmeat' =
    *  seat B too: an a2-era save's step) */
-  registerOf(seller) { return seller === 'trade' || seller === 'mat' ? this.seats.M : seller === 'meat' || seller === 'breadmeat' ? this.seats.B : this.seats.A; }
+  registerOf(seller) { return seller === 'mat2' ? this.seats.M2 : seller === 'trade' || seller === 'mat' ? this.seats.M : seller === 'meat' || seller === 'breadmeat' ? this.seats.B : this.seats.A; }
 
   /**
    * go to stage `st`: the art, the counters (their pads, clerks' posts, lines), the racks, the till, the walls. instant =
@@ -1203,6 +1292,7 @@ export class StageMarket {
     const was = this.stage;
     this.stage = st;
     const S = st > 1 ? (this.cfg.stages && this.cfg.stages[st]) || null : null;
+    this.front4 = S && Array.isArray(S.front) && S.front.length === 4 ? S.front : null;
     const at = S && S.at ? S.at : [0, 0];
     this.x = this.base.x + at[0]; this.y = this.base.y + at[1];
     // the art (stages 2-3 load after the first minutes: an invisible stand-in until the page arrives)
@@ -1258,19 +1348,36 @@ export class StageMarket {
       if (id === 'mat') {
         const ms = S && S.matShelf ? P(S.matShelf) : { x: this.x - 200, y: this.y };
         this.mat.placeAt(ms, { x: this.x + cust[0], y: this.y + cust[1] }, { x: stf.x, y: stf.y - 10 });
+        // ((v4.3 step B, M) stage 4: the 자재 counter's second window (world.js stages[st].mat2 + the art's staff2 / customer2 /
+        //  register2 points): its register pad (seat M2), the post a second 자재 clerk would take, the second merchant's spot)
+        const m2 = S && S.mat2 ? S.mat2 : null;
+        if (m2) {
+          const R2 = this.seats.M2, pt = (a, d) => (Array.isArray(a) && Array.isArray(a[0]) ? a[0] : d);
+          const s2 = m2.staff ? P(m2.staff) : (() => { const q = pt(D.staff2Points, [staff[0] - 90, staff[1] - 45]); return { x: this.x + q[0], y: this.y + q[1] }; })();
+          const c2 = m2.merchant ? P(m2.merchant) : (() => { const q = pt(D.customer2Points, [s2.x - this.x - 110, s2.y - this.y + 30]); return { x: this.x + q[0], y: this.y + q[1] }; })();
+          const g2 = m2.register ? P(m2.register) : (() => { const q = pt(D.register2Points, [s2.x - this.x - 77, s2.y - this.y + 39]); return { x: this.x + q[0], y: this.y + q[1] }; })();
+          R2.place(g2.x, g2.y, s2, art, this.y, instant || was === st);
+          used.M2 = true;
+          this.mat.setOpen2(true, c2, { x: s2.x, y: s2.y - 10 });
+        } else this.mat.setOpen2(false);
       } else {
         const L = this.lanes[id];
         seat.seller = L;
         L.register = seat;
+        // ((v4.3 step B, M) a stage may give a line its own turns (world.js stages[st].lines[id]: turn = places before it
+        //  bends, turn2 = places before it bends back down-left); stage 3 keeps its rules below
+        const LN = (S && S.lines && S.lines[id]) || null;
+        const east = k === ids.length - 1;
         L.cfg = {
           queueStart: cust,
           queueStep: this.cfg.queueStep || YO(-0.9),
           // ((review PT-3) at stage 3 the east-most line turns east after 4: its 5th-7th places stood on the 옷·신발 공방)
-          queueTurn: Math.min(st === 3 && k === ids.length - 1 ? 4 : 1e9, Math.max(2, Math.floor(Number(M43().lineShow) || this.cfg.queueTurn || 6))),
+          queueTurn: LN && LN.turn ? LN.turn : Math.min(st === 3 && east ? 4 : 1e9, Math.max(2, Math.floor(Number(M43().lineShow) || this.cfg.queueTurn || 6))),
           // the east-most line bends east (as the stall's did), the others bend west: never into the next line
-          queueStep2: st === 1 ? (this.cfg.queueStep2 || XO(0.9)) : (k === ids.length - 1 ? XO(0.9) : XO(-0.9)),
+          queueStep2: st === 1 ? (this.cfg.queueStep2 || XO(0.9)) : (east ? XO(0.9) : XO(-0.9)),
           // ((v4.3 밀밭 · 빵집) the stage-3 east line's 9th / 10th places stood under the bakery cottage's roof: back down-left there
-          queueTurn2: st === 3 && k === ids.length - 1 ? 8 : 0, queueStep3: st === 3 && k === ids.length - 1 ? YO(-0.9) : null,
+          queueTurn2: LN && LN.turn2 !== undefined ? LN.turn2 : st === 3 && east ? 8 : 0,
+          queueStep3: (LN && LN.turn2) || (st === 3 && east) ? YO(-0.9) : null,
           faceTo: st === 1 ? (this.cfg.faceTo || [40, -20]) : [(staff[0] + 11), (staff[1] - 14)],
         };
       }
@@ -1283,6 +1390,7 @@ export class StageMarket {
       if (!on) L.queue.length = 0;
       L.open = on;
     }
+    if (ids.indexOf('mat') < 0 && this.mat.open2) this.mat.open2 = false;
     this.mat.setOpen(ids.indexOf('mat') >= 0);
     for (const k in this.seats) if (!used[k]) this.seats[k].setEnabled(false); else this.seats[k].setEnabled(this.enabled);
     for (const c of moved) {
@@ -1303,7 +1411,7 @@ export class StageMarket {
     if (gs.roads && was !== st) gs.roads.invalidate();
     if (gs.v42 && gs.v42.registerStocks && was !== st) gs.v42.registerStocks();
     // padSpots (residents keep off the pads)
-    if (gs.padSpots) for (const p of [this.shelf, this.mat.shelf, this.cash.pad].concat(ids.map((id) => this.seats[SEAT_OF[id]]))) gs.padSpots.push({ x: p.x, y: p.y, r: 70 });
+    if (gs.padSpots) for (const p of [this.shelf, this.mat.shelf, this.cash.pad].concat(ids.map((id) => this.seats[SEAT_OF[id]]), this.mat.open2 ? [this.seats.M2] : [])) gs.padSpots.push({ x: p.x, y: p.y, r: 70 });
     this.refreshVisible();
     if (!instant && was !== st) this.celebrateStage(st);
   }
@@ -1318,8 +1426,12 @@ export class StageMarket {
     if (st >= 2) {
       const COL = { mat: 0x8ea2b6, food: 0xe7a55e, fish: 0x6aa6dc, meat: 0xd0806a };
       const ICON = { mat: 'item_plank', food: 'item_fish_cooked', fish: 'item_fish_cooked', meat: 'item_meat_cooked' };
-      for (const id of SHOP_COUNTERS[st]) {
-        const c = id === 'mat' ? this.mat.merchant : null;
+      // ((v4.3 step B, M) stage 4: the second merchant's spot gets its own short 자재 rug)
+      const rugs = SHOP_COUNTERS[st].slice();
+      if (this.mat.open2) rugs.unshift('mat2');
+      for (const rid of rugs) {
+        const id = rid === 'mat2' ? 'mat' : rid;
+        const c = rid === 'mat2' ? this.mat.merchant2 : id === 'mat' ? this.mat.merchant : null;
         const L = id === 'mat' ? null : this.lanes[id];
         const p0 = c ? { x: c.x, y: c.y } : L.slotPos(0);
         const len = id === 'mat' ? 1.6 : 3.4;
@@ -1339,6 +1451,7 @@ export class StageMarket {
         n++;
       }
     }
+    this.rugN = n;
     for (let i = 0; i < this.rugIcons.length; i++) this.rugIcons[i].setVisible(i < n && this.enabled);
     g.setVisible(this.enabled);
   }
@@ -1349,7 +1462,7 @@ export class StageMarket {
     const gs = this.gs, c = S && S.sled;
     if (this.sledObs) for (const k in this.sledObs) this.sledObs[k].active = false;
     const key0 = (c && c.sprite) || 'market_sled';
-    if (!c || !c.at || !Assets.m.sprites[key0]) { if (this.sled) this.sled.setVisible(false); return; }
+    if (!c || !c.at || !Assets.m.sprites[key0]) { this.sledKeep = false; if (this.sled) this.sled.setVisible(false); return; }
     const x = this.base.x + c.at[0], y = this.base.y + c.at[1], k = Number(c.scale) || 1;
     if (!this.sled) {
       this.sled = Assets.image(gs, x, y, key0).setScale(k);
@@ -1369,8 +1482,10 @@ export class StageMarket {
     const key = this.stage;
     if (!this.sledObs[key]) { const fp = Assets.def(key0).footprint || [204, 102]; this.sledObs[key] = gs.collision.add(x, y, fp[0] * 0.42 * k, 'sled'); }
     // ((review CD-4) the office on the hut's plot (its scaffold or the office) reaches the sled's spot: the sled is put
-    //  away until 4.3 B parks it by the 자재 창구)
-    const on = this.enabled && !this.sledAway();
+    //  away until 4.3 B parks it by the 자재 창구) ((v4.3 step B, M — X-6) a stage's sled spot clear of the office says
+    //  keep: true (stage 4: west of the 자재 창구, outside reserve4, off the grill line, no pads): it stays after the office)
+    this.sledKeep = !!c.keep;
+    const on = this.enabled && (this.sledKeep || !this.sledAway());
     this.sledObs[key].active = on;
     this.sled.setVisible(on);
   }
@@ -1392,6 +1507,9 @@ export class StageMarket {
     }
     const late = [].concat(this.sign ? [this.sign] : [], ...this.plates.filter((p) => p.on).map((p) => (p.hasIcon ? [p.img, p.icon] : [p.img])));
     for (const o of late) { o.setAlpha(0); gs.tweens.add({ targets: o, alpha: 1, duration: 360, delay: 380 }); }
+    // ((v4.3 step B, M — postdepot_addendum §4.2: the 눈꽃마을 시장 row pays nothing, its banner and a look are the payoff) stage 4:
+    //  the camera takes in the new market, roof and arch board (not while the first-run tutorial holds the camera)
+    if (st >= 4 && gs.focusCamera && !(gs.onboard && gs.onboard.active)) gs.focusCamera(this.x - 30, this.y - 90, 2400);
   }
 
   /** the stage name on the board (Market.makeSign, at this stage's place) + the counters' plates (stages 2-3).
@@ -1448,6 +1566,11 @@ export class StageMarket {
     if (!o) return;
     const w = img.displayWidth, h = img.displayHeight * img.originY;
     o.x = img.x + (0.5 - img.originX) * w; o.y = img.y; o.hw = w * 0.5; o.top = h * 0.95; o.big = w > 250;
+    // ((v4.3 step B, M verify) stage 4's 3.6 m roof and arch board cover the plaza behind the row (the snowman / flag
+    //  corner where residents play): every passer-by there made the whole 눈꽃마을 시장 see-through 41–67 % of the time in
+    //  late villages (stage 3: 0 %). From stage 4 only the chief (and the train's cars) fade it, as a founded shop / a
+    //  station / the first houses do (Occlusion chiefOnly)
+    o.chiefOnly = this.stage >= 4;
   }
   /** a picture drawn with the shop fades with its x-ray */
   linkFade(img) { Market.prototype.linkFade.call(this, img); }
@@ -1460,8 +1583,8 @@ export class StageMarket {
     this.shelf.setVisible(v); this.cash.setEnabled(v); this.stock.setVisible(v);
     if (this.sign) this.sign.setVisible(v);
     for (const p of this.plates) { p.img.setVisible(v && p.on); p.icon.setVisible(v && p.on && p.hasIcon); }
-    if (this.sled) this.sled.setVisible(v && this.stage >= 2);
-    if (this.rugG) { this.rugG.setVisible(v); for (let i = 0; i < this.rugIcons.length; i++) this.rugIcons[i].setVisible(v && this.stage >= 2 && i < SHOP_COUNTERS[this.stage].length); }
+    if (this.sled) this.sled.setVisible(v && this.stage >= 2 && (this.sledKeep || !this.sledAway()));
+    if (this.rugG) { this.rugG.setVisible(v); for (let i = 0; i < this.rugIcons.length; i++) this.rugIcons[i].setVisible(v && this.stage >= 2 && i < (this.rugN || 0)); }
     this.sink.enabled = v;
     this.mat.setOpen(this.mat.open);
   }
@@ -1469,7 +1592,7 @@ export class StageMarket {
     this.enabled = v;
     this.obstacle.active = v && this.stage === 1;
     for (const w of this.walls) w.active = v;
-    for (const k in this.seats) this.seats[k].setEnabled(v && (k === 'A' || (k === 'M' && this.stage >= 2) || (k === 'B' && this.stage >= 3)));
+    for (const k in this.seats) this.seats[k].setEnabled(v && (k === 'A' || (k === 'M' && this.stage >= 2) || (k === 'B' && this.stage >= 3) || (k === 'M2' && this.mat.open2)));
     this.refreshVisible();
     for (const c of this.queue) { c.sprite.setVisible(v); c.shadow.setVisible(v); if (c.bubble) c.bubble.setVisible(v); }
   }
@@ -1636,7 +1759,7 @@ export class StageMarket {
     if (this.img.frame !== this._occFrame) { this._occFrame = this.img.frame; this.refreshOcc(); }
     if (!this.enabled) { this.mat.update(dt); return; }
     // ((review CD-4) the office went up on the hut's plot meanwhile: the sled goes)
-    if (this.sled && this.sled.visible && this.sledAway()) this.placeSled(this.stage > 1 ? this.cfg.stages && this.cfg.stages[this.stage] : null);
+    if (this.sled && this.sled.visible && !this.sledKeep && this.sledAway()) this.placeSled(this.stage > 1 ? this.cfg.stages && this.cfg.stages[this.stage] : null);
     this.cash.update(dt);
     for (const k in this.seats) this.seats[k].update(dt);
     // (the 자재 창구 after the registers, as the trade post did: who stands at its register counts this frame)

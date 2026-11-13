@@ -13,7 +13,9 @@
 // Where: a fresh game through the tutorial (the market clerk → the grill line → the forest → the 작업대 upgrades,
 // pads as they appear; (v4.3) then the shop's stages: the forest brings 눈꽃 가게 (stage 2), the first bread sale the
 // 눈꽃 시장 pad, its purchase stage 3 and the 빵·고기 clerk's pad — and at every step no paid pad stands inside the
-// stage-4 footprint reserved beside the shop (world.js market.reserve4, 10 x 5 m)) and every late save in fixtures/ (the pads standing there + every pad still to come whose place
+// stage-4 footprint reserved beside the shop (world.js market.reserve4, 10 x 5 m); ((v4.3 step B, M) then stage 4 「눈꽃마을
+// 시장」: its pad at 읍 + G's flag g43s4 (the mkt_s4 row added in the page while P is not merged), the stage-4 shop with its
+// lines and both merchants, and the 자재 counter's second register pad 'place:mat_register2' measured at its place)) and every late save in fixtures/ (the pads standing there + every pad still to come whose place
 // already exists, at that place: the same spot the game would give it). The game runs on the fixed-step clock; each
 // group of pads is sampled every second for --samples seconds with the chief parked away from them.
 //   node tools/test/padvis.mjs [--root <a frost-village dir>] [--only fresh,v42_village_late] [--samples 8] [--json out.json]
@@ -116,6 +118,10 @@ const PAGE = () => {
     if (gs.boathouse) add('place:boat', gs.boathouse.boatPad);
     const H = gs.civic && gs.civic.hall;
     if (H) add('place:rank_eup', H.rankPadPos ? H.rankPadPos() : H.venue('rank'), { sizeM: 2.1 });
+    // ((v4.3 step B, M) stage 4: the 자재 counter's second register pad (the chief's; it stays with the 자재 clerk hired), its
+    //  name 「계산대 2」 above it
+    const R2 = gs.market && gs.market.seats && gs.market.seats.M2;
+    if (R2 && R2.enabled && R2.pad && R2.pad.img.visible) add('place:mat_register2', { x: R2.x, y: R2.y }, { sizeM: 1.3, labelAt: [0, -46] });
     // the same spot for several pads (a line's hire pads, 짐꾼 2 / 2단 sharing it): one entry
     const merged = [];
     for (const s of out) { const m = merged.find((q) => Math.abs(q.x - s.x) < 3 && Math.abs(q.y - s.y) < 3); if (m) m.id += '+' + s.id; else merged.push(s); }
@@ -127,6 +133,8 @@ const PAGE = () => {
     const gs = window.__FV.scene;
     const live = P.livePads();
     const S = withSpecs ? await P.specs() : { specs: [], isNew: !!(await import('/fv/src/systems/DepthSort.js')).DEPTH.PAD_PRICE };
+    // ((v4.3 step B, M) 'reg2': the live pads + only the stage-4 shop's second register pad)
+    if (withSpecs === 'reg2') S.specs = S.specs.filter((q) => q.id.split('+').indexOf('place:mat_register2') >= 0);
     const D = (await import('/fv/src/systems/DepthSort.js')).DEPTH;
     const pads = [];
     for (const p of live) pads.push({ id: p.id, live: true, x: Math.round(p.x), y: Math.round(p.y), hw: p.pad.w / 2, ref: p });
@@ -241,6 +249,9 @@ const PAGE = () => {
       for (const o of [u.label, u.costText, u.costCoin, u.maxBadge, u.pad && u.pad.img, u.pad && u.pad.icon, u.ring, u.ringBg, u.sparkle]) if (o && o !== 'none') own.set(o, u);
       if (u.itemStack) for (const it of u.itemStack.items || []) if (it.spr) own.set(it.spr, u);
     }
+    // ((v4.3 step B, M) the 자재 counter's second register (stage 4): its own pad picture and its 「계산대 2」 name are its own
+    const R2 = gs.market && gs.market.seats && gs.market.seats.M2;
+    if (R2 && R2.enabled) { const me = { id: 'place:mat_register2', x: Math.round(R2.x), y: Math.round(R2.y) }; for (const o of [R2.pad && R2.pad.img, R2.pad && R2.pad.icon, R2.label]) if (o) own.set(o, me); }
     const labels = new Map();
     for (const u of P.livePads()) labels.set(u.label, u.id);
     const dollImgs = new Set();
@@ -382,7 +393,8 @@ async function measure(page, tag, withSpecs) {
     const W = window.__FV.scene.market && window.__FV.scene.market.cfg && window.__FV.scene.market.cfg.reserve4;
     if (!W) return [];
     const m = (x, y) => { const a = (x - 990) / 45.25, b = (y - 800) / 22.63; return [(a + b) / 2, (a - b) / 2]; };
-    return ps.filter((p) => { const [mx, my] = m(p.x, p.y); return mx > W[0] && mx < W[2] && my > W[1] && my < W[3]; }).map((p) => p.id);
+    // ((v4.3 step B, M) the stage-4 shop's own register pad (not a paid pad) stands in the footprint it fills)
+    return ps.filter((p) => p.id.split('+').indexOf('place:mat_register2') < 0).filter((p) => { const [mx, my] = m(p.x, p.y); return mx > W[0] && mx < W[2] && my > W[1] && my < W[3]; }).map((p) => p.id);
   }, pads);
   ok(!inRes.length, `${tag} no paid pad (standing or to come) inside the stage-4 shop's reserved footprint`, inRes);
   const clash = await page.evaluate(() => window.__padVis.labelClash());
@@ -502,6 +514,42 @@ try {
         await done('mkt_s3');
         await advance(page, 3);
         out.stages.shop3 = await measure(page, 'fresh/15 가게 3단 · 고기 점원 발판', false);
+        // ((v4.3 step B, M) stage 4 「눈꽃마을 시장」: the mkt_s4 row is P's (added in the page while it is missing, the contract
+        //  row); its pad at 읍 + G's flag g43s4 (by hook, as the addendum says M's suites do); then the stage-4 shop, its lines
+        //  filled, both merchants there, and the 자재 counter's second register pad at its place
+        await page.evaluate(async () => {
+          const PR = await import('/fv/src/systems/Progression.js');
+          if (!PR.STEPS.find((q) => q.id === 'mkt_s4')) { const at = PR.STEPS.findIndex((q) => q.id === 'hire_clerk_s3'); PR.STEPS.splice(at + 1, 0, { id: 'mkt_s4', type: 'shop', level: 4, after: 'f:rankEup', flag: 'g43s4', also: 'mkt_s3', side: true, v4: true }); }
+        });
+        // (a 읍 village has its east watchtower: its unlock pad (1662, 909) is near enough to the shop pads' spot (1525, 900) that the
+        //  one-pad-per-spot rule keeps the shop's pads waiting behind it — in this flow the 눈꽃 시장 pad too, so stage 3 is
+        //  bought here when fresh/14-15 could not)
+        //  (and the tower stands, its land open: a 읍 village is in the v4 era, which the east tower opened — no fog over the
+        //  shop pads' labels)
+        await step(page, () => {
+          const F = window.__FV, gs = F.scene, pr = gs.progress;
+          if (!pr.done.tower_east && pr.pads.tower_east) F.doneStep('tower_east');
+          const st = gs.sites.tower_east || (gs.makeTowerSite && gs.makeTowerSite('tower_east'));
+          if (st && st.state === 'plot') st.start('watchtower', { instant: true });
+          if (st && st.state !== 'done') st.finish(true);
+          gs.refreshSites(); pr.syncPads();
+        }, null, 6);
+        if (!(await page.evaluate(() => window.__FV.scene.progress.done.mkt_s3))) { await done('mkt_s3'); await advance(page, 3); }
+        if (await page.evaluate(() => !!window.__FV.scene.progress.pads.hire_clerk_s3)) await done('hire_clerk_s3');
+        await step(page, () => { const pr = window.__FV.scene.progress; pr.flags.rankEup = true; pr.flags.g43s4 = true; pr.syncPads(); }, null, 2.5);
+        out.stages.shop4pad = await measure(page, 'fresh/16 눈꽃마을 시장 (가게 4단) 발판', false);
+        ok(out.stages.shop4pad.live.includes('mkt_s4'), 'fresh/16 the 눈꽃마을 시장 pad stands (읍 + g43s4)', out.stages.shop4pad.live);
+        await page.evaluate(() => window.__FV.give(8000));
+        await done('mkt_s4');
+        await advance(page, 3);
+        await page.evaluate(() => {
+          const g = window.__FV.scene, m = g.market;
+          for (const ty of ['item_fish_cooked', 'item_meat_cooked']) while (m.stock.countOf(ty) < 40) m.stock.push(ty, null, g.effects);
+          for (const L of m.openLanes()) for (let i = L.queue.length; i < 4; i++) { const c = m.spawnCustomer(i); const f = c.market; if (f !== L) { f.queue.splice(f.queue.indexOf(c), 1); L.queue.push(c); c.market = L; const q = L.slotPos(L.queue.length - 1); c.x = q.x; c.y = q.y; c.path.length = 0; } }
+        });
+        out.stages.shop4 = await measure(page, 'fresh/17 가게 4단 (줄 셋 · 상인 둘 · 계산대 2)', 'reg2');
+        const s4 = await page.evaluate(() => { const g = window.__FV.scene; return { stage: g.market.stage, open2: g.trade.open2, reg2: g.market.seats.M2.enabled }; });
+        ok(s4.stage === 4 && s4.open2 && s4.reg2 && out.stages.shop4.rows.some((r) => r.id === 'place:mat_register2'), 'fresh/17 stage 4 stands with its second 자재 window, and its register pad was measured', s4);
       }
     } else if (sc === 'd43') {
       const put = await page.evaluate((plan) => {

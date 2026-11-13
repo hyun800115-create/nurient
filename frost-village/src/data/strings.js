@@ -562,6 +562,9 @@ export const STRINGS = {
     // <<< v43B:H end
 
     // >>> v43B:M start (market: 「눈꽃마을 시장」, counter names)
+    sign_market_4: '눈꽃마을 시장',
+    shop4Up: '눈꽃마을 시장이 되었어요!', shop4Sub: '자재 계산대에 둘이 서면 상인 둘이 함께 사 가요',
+    register_mat2: '계산대 2',
     // <<< v43B:M end
 
     // >>> v43B:N start (renewal: 「마을 새 단장」 letter, 「새 지도 보기」 tour)
@@ -1090,6 +1093,9 @@ export const STRINGS = {
     // <<< v43B:H end
 
     // >>> v43B:M start (market: 「눈꽃마을 시장」, counter names)
+    sign_market_4: 'Snowbloom Village Market',
+    shop4Up: 'Snowbloom Village Market!', shop4Sub: 'Two people at the materials registers: two merchants buy at once',
+    register_mat2: 'Register 2',
     // <<< v43B:M end
 
     // >>> v43B:N start (renewal: 「마을 새 단장」 letter, 「새 지도 보기」 tour)

@@ -394,6 +394,230 @@ def b_market_s3():
     return _row(3, ['mat', 'fish', 'breadmeat'], NOTE_S3)
 
 
+# ================================================================================================ (v4.3 step B, M) stage 4
+# 「눈꽃마을 시장」 (build_plan.md §3.9, decisions X-1 / PQ6): bread sells at the bakery now, so stage 4 keeps the three
+# counters - 자재 (WEST end) · 생선 · 고기 - and grows them: the 자재 창구 is 3.0 m with TWO windows (the 자재 점원's window
+# east, a second window west: the second merchant spot opens while two people stand at the 자재 registers), the food
+# counters 2.0 m each (the stage-3 line spacing that passed gate G6).  An OPEN roof on the back posts at ~3.6 m (rafters,
+# slats with snow, knee braces: no front posts among the lines), the stage name on an arch board standing on the roof's
+# front beam (the game writes 「눈꽃마을 시장」 into signQuad), the counters' blank plates on the back rail as at stages 2-3.
+# Markers west -> east, one per counter (staff / customer / register); the second 자재 window adds staff2 / customer2 /
+# register2.  Same layers (back = everything, front = the counters), same goods-free rule.
+SIGN_TOPS = {'market_s4': 4.58}         # (market_render: signTopM of the stage; the arch board's top)
+S4_KINDS = ('mat', 'fish', 'meat')
+S4_W = (3.0, 2.0, 2.0)                  # counter widths (m), west -> east
+S4_ROOF = (3.62, 3.42)                  # roof underside at the back posts / at the front beam (a light fall to the front)
+S4_FRONT_Y = -0.86                      # the roof's front beam (over the counters' front edge, never over the lines)
+S4_REG = (-2.15, -0.75)                 # the 자재 counter's two windows (x of their register pads and posts): [second, clerk]
+S4_MERCH = (-3.95, -2.85)               # the two merchant spots [second (west), first (east)]: both WEST of both register pads,
+#                                         so neither merchant stands in front of a register pad on screen (a body 0.74 m in front
+#                                         of a pad and less than ~1.1 m (x + y) to its side covers it); the first merchant's spot
+#                                         is 2.1 m west of his window's pad (0.7 m west of the second pad: padvis keeps that pad's
+#                                         floor clear of him), the second 1.8 m west of the second window's pad, 1.3 m from the
+#                                         grill line's pad
+
+
+def _arch_outline(w, h, rise, n=16):
+    """A board outline: rectangle w x h (base centred at 0) with an elliptic arch of `rise` on top, CCW."""
+    pts = [(-w / 2, 0.0), (w / 2, 0.0)]
+    for i in range(n + 1):
+        t = math.pi * i / n
+        pts.append(((w / 2) * math.cos(t), h + rise * math.sin(t)))
+    return pts
+
+
+NOTE_S4 = ('Stage-4 market 「눈꽃마을 시장」 (v4.3 step B): three counters in one row - 자재 (WEST end, 3.0 m, two '
+           'windows) · 생선 · 고기 (2.0 m each) - under an open roof (~3.6 m) on the back posts; the stage name on an arch '
+           'board on the roof\'s front beam (signQuad: the game writes it), a blank plate over each counter on the back rail. '
+           'staffPoints / customerPoints / registerPoints west -> east, one per counter (the 자재 점원\'s window = the east '
+           'window of the 자재 counter); staff2Points / customer2Points / register2Points = the 자재 counter\'s second (west) '
+           'window: the second merchant spot. Same layers and rules as stages 2-3.')
+
+
+@market('market_s4', fp=(7.0, 1.6), samples=48, catcher=18.0, notes=NOTE_S4)
+def b_market_s4():
+    post = flat('wood_mid', 0.8)
+    dark = flat('wood_dark', 0.8)
+    trim = flat('#7A4A2A', 0.8)
+    beam = tonal('#9A6436', 0.06, 3.0)
+    W = sum(S4_W)
+    xs = [-W / 2]
+    for w in S4_W:
+        xs.append(xs[-1] + w)                                  # counter boundaries west -> east
+    n = len(S4_KINDS)
+    PY = 1.02
+    RB, RF = S4_ROOF
+    FY = S4_FRONT_Y
+
+    def roof_z(y):
+        """the roof underside at y (a straight fall from the back beam to the front beam)"""
+        return RB + (RF - RB) * (PY - y) / (PY - FY)
+    # ---------------------------------------------------------------- back layer
+    plank_top('step', (W - 0.04, 0.86, STEP_H), (0.0, 0.33, 0.0), c1='#B98450', c2='#A6733F')
+    box('step_riser', (W - 0.02, 0.05, STEP_H - 0.02), (0.0, -0.08, 0.0), mat=dark, bevel=0.012)
+    PX = [xs[0] - 0.12] + xs[1:-1] + [xs[-1] + 0.12]           # posts: both ends + every boundary
+    for i, px_ in enumerate(PX):
+        cyl('post', 0.09, RB + 0.02, (px_, PY, 0.0), mat=post, segs=14)
+        box('post_foot', (0.26, 0.26, 0.09), (px_, PY, 0.0), mat=dark, bevel=0.02)
+        # the rafter over this post: from behind the back beam to past the front beam, along the roof's fall
+        y0, y1 = PY + 0.22, FY - 0.14
+        z0, z1 = roof_z(y0), roof_z(y1)
+        ln, ang = math.hypot(y1 - y0, z1 - z0), math.degrees(math.atan2(z1 - z0, y1 - y0))
+        box('rafter', (0.13, ln, 0.17), (px_, (y0 + y1) / 2, (z0 + z1) / 2 + 0.085), rot=(ang - 180.0, 0, 0), mat=beam,
+            bevel=0.02, origin='center')
+        # a knee brace from the post to the rafter (the roof is held from the back: no posts among the lines)
+        by0, bz0, by1 = PY - 0.04, RB - 1.05, PY - 0.95
+        bz1 = roof_z(by1) - 0.02
+        bl, ba = math.hypot(by1 - by0, bz1 - bz0), math.degrees(math.atan2(bz1 - bz0, by1 - by0))
+        box('brace', (0.08, bl, 0.1), (px_, (by0 + by1) / 2, (bz0 + bz1) / 2), rot=(ba - 180.0, 0, 0), mat=dark,
+            bevel=0.015, origin='center')
+    # the back beam and the front beam (along X), snow on the front beam
+    XL, XR = PX[0] - 0.22, PX[-1] + 0.22
+    box('beam_back', (XR - XL, 0.15, 0.2), (0.0, PY, RB - 0.03), mat=beam, bevel=0.02)
+    box('beam_front', (XR - XL, 0.16, 0.22), (0.0, FY, RF - 0.04), mat=beam, bevel=0.02)
+    # the open roof: slats across the rafters with a gap between them, a soft line of snow on each
+    k = 7
+    for j in range(k):
+        y = FY + 0.12 + j * (PY + 0.12 - FY - 0.12) / (k - 1)
+        z = roof_z(y) + 0.17
+        box('slat', (XR - XL - 0.06, 0.16, 0.045), (0.0, y, z), mat=flat(['wood_light', 'plank'][j % 2], 0.8), bevel=0.012)
+        L.snow_slab('slat_snow', XR - XL - 0.2, 0.15, 0.05, (0.0, y - 0.01, z + 0.04), seed=30 + j, droop=0.01)
+    L.snow_slab('beam_snow', XR - XL - 0.1, 0.17, 0.06, (0.0, FY - 0.01, RF + 0.18), seed=41, droop=0.02)
+    # the arch board on the front beam: dark frame, cream face (the game writes 「눈꽃마을 시장」), rosettes, two feet
+    AW, AH, AR = 3.7, 0.6, 0.26
+    AZ = RF + 0.32                                             # bottom of the board (on two feet over the beam: its lower
+    #                                                            edge clears the back plates' top on screen)
+    L.extrude('arch_frame', _arch_outline(AW, AH, AR), 0.08, loc=(0.0, FY + 0.02, AZ), rot=(90, 0, 0), side=trim,
+              bevel=0.02)
+    L.extrude('arch_face', _arch_outline(AW - 0.16, AH - 0.08, AR - 0.03), 0.04, loc=(0.0, FY - 0.06, AZ + 0.06),
+              rot=(90, 0, 0), side=tonal('#EEDDB8', 0.04, 2.0), bevel=0.01)
+    for sx in (-1, 1):
+        box('arch_foot', (0.12, 0.12, 0.34), (sx * (AW / 2 - 0.3), FY + 0.0, RF + 0.04), mat=dark, bevel=0.015)
+        cyl('arch_rosette', 0.08, 0.025, (sx * (AW / 2 - 0.2), FY - 0.09, AZ + AH * 0.55), rot=(90, 0, 0),
+            mat=flat('#FFFFFF', 0.5), segs=24, origin='center', cap_mat=flat('#DDEBF7', 0.5))
+    for i in range(9):
+        t = math.pi * (0.1 + 0.8 * i / 8)
+        PA.snow_cap('arch_snow', 0.13, ((AW / 2 - 0.05) * math.cos(t), FY + 0.0, AZ + AH + AR * math.sin(t) - 0.02),
+                    h=0.06, seed=50 + i)
+    # (the roof, its beams and the arch board cast no ground shadow: a striped 3.6 m shadow across the plaza would widen the
+    #  frame by ~100 px and darken the counters and the lines under it; the posts keep theirs)
+    for o in bpy.data.objects:
+        if o.name.split('.')[0] in ('rafter', 'brace', 'beam_back', 'beam_front', 'slat', 'slat_snow', 'beam_snow',
+                                    'arch_frame', 'arch_face', 'arch_foot', 'arch_rosette', 'arch_snow'):
+            try:
+                o.visible_shadow = False
+            except AttributeError:
+                pass
+    # the plates: one per counter on the back rail (blank: the game writes 자재 / 생선 / 고기 and draws the icon)
+    box('plate_rail', (PX[-1] - PX[0], 0.06, 0.06), (0.0, PY + 0.04, 2.1), mat=trim, bevel=0.012)
+    PW, PH, PZ = 1.66, 0.44, 1.6
+    plates = []
+    for i in range(n):
+        cx = (xs[i] + xs[i + 1]) / 2
+        for sx in (-1, 1):
+            cyl('plate_cord', 0.008, 2.1 - PZ - PH, (cx + sx * (PW / 2 - 0.12), PY - 0.02, PZ + PH), mat=dark, segs=6)
+        box('plate_back', (PW + 0.05, 0.05, PH + 0.05), (cx, PY + 0.02, PZ - 0.025), mat=trim, bevel=0.012)
+        box('plate_face', (PW, 0.04, PH), (cx, PY - 0.015, PZ), mat=tonal('#F3E6C6', 0.03, 2.0), bevel=0.006)
+        plates.append((cx, PY - 0.037, PZ, PW, PH))
+    # back shelves, one unit per counter, goods-free props that say what the counter is
+    shelf = flat('#9A6436', 0.8)
+    for i, kind in enumerate(S4_KINDS):
+        a, b = xs[i] + 0.12, xs[i + 1] - 0.12
+        cx, w = (a + b) / 2, b - a
+        for sx in (a, b):
+            box('shelf_side', (0.06, 0.32, 1.18), (sx, PY - 0.06, 0.0), mat=shelf, bevel=0.012)
+        for z in (0.50, 1.02):
+            box('shelf_board', (w, 0.32, 0.045), (cx, PY - 0.06, z), mat=shelf, bevel=0.012)
+        box('shelf_back', (w, 0.03, 1.15), (cx, PY + 0.09, 0.02), mat=L.stripes('#B07C48', '#9E6C3C', 7.0, 'X',
+                                                                                    soft=0.03), bevel=0.0)
+        if kind == 'mat':
+            # the materials counter: crates, a coil of rope, two ledgers (one per window), a spoon crock (no planks)
+            PA.crate_model('mat_crate', 0.34, (cx - 0.95, PY - 0.06, 0.545), seed=11, snow=False)
+            PA.crate_model('mat_crate2', 0.3, (cx + 0.2, PY - 0.06, 0.545), seed=13, snow=False)
+            rope = flat('#C8A877', 0.9)
+            for kk in range(3):
+                cyl('rope_%d' % kk, 0.15 - kk * 0.012, 0.035, (cx + 0.85, PY - 0.06, 0.545 + kk * 0.036), mat=rope,
+                    segs=18, bevel=0.012)
+            for lx in (-0.75, 0.55):
+                box('ledger', (0.26, 0.2, 0.05), (cx + lx, PY - 0.06, 1.065), mat=flat('#7C3F2E', 0.7), bevel=0.01)
+                box('ledger_pg', (0.24, 0.18, 0.012), (cx + lx, PY - 0.06, 1.115), mat=flat('#F2E8D2', 0.9),
+                    bevel=0.003)
+            crock('crock_m', (cx - 0.1, PY - 0.06, 1.065))
+        else:
+            cloths('cloth_%d' % i, (cx - 0.5, PY - 0.06, 0.545), n=3)
+            paper_bags('bags_%d' % i, (cx + 0.15, PY - 0.06, 0.545), n=3 + i % 2)
+            if i % 2 == 0:
+                basket('bask_%d' % i, (cx + 0.55, PY - 0.06, 0.545), r=0.13, h=0.12)
+                crock('crock_%d' % i, (cx - 0.25, PY - 0.06, 1.065))
+            else:
+                PA.crate_model('crate_%d' % i, 0.3, (cx + 0.3, PY - 0.06, 1.065), seed=6 + i, snow=False)
+                basket('bask_%d' % i, (cx - 0.35, PY - 0.06, 1.065), r=0.12, h=0.11)
+    # lanterns hanging from the front beam at both ends (night glow), barrels and drifts at the ends
+    for nm, lx in (('lan', XL + 0.35), ('lan2', XR - 0.35)):
+        cyl(nm + '_cord', 0.01, 0.42, (lx, FY, RF - 0.5), mat=dark, segs=6)
+        PA.lantern(nm, (lx, FY, RF - 0.74), 0.15, 3.0)
+    PA.barrel_model('barrel', loc=(xs[-1] + 0.5, 0.78, 0), scale=0.75, seed=4)
+    PA.barrel_model('barrel_w', loc=(xs[0] - 0.45, 0.82, 0), scale=0.7, seed=9)
+    LA.snow_drift('d1', 0.26, (xs[0] - 0.3, 1.24, 0.0), seed=3)
+    LA.snow_drift('d2', 0.2, (xs[-1] + 0.25, 1.28, 0.0), seed=5)
+    # ---------------------------------------------------------------- front layer (the counters)
+    with L.Collect() as front:
+        for i in range(n):
+            _counter_block('counter_%d' % i, xs[i] + (0.0 if i == 0 else 0.01), xs[i + 1] - (0.0 if i == n - 1 else 0.01),
+                           trim)
+        CY, CD = -0.32, 0.46
+        for i, x in enumerate(xs):
+            box('cleg', (0.12, 0.12, COUNTER_H - 0.07), (x + (0.02 if i == 0 else -0.02 if i == n else 0.0),
+                                                         CY - CD / 2 + 0.03, 0.0), mat=trim, bevel=0.02)
+        brass = flat('#D9A93C', 0.3, 0.75)
+        # the 자재 counter: a brass scale at its east end (the clerk's window), a ledger box at the west window
+        bx = xs[1] - 0.3
+        box('scale_base', (0.3, 0.2, 0.04), (bx - 0.05, CY - 0.04, COUNTER_H), mat=flat('#7A4A2A', 0.8), bevel=0.01)
+        cyl('scale_post', 0.015, 0.22, (bx - 0.05, CY - 0.04, COUNTER_H + 0.04), mat=brass, segs=10)
+        box('scale_arm', (0.34, 0.02, 0.02), (bx - 0.05, CY - 0.04, COUNTER_H + 0.25), mat=brass, bevel=0.004)
+        for sx in (-1, 1):
+            cyl('scale_pan', 0.06, 0.012, (bx - 0.05 + sx * 0.16, CY - 0.04, COUNTER_H + 0.14), mat=brass, segs=16)
+        wx = S4_REG[0] + 0.35
+        box('tally', (0.3, 0.22, 0.09), (wx, CY - 0.03, COUNTER_H), mat=flat('#7C3F2E', 0.7), bevel=0.015)
+        box('tally_pg', (0.26, 0.18, 0.012), (wx, CY - 0.03, COUNTER_H + 0.09), mat=flat('#F2E8D2', 0.9), bevel=0.003)
+        # a brass bell at the right end of each food counter (away from its line, which stands front-left)
+        for i in range(1, n):
+            bxx = xs[i + 1] - 0.3
+            cyl('bell_%d' % i, 0.07, 0.07, (bxx, CY - 0.04, COUNTER_H), mat=brass, segs=20, r_top=0.035, bevel=0.01)
+            cyl('bell_knob_%d' % i, 0.016, 0.05, (bxx, CY - 0.04, COUNTER_H + 0.07), mat=brass, segs=10)
+            cyl('bell_base_%d' % i, 0.09, 0.015, (bxx, CY - 0.04, COUNTER_H), mat=flat('#7A4A2A', 0.8), segs=20)
+        LA.snow_drift('d3', 0.18, (xs[0] - 0.2, -0.62, 0.0), seed=8)
+        LA.snow_drift('d4', 0.16, (xs[-1] + 0.15, -0.6, 0.0), seed=12)
+    # ---------------------------------------------------------------- markers (west -> east)
+    # one window per counter (the 자재 counter: the clerk's), its post / first customer / register west -> east
+    wins = [S4_REG[1]] + [(xs[i] + xs[i + 1]) / 2 + 0.18 for i in range(1, n)]
+    custs = [S4_MERCH[1]] + [(xs[i] + xs[i + 1]) / 2 + ROW_CUST_DX for i in range(1, n)]
+    for x in wins:
+        BA.mark('staff', (x, 0.46, 0.0), facing=(0, -1, 0))
+    for x in custs:
+        BA.mark('customer', (x, ROW_CUST_Y, 0.0), facing=(0, 1, 0))
+    for x in wins:
+        BA.mark('register', (x, -1.25, 0.0))
+    # the 자재 counter's second window: a post for a second 자재 clerk, the second merchant's spot, its register pad
+    BA.mark('staff2', (S4_REG[0], 0.46, 0.0), facing=(0, -1, 0))
+    BA.mark('customer2', (S4_MERCH[0], ROW_CUST_Y, 0.0), facing=(0, 1, 0))
+    BA.mark('register2', (S4_REG[0], -1.25, 0.0))
+    # the sign quad on the arch board's face (the rectangle under the arch)
+    fy = FY - 0.1
+    for (x, z) in ((-AW / 2 + 0.3, AZ + AH - 0.02), (AW / 2 - 0.3, AZ + AH - 0.02),
+                   (AW / 2 - 0.3, AZ + 0.1), (-AW / 2 + 0.3, AZ + 0.1)):
+        BA.mark('sign', (x, fy, z))
+    for i, (cx, py, pz, pw, ph) in enumerate(plates):
+        for (x, z) in ((cx - pw / 2 + 0.04, pz + ph - 0.03), (cx + pw / 2 - 0.04, pz + ph - 0.03),
+                       (cx + pw / 2 - 0.04, pz + 0.03), (cx - pw / 2 + 0.04, pz + 0.03)):
+            BA.mark('plate%d' % i, (x, py, z))
+    BA.mark('step', (wins[0], 0.46, STEP_H))
+    L.point_light('stalllamp', (XL + 0.4, FY + 0.2, 2.6), 'glow', 6.0, 0.2)
+    L.point_light('stalllamp2', (XR - 0.4, FY + 0.2, 2.6), 'glow', 6.0, 0.2)
+    return {'front': front.objs, 'frames': [('market_s4_back', None)], 'sprites': {'market_s4_back': {'frame': 'market_s4_back'}},
+            'fx': {'sign': (0.0, FY - 0.1, AZ + AH / 2), 'roof': (0.0, (PY + FY) / 2, RB)}}
+
+
 # ------------------------------------------------------------------------------------------------ (v4.3) the old sled
 # The trade post is gone (merged into the 자재 창구): its merchants' sled stays parked on the plaza as decor - the same
 # sled as prop_assets.b_trade_post (runners, deck, crates, sacks, chest, rolled rug) WITHOUT the canopy, the coin sign

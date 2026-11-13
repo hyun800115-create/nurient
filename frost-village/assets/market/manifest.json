@@ -25,6 +25,11 @@
    "key": "market_s3",
    "png": "market/market_s3.png",
    "json": "market/market_s3.json"
+  },
+  {
+   "key": "market_s4",
+   "png": "market/market_s4.png",
+   "json": "market/market_s4.json"
   }
  ],
  "sprites": {
@@ -521,6 +526,246 @@
    "topPx": 127,
    "front": "-Y",
    "notes": "The same sled on the stage-3 page (review CD-2: at stage 3 the market_s2 page is not loaded at all)."
+  },
+  "market_s4_back": {
+   "atlas": "market_s4",
+   "frame": "market_s4_back",
+   "anchor": [
+    0.36875,
+    0.63504
+   ],
+   "kind": "building",
+   "footprint": [
+    389,
+    195
+   ],
+   "footprintM": [
+    7.0,
+    1.6
+   ],
+   "frameSize": [
+    640,
+    548
+   ],
+   "topPx": 328,
+   "front": "-Y",
+   "staffPoints": [
+    [
+     -13,
+     -27
+    ],
+    [
+     52,
+     5
+    ],
+    [
+     142,
+     50
+    ]
+   ],
+   "staffDirs": [
+    "SW",
+    "SW",
+    "SW"
+   ],
+   "staffDepth": "front",
+   "stepLiftPx": 7,
+   "stepM": 0.12,
+   "counterM": 0.6,
+   "signTopM": 4.58,
+   "customerPoints": [
+    [
+     -219,
+     -19
+    ],
+    [
+     -109,
+     36
+    ],
+    [
+     -19,
+     81
+    ]
+   ],
+   "customerDirs": [
+    "NE",
+    "NE",
+    "NE"
+   ],
+   "signQuad": [
+    [
+     -114,
+     -253
+    ],
+    [
+     27,
+     -183
+    ],
+    [
+     27,
+     -156
+    ],
+    [
+     -114,
+     -226
+    ]
+   ],
+   "signText": "sign_market_4",
+   "signColor": "#6E3E1E",
+   "overlay": "market_s4_front",
+   "stage": 4,
+   "notes": "Stage-4 market 「눈꽃마을 시장」 (v4.3 step B): three counters in one row - 자재 (WEST end, 3.0 m, two windows) · 생선 · 고기 (2.0 m each) - under an open roof (~3.6 m) on the back posts; the stage name on an arch board on the roof's front beam (signQuad: the game writes it), a blank plate over each counter on the back rail. staffPoints / customerPoints / registerPoints west -> east, one per counter (the 자재 점원's window = the east window of the 자재 counter); staff2Points / customer2Points / register2Points = the 자재 counter's second (west) window: the second merchant spot. Same layers and rules as stages 2-3.",
+   "fxPoints": {
+    "sign": [
+     -43,
+     -202
+    ],
+    "roof": [
+     4,
+     -202
+    ]
+   },
+   "counters": [
+    "mat",
+    "fish",
+    "meat"
+   ],
+   "registerPoints": [
+    [
+     -91,
+     11
+    ],
+    [
+     -26,
+     44
+    ],
+    [
+     65,
+     89
+    ]
+   ],
+   "plates": [
+    {
+     "quad": [
+      [
+       -82,
+       -197
+      ],
+      [
+       -10,
+       -161
+      ],
+      [
+       -10,
+       -140
+      ],
+      [
+       -82,
+       -176
+      ]
+     ],
+     "text": "plate_mat"
+    },
+    {
+     "quad": [
+      [
+       31,
+       -140
+      ],
+      [
+       103,
+       -104
+      ],
+      [
+       103,
+       -83
+      ],
+      [
+       31,
+       -119
+      ]
+     ],
+     "text": "plate_fish"
+    },
+    {
+     "quad": [
+      [
+       122,
+       -95
+      ],
+      [
+       193,
+       -59
+      ],
+      [
+       193,
+       -38
+      ],
+      [
+       122,
+       -74
+      ]
+     ],
+     "text": "plate_meat"
+    }
+   ],
+   "staff2Points": [
+    [
+     -76,
+     -59
+    ]
+   ],
+   "customer2Points": [
+    [
+     -269,
+     -44
+    ]
+   ],
+   "register2Points": [
+    [
+     -154,
+     -20
+    ]
+   ]
+  },
+  "market_s4_front": {
+   "atlas": "market_s4",
+   "frame": "market_s4_front",
+   "anchor": [
+    0.36875,
+    0.63504
+   ],
+   "kind": "overlay",
+   "of": "market_s4_back",
+   "frameSize": [
+    640,
+    548
+   ],
+   "notes": "Front layer of market_s4_back (same frame + anchor): the counter and what stands on it (object mask: only the builder's front layer). Draw it ABOVE the clerk (d + 1)."
+  },
+  "market_sled_s4": {
+   "atlas": "market_s4",
+   "frame": "market_sled_s4",
+   "anchor": [
+    0.43846,
+    0.63362
+   ],
+   "kind": "prop",
+   "footprint": [
+    204,
+    102
+   ],
+   "footprintM": [
+    2.9,
+    1.6
+   ],
+   "frameSize": [
+    260,
+    232
+   ],
+   "topPx": 127,
+   "front": "-Y",
+   "notes": "The old sled on the market_s4 page (copied pixel for pixel from market_s2): at stage 4 the earlier pages are not loaded."
   }
  }
 }

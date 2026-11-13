@@ -14,6 +14,10 @@
 //  food line: the next line's front bubble is the one that can cover a clerk), faces SW at her post, and the stage's
 //  signboard stays >= 95 % visible with full racks. Stage 1 = the checks above, at the 4.2.0.2 stall.
 //  -> docs/previews/screens_v2/v43_clerks_s2.jpg, v43_clerks_s3.jpg
+// ((v4.3 step B, M — gate G6) + stage 4 「눈꽃마을 시장」 (자재 · 생선 · 고기, the 자재 counter with two windows): every clerk
+//  >= --min % with every line's front customer and both merchants present, facing SW, the arch board >= 95 % with full racks;
+//  and the 자재 clerk again with the chief on register 2 beside her (two people at the 자재 registers: the second merchant buys)
+//  -> docs/previews/screens_v2/v43_clerks_s4.jpg
 // ((v4.3 밀밭 · 빵집, gate G6) + the bakery stall's 판매원 with its line's front customers present, and the 제빵사 inside the
 //  cottage in each of her motions (knead SE, oven_in / oven_out W): each >= --min % visible. The shop's rack holds fish and
 //  meat only now (no bread tower). -> docs/previews/screens_v2/v43_bakery_clerk.jpg, v43_baker_<motion>.jpg
@@ -142,7 +146,11 @@ try {
     else { fails++; console.log('FAIL the shop\'s rack holds bread / misses a kind', JSON.stringify(tw)); }
   }
   // ---- ((v4.3) the staged shop: every clerk with every line's front customer present (gate G6)
-  for (const st of [2, 3]) {
+  // ((M verify) the food racks are emptied for the measure, so after market43.switchS (4 s) of game time a line whose kind is
+  //  gone sends its customers to another line: on a loaded machine the read-backs of the first counters are retried and the
+  //  meat line's front customer had left before its clerk was measured (front null). The lines hold still for the measure
+  await ev(async () => { const B = (await import(new URL('src/data/balance.js', location.href).href)).BALANCE; window.__cvSwitch = B.market43.switchS; B.market43.switchS = 1e6; });
+  for (const st of [2, 3, 4]) {
     // (the stage's page first: stage 2's is fetched only once the shop is at stage 2)
     await ev((st) => window.__FV.scene.market.setStage(st, true), st);
     await until(page, (st) => !window.__FV.assets().pending('market_s' + st + '_back'), 60, st);
@@ -221,6 +229,19 @@ try {
         for (let k = 0; k < 8; k++) { const q = await ev(([seat, k]) => window.__cvShare(seat, false, k), [seat, k]); if (!q) break; console.log(`     without ${JSON.stringify(q.what)}: ${q.share} %`); }
       }
     }
+    // ((v4.3 step B, M) stage 4: the second 자재 window — both merchants at their spots, and the chief on register 2 beside the
+    //  자재 clerk (two people at the 자재 registers): she still shows >= --min %, facing SW
+    if (st === 4) {
+      const two = await ev(() => { const g = window.__FV.scene, T = g.trade, R2 = g.market.seats.M2; window.__FV.teleport(R2.x, R2.y); window.__FV.setInput(0, 0); return { open2: T.open2, m2: T.merchant2.sprite.visible, pad2: R2.pad.img.visible }; });
+      await advance(page, 1.2);
+      const reads = [];
+      for (let k = 0; k < 3; k++) { reads.push(await ev(() => window.__cvShare('M', false, -1))); await advance(page, 0.5); }
+      reads.sort((p, q) => (p.share || 0) - (q.share || 0));
+      const r = Object.assign({}, reads[1], two, { reads: reads.map((q) => q.share), chief2: await ev(() => window.__FV.scene.market.seats.M2.chief), servers: await ev(() => window.__FV.scene.trade.servers()) });
+      if (r.share >= MIN && r.dir === 3 && r.open2 && r.m2 && r.chief2 && r.servers === 2) console.log(`ok   stage 4 자재 clerk visible ${r.share} % >= ${MIN} % with the chief on register 2 beside her and both merchants there (two people at the 자재 registers)`, JSON.stringify(r));
+      else { fails++; console.log(`FAIL stage 4 자재 clerk with the chief on register 2: ${r.share} % / dir ${r.dir} / open2 ${r.open2} / merchant 2 ${r.m2} / chief on 2 ${r.chief2} / servers ${r.servers}`, JSON.stringify(r)); }
+      await ev(() => { const m = window.__FV.scene.market; window.__FV.teleport(m.x + 420, m.y + 420); });
+    }
     // the stage's signboard with full racks (a snapshot that comes back empty — the read-back raced the frame — is taken again)
     let sg = null;
     for (let tries = 0; tries < 3 && !(sg && sg.share !== null); tries++) sg = await ev(() => new Promise((resolve) => {
@@ -249,6 +270,7 @@ try {
     await advance(page, 0.3); await render(page, 3);
     await page.screenshot({ path: path.join(OUT, 'v43_clerks_s' + st + '.jpg'), type: 'jpeg', quality: 84 });
   }
+  await ev(async () => { const B = (await import(new URL('src/data/balance.js', location.href).href)).BALANCE; B.market43.switchS = window.__cvSwitch; });
   // ---- ((v4.3 밀밭 · 빵집, G6) the bakery stall's 판매원 with its front customers, and the 제빵사 in each motion
   {
     await until(page, () => { const g = window.__FV.scene, b = g.bakery; return b && b.built && b.stall.register.clerk && b.stall.register.clerk.ready && g.stations.bakery.op.operator && g.stations.bakery.op.operator.ready; }, 60);

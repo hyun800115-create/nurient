@@ -120,7 +120,8 @@ def render_stage(key, cache, samples=None):
                        'notes': 'the counter and what stands on it (object mask: only the builder\'s front layer)'}
     meta['stepH'] = MA.STEP_H
     meta['counterH'] = MA.COUNTER_H
-    meta['signTop'] = MA.SIGN_TOP if key == 'market_s1' else getattr(MA, 'ROW_SIGN_TOP', MA.SIGN_TOP)
+    # ((v4.3 step B, M) stage 4's arch board stands higher: SIGN_TOPS[key] when the builder module gives one)
+    meta['signTop'] = MA.SIGN_TOP if key == 'market_s1' else getattr(MA, 'SIGN_TOPS', {}).get(key, getattr(MA, 'ROW_SIGN_TOP', MA.SIGN_TOP))
     with open(os.path.join(cache, key + '.json'), 'w') as f:
         json.dump(meta, f, indent=1)
     print('[%s] front layer: %d objects -> %s' % (key, len(held['front']), mask), flush=True)
