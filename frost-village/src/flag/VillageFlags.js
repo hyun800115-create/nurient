@@ -12,7 +12,8 @@
 //     strips batch with the world, work in the Canvas renderer too, and the Culler treats them like any picture). Updated
 //     at <= 30 Hz (15 Hz and gentler on 저사양), only for poles near the view.
 //   - the new-game maker (FlagMaker 'new', right when the UI scene is made), the one-time card for an old village (after
-//     the tutorial has handed over), the settings row (FlagMaker.flagRow) — FlagMaker.js.
+//     the tutorial has handed over, and after the step-B 「마을 새 단장」 letter and its tour: busy() 'letter'), the
+//     settings row (FlagMaker.flagRow) — FlagMaker.js.
 import { Assets } from '../core/Assets.js';
 import { Input } from '../core/Input.js';
 import { CLASSIC, sanitizeFlag, randomFlag, drawFlag, plain, sameFlag, describe, flagKey, flagRng } from './design.js';
@@ -329,6 +330,8 @@ export class VillageFlags {
   busy() {
     const gs = this.gs, ui = gs.scene.get('UI');
     if (!ui || !ui.ready) return 'ui';
+    // ((v4.3 step B, WP-N) the 「마을 새 단장」 letter and its tour come first on an old village's load: letter → this card)
+    if (ui.renewal43 && ui.renewal43.isOpen) return 'letter';
     if (ui.panelOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen || ui.adminOpen) return 'panel';
     if (gs.v4 && gs.v4.rank && gs.v4.rank.ceremonyOn) return 'ceremony';
     if (gs.overview || Input.override) return 'view';
