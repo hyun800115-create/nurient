@@ -1,20 +1,34 @@
 // (v4.3 step B, WP-G — postdepot_addendum.md §6.3 browser acceptance) 물류창고 다음 목표 in the real game, fixed-step clock:
-//   node tools/test/postdepot.mjs [--only A|B|C]
+//   node tools/test/postdepot.mjs [--only A|B|C|D|E]
+//   (step B: every fixture here is a pre-B village, so it loads through the real remap R43 (lay < 2): N's 「마을 새 단장」
+//    letter is due at that load. B and C read it at once as a player would (seen.letter43 / tour43, the card closed);
+//    A reads it only after checking that the chain's open banner waits for it, BP-48)
 //   A 412x915 ko   the late v4.2 village (office, bank, depot; 마을 with full bars): closed before 읍 (no row, no
 //                  objective, no save key); the real 승격식 -> the chain opens once: baselines in x.g43, the rows it already
-//                  has ✓ with no coins, the open banner shown once; the window's 지금 할 일 is row 1 with its 가기 on the
+//                  has ✓ with no coins, the open banner held while the letter is unread, then shown once; the window's
+//                  지금 할 일 is row 1 with its 가기 on the
 //                  depot staff pad and a real tap walks him there; each row driven by hooks (staff, forklift, 2단, decor,
 //                  first houses, standing deliveries, train departures with cargo): its place / wait, the objective line,
 //                  its reward paid exactly once (a coin census of what Goals43 adds); row 6's 가기 the source pad empty-
 //                  handed and the dock with the goods (a walk arrives there); a reload mid-chain keeps d / t / the
 //                  baselines and pays nothing again (no second open banner); a scene restart counts one departure once;
-//                  at the end g43all and x.g43 gone; 0 page errors
+//                  at the end of rows 1–8 g43all and x.g43 gone; row 9 (P's mkt_s4 step): current, G sets g43s4 once,
+//                  the 가게 4단 pad stands at full price as its 가기 (never a side row too), the taste waits; bought by
+//                  hook -> row 9 ✓ with no chain coins -> row 10 current at the taste pad; 0 page errors
 //   B 412x915 ko   the 46-min v4.1 village (no office / bank / depot): nothing changes before the depot (no g43 save key,
 //                  no objective, the window's current row is not a chain row, no g43 side row); 읍 + the depot by hook
 //                  before the bank: still closed, a staff hire meanwhile is not paid; the office + bank by hook -> it opens
 //                  with that row ✓ and 0 coins
 //   C 360x640 en   the v4.2 office village (v42_save_office_ttal) opened: the goal window with the chain fits the smallest phone, no raw keys, no row
 //                  id twice; 0 page errors
+//   D 412x915 ko   (step B) the 4.2.0.2 46-min 읍 village (v4202_46min_admin, its save key only) through the real remap:
+//                  remapped, s4half, the chain closed until the bank and the depot stand (by hook); then it opens with
+//                  the rows it already has ✓ and 0 coins, the open banner once; rows 1–8 by their g43all marker (A drives
+//                  them one by one) -> row 9 current, g43s4 set by G, the 가게 4단 pad at HALF price (1,000 + 판자 10 +
+//                  주괴 4) as row 9's 가기, 「반값」 under the row; 0 page errors
+//   E 412x915 ko   (step B) the a2.2 late village with a depot crew (v43a22_late) through the real remap: 읍 by hook ->
+//                  직원 2명 and 지게차 ✓ with no coins over 5 s, the open banner once after the letter; a second load (no
+//                  remap): no banner, no coins; 0 page errors
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,7 +50,7 @@ const browser = await launch();
 const lateKeys = JSON.parse(fs.readFileSync(path.join(FIX, 'v42_village_late.json'), 'utf8')).keys;
 const keysOf = (file) => ({ 'frostVillage.save.v1': fs.readFileSync(path.join(FIX, file), 'utf8') });
 
-async function boot(keys, vp, lang) {
+async function boot(keys, vp, lang, keepLetter) {
   const { page, log } = await openPage(browser, srv.url + 'index.html', { viewport: vp || { width: 412, height: 915 }, dpr: 1, locale: lang === 'en' ? 'en-US' : 'ko-KR' });
   await page.evaluate(([ks, l]) => {
     localStorage.clear();
@@ -47,11 +61,24 @@ async function boot(keys, vp, lang) {
     localStorage.setItem('frostVillage.settings.v1', JSON.stringify(s));
   }, [keys, lang || 'ko']);
   await page.reload({ waitUntil: 'load' });
-  await enter(page);
+  await enter(page, keepLetter);
   return { page, log };
 }
-/** title -> the village, the fixed clock, the census wrappers */
-async function enter(page) {
+/** (step B) N's 「마을 새 단장」 letter read, as a player does: seen.letter43 (and tour43: no tour on top), the card closed.
+ *  -> { remapped: R43 ran at this load (G's own info), open: the card was up } */
+async function readLetter(page) {
+  return page.evaluate(() => {
+    const gs = window.__FV.scene, U = window.__FV.game.scene.getScene('UI'), C = U && U.renewal43;
+    const out = { remapped: !!(gs.goals43 && gs.goals43.info && gs.goals43.info.remapped), open: !!(C && C.isOpen) };
+    if (!gs.v43 || typeof gs.v43 !== 'object') gs.v43 = { lay: 0 };
+    if (!gs.v43.seen || typeof gs.v43.seen !== 'object') gs.v43.seen = {};
+    gs.v43.seen.letter43 = 1; gs.v43.seen.tour43 = 1;
+    if (C && C.isOpen && C.close) C.close();
+    return out;
+  });
+}
+/** title -> the village, the fixed clock, the census wrappers (keepLetter: N's letter is left unread) */
+async function enter(page, keepLetter) {
   await waitFor(page, () => window.__FV && window.__FV.game && window.__FV.game.scene.isActive('Title'), 180000);
   await sleep(300);
   await tapStart(page);
@@ -59,6 +86,7 @@ async function enter(page) {
   await sleep(1500);
   await installStepper(page);
   await page.evaluate(() => { if (window.__FV.v42) window.__FV.v42.v.seen.whatsNew = 1; });
+  if (!keepLetter) await readLetter(page);
   await census(page);
   await advance(page, 1);
 }
@@ -80,6 +108,8 @@ const gcoins = (page) => page.evaluate(() => window.__gc.coins);
 const book = (page) => page.evaluate(() => window.__FV.v42.goals.book(6, 20));
 const objKey = (page) => page.evaluate(() => { const T = window.__FV.scene.tutorial, h = T && T.v42Goal ? T.v42Goal() : null; return h ? { key: h.key, text: h.text, x: h.x, y: h.y } : null; });
 const row = (s, id) => (s && s.rows ? s.rows.find((r) => r.id === id) : null);
+/** (diagnostics) the GOALS row people:45 as Rank counts it, and whether the chain runs (a GOALS row that regressed pauses it) */
+const people = (page) => page.evaluate(() => { const gs = window.__FV.scene, nb = gs.v4, L = gs.life, c = gs.civic, G = gs.goals43; let moved = 0; for (const k of L.moved) if (!L.isPetKey(k)) moved++; const pr = gs.progress; return { people: nb.rank.people(), moved, settlers: c ? c.settlers : null, district: nb.districtPeople ? nb.districtPeople() : null, town: !!nb.town, running: !!(G && G.running()), complete: pr.complete, cur: (() => { const B = window.__FV.v42.goals.book(3, 0); return B.cur ? B.cur.id + ':' + B.cur.state : null; })() }; });
 /** the 승격식 at the hall (as watchpan / the B0b probe do) until it ends */
 async function promote(page, real) {
   return page.evaluate((rl) => {
@@ -136,7 +166,7 @@ try {
   // ================================================================== A: the late v4.2 village, the whole chain
   if (!ONLY || ONLY === 'A') {
     console.log('— A: the late v4.2 village (office, bank, depot), 412x915, ko');
-    let { page, log } = await boot(lateKeys);
+    let { page, log } = await boot(lateKeys, null, 'ko', true);
     const a0 = await page.evaluate(() => { const gs = window.__FV.scene; return { g43: !!gs.goals43, level: gs.v4.rank.level, bank: gs.isBuilt('bank42'), depot: gs.isBuilt('depot42'), office: gs.isBuilt('chief_office'), seen: Object.keys((gs.v43 && gs.v43.seen) || {}), x: gs.x43.get('g43') }; });
     const s0 = await S(page), b0 = await book(page), o0 = await objKey(page);
     ok(a0.g43 && a0.office && a0.bank && a0.depot && a0.level === 1, 'the late village: gs.goals43 attached; office, bank and depot built; still 마을 (rank 1)', a0);
@@ -151,9 +181,18 @@ try {
     ok(s1.opened && s1.x && s1.x.d === 0 && s1.x.t === 0 && Number.isInteger(s1.x.k) && Number.isInteger(s1.x.u), 'opened: v43.seen.g43open and x.g43 { d: 0, t: 0, k, u } (' + JSON.stringify(s1.x) + ')', s1.x);
     const pre = s1.rows.filter((r) => r.state === 'done').map((r) => r.id);
     ok((await gcoins(page)) === g0 && pre.every((id) => s1.seen[id] === 1 || s1.seen.g43all === 1), 'rows the village already has are ✓ with no coins (' + pre.join(', ') + ')', { pre, seen: s1.seen, coins: (await gcoins(page)) - g0 });
+    // (a pre-B village: remapped at this load, so the open banner waits for N's letter, BP-48)
+    const lt0 = await page.evaluate(() => { const g = window.__FV.scene.goals43; return { remapped: !!(g.info && g.info.remapped), letter: !!(window.__FV.scene.v43.seen || {}).letter43 }; });
+    if (lt0.remapped && !lt0.letter) {
+      await advance(page, 3);
+      const held = await page.evaluate(() => ({ q: window.__qb.filter((k) => k === 'g43:open').length, due: window.__FV.scene.goals43.openDue }));
+      ok(held.q === 0 && held.due === true, 'remapped at this load (R43), the letter unread: the open banner waits (BP-48)', held);
+    } else info('the letter: ' + JSON.stringify(lt0));
+    const lt = await readLetter(page);
+    info('N\'s letter read (remapped ' + lt.remapped + ', card up ' + lt.open + ')');
     await until(page, () => window.__FV.scene.goals43.shown.open >= 1, 25);
     const bn = await page.evaluate(() => ({ q: window.__qb.filter((k) => k === 'g43:open').length, shown: window.__bn.filter((m) => /물류창고 다음 목표가 생겼어요/.test(m)).length, n: window.__FV.scene.goals43.shown.open }));
-    ok(bn.q === 1 && bn.shown === 1 && bn.n === 1, 'the open banner 「물류창고 다음 목표가 생겼어요」 is shown once', bn);
+    ok(bn.q === 1 && bn.shown === 1 && bn.n === 1, 'the open banner 「물류창고 다음 목표가 생겼어요」 is shown once' + (lt0.remapped ? ', after the letter' : ''), bn);
     // row 1: the window, the objective, a real walk
     let b = await book(page);
     const sp = await page.evaluate(() => { const p = window.__FV.scene.v42.depot.pads.staff; return p ? { x: Math.round(p.x), y: Math.round(p.y), cost: p.remaining } : null; });
@@ -266,11 +305,20 @@ try {
     await page.evaluate(() => { if (window.__FV.v42) window.__FV.v42.v.seen.whatsNew = 1; });
     await census(page);
     await advance(page, 2);
+    info('after the restart: ' + JSON.stringify(await people(page)));
     const rs2 = await page.evaluate(() => { const gs = window.__FV.scene; return { n1: gs.events.listenerCount('v4:train'), x: gs.goals43.state().x }; });
     const dep2 = await departWithCargo(page);
     s = await S(page);
     ok(rs2.n1 === rs.n0 && dep2.ok && (dep2.t0 >= 3 || dep2.t1 === dep2.t0 + 1), 'a scene restart: the same number of v4:train listeners (' + rs.n0 + ' → ' + rs2.n1 + '), one departure counts exactly once (t ' + dep2.t0 + ' → ' + dep2.t1 + ')', { rs, rs2, dep2, x: s.x });
     // the rest of the chain: one more card, one more departure
+    // (a GOALS row that regressed — people below 45 — pauses the chain by design (§3.2): wait for the village to come
+    //  back rather than read a paused chain as a failure; say so when it does not)
+    const pp6 = await people(page);
+    if (!pp6.running) {
+      info('the chain is paused (a GOALS row regressed): ' + JSON.stringify(pp6));
+      await until(page, () => { const G = window.__FV.scene.goals43; return !!(G && G.running()); }, 60);
+      info('…after waiting up to 60 s: ' + JSON.stringify(await people(page)));
+    }
     const c6 = await gcoins(page);
     if (dlvBefore.length) {
       ok(dlvBefore.length === 1 && dlvBefore[0].n === 200 && row(s, 'g43_dlv').state === 'done', 'row 6 reached 3 before the reload (the station porters help): +200 once then, nothing after', dlvBefore);
@@ -279,14 +327,39 @@ try {
       s = await S(page);
       ok(row(s, 'g43_dlv').state === 'done' && (await gcoins(page)) - c6 === 200 && s.log.filter((q) => q.id === 'g43_dlv').length === 1, 'the third standing card after the reload: row 6 ✓, +200 once (this session saw it count up)', { coins: (await gcoins(page)) - c6, log: s.log });
     }
-    const c7 = await gcoins(page), paid7 = (await S(page)).seen.g43_train ? 1 : 0;
+    // (the trains run by themselves meanwhile: the restart's departure above may already have made it 3 and paid then; read
+    //  the row, not its key — g43all may already have replaced the eight keys)
+    const c7 = await gcoins(page), paid7 = row(await S(page), 'g43_train').state === 'done' ? 1 : 0;
     for (let i = 0; i < 3; i++) { if ((await S(page)).seen.g43_train) break; await departWithCargo(page); await advance(page, 1.4); }
     s = await S(page);
-    ok(row(s, 'g43_train').state === 'done' && (await gcoins(page)) - c7 === (paid7 ? 0 : 200), 'the third departure with cargo: row 7 ✓, +200 once', { coins: (await gcoins(page)) - c7, paid7, log: s.log });
+    ok(row(s, 'g43_train').state === 'done' && (await gcoins(page)) - c7 === (paid7 ? 0 : 200) && s.log.filter((q) => q.id === 'g43_train').length <= 1, 'the third departure with cargo: row 7 ✓, +200 once' + (paid7 ? ' (paid already at the restart\'s departure)' : ''), { coins: (await gcoins(page)) - c7, paid7, log: s.log });
     ok(row(s, 'g43_shop').state === 'done', 'row 8 (가게 키우기): ✓ (the shop43 stage-3 shop and its clerk)');
     ok(s.seen.g43all === 1 && !Object.keys(s.seen).some((k) => /^g43_/.test(k)) && s.x === null, 'every row done: g43all replaces the row keys, x.g43 is gone', { seen: s.seen, x: s.x });
     const saved = await page.evaluate(() => { window.__FV.save(); const sv = JSON.parse(localStorage.getItem('frostVillage.save.v1')); return { seen: sv.v43 && sv.v43.seen, x: sv.x && sv.x.g43 }; });
     ok(saved.seen && saved.seen.g43open === 1 && saved.seen.g43all === 1 && saved.x === undefined, 'the save carries v43.seen { g43open, g43all } and no x.g43', saved);
+    // ---- row 9: 가게 4단 「눈꽃마을 시장」 (P's mkt_s4 step, BP-41): current now; G sets g43s4 once; the pad is its 가기
+    const r9 = row(s, 'mkt_s4');
+    if (r9) {
+      await advance(page, 2);          // (setFlag -> Progression.syncPads 0.7 s later)
+      s = await S(page);
+      const p9 = await page.evaluate(() => { const gs = window.__FV.scene, pr = gs.progress, u = pr.pads.mkt_s4; return { flag: pr.flags.g43s4 === true, half: !!pr.flags.s4half, s3: pr.isDone('mkt_s3'), pad: u ? { x: Math.round(u.x), y: Math.round(u.y), cost: u.cost, items: u.items } : null }; });
+      ok(s.cur === 'mkt_s4' && row(s, 'mkt_s4').state === 'now' && p9.flag && p9.s3, 'rows 1–8 done: row 9 (가게 4단) is the current row, G set g43s4 (3단 done)', { cur: s.cur, p9 });
+      const full = !p9.half;
+      ok(p9.pad && p9.pad.cost === (full ? 2000 : 1000) && p9.pad.items && p9.pad.items.item_plank === (full ? 20 : 10) && p9.pad.items.item_ingot === (full ? 8 : 4), 'the 가게 4단 pad stands at ' + (full ? 'full price (2,000 + 판자 20 + 주괴 8: not 읍 at the remap)' : 'half price (s4half)'), p9);
+      const r9b = row(s, 'mkt_s4');
+      ok(r9b.place && p9.pad && r9b.place.x === p9.pad.x && r9b.place.y === p9.pad.y, 'row 9\'s 가기 is the pad', { place: r9b.place, pad: p9.pad });
+      b = await book(page);
+      ok(b.cur && b.cur.id === 'mkt_s4' && !b.side.some((r) => r.id === 'mkt_s4'), 'the window: 지금 할 일 is row 9; the mkt_s4 pad is not a side row too', { cur: b.cur && b.cur.id, side: b.side.map((r) => r.id) });
+      ob = await objKey(page);
+      ok(ob && /^obj_g43:mkt_s4/.test(ob.key), 'the objective: 「' + (ob && ob.text) + '」', ob);
+      ok(!s.tasteReady && !(await page.evaluate(() => !!(window.__FV.scene.eupTaste && window.__FV.scene.eupTaste.pad))), 'the taste pad waits for stage 4 (row 9 not settled)');
+      const c9 = await gcoins(page);
+      const bought = await page.evaluate(() => { const ok1 = window.__FV.completeStep('mkt_s4'); window.__step.run(2.0); return { ok1, done: window.__FV.scene.progress.isDone('mkt_s4') }; });
+      s = await S(page);
+      ok(bought.ok1 && bought.done && row(s, 'mkt_s4').state === 'done' && (await gcoins(page)) === c9 && s.log.every((q) => q.id !== 'mkt_s4'), 'stage 4 bought (hook): row 9 ✓, no chain coins (M\'s own banner is the payoff)', { bought, coins: (await gcoins(page)) - c9 });
+      await advance(page, 1.5);
+      s = await S(page);
+    } else info('no row 9 in this tree (no mkt_s4 step)');
     b = await book(page);
     const r10 = row(s, 'g43_taste');
     ok(!(b.cur && b.cur.kind === 'g43' && b.cur.id !== 'g43_taste') && (!r10 || (b.cur && b.cur.id === 'g43_taste' && b.cur.place && s.tasteReady)), r10 ? 'rows 1–8 done: row 10 (읍장 취임 맛보기) is the current row, its 가기 the taste pad, the gate open' : 'the window has no chain row left to do (' + (b.cur && b.cur.id) + '; no row 10 in this tree)', { cur: b.cur, r10 });
@@ -306,7 +379,7 @@ try {
     ok(s && !s.opened && s.cur === null && s.x === null && !seen0.some((k) => /^g43/.test(k)), 'nothing before the depot: the chain closed, no g43 save key, no x.g43', { seen0, x: s && s.x });
     ok(!(b0.cur && b0.cur.kind === 'g43') && !b0.side.some((r) => /^depot_/.test(r.id)) && !(o0 && /^obj_g43/.test(o0.key)), 'the window\'s current row (' + (b0.cur && b0.cur.id) + '), its side rows and the objective (' + (o0 && o0.key) + ') are as before', { cur: b0.cur && b0.cur.id, obj: o0 && o0.key });
     const nDefs = await page.evaluate(() => window.__FV.scene.goals43.defs().length);
-    ok(s.rows.length === nDefs && nDefs >= 8 && s.rows.every((r) => r.state === 'next' || r.state === 'done'), 'the chain\'s ' + nDefs + ' rows (8 + row 10 when the taste is in) sit at the end of the road, locked (' + s.rows.filter((r) => r.state === 'done').length + ' ✓ already)', s.rows.map((r) => r.id + ':' + r.state));
+    ok(s.rows.length === nDefs && nDefs >= 8 && s.rows.every((r) => r.state === 'next' || r.state === 'done'), 'the chain\'s ' + nDefs + ' rows (8, + row 9 with the mkt_s4 step, + row 10 with the taste: by data) sit at the end of the road, locked (' + s.rows.filter((r) => r.state === 'done').length + ' ✓ already)', s.rows.map((r) => r.id + ':' + r.state));
     await promote(page, false);
     await page.evaluate(() => { window.__FV.v42.depot({ build: true }); window.__step.run(1); window.__FV.v42.depot({ hire: 'staff' }); window.__step.run(0.3); window.__FV.v42.depot({ hire: 'staff' }); window.__step.run(2.5); });
     s = await S(page);
@@ -321,6 +394,85 @@ try {
     ok((await page.evaluate(() => window.__FV.scene.goals43.shown.open)) === 1, 'the open banner, once');
     const errs = log.errors.filter((e) => !/favicon/i.test(e));
     ok(errs.length === 0, 'B: 0 page errors', errs.slice(0, 5));
+    await page.context().close();
+  }
+
+  // ================================================================== D: a remapped 읍 village (s4half): opening, row 9 at half price
+  if (!ONLY || ONLY === 'D') {
+    console.log('— D: the 4.2.0.2 46-min 읍 village through the real remap (s4half), 412x915, ko');
+    const fx = JSON.parse(fs.readFileSync(path.join(FIX, 'v4202_46min_admin.json'), 'utf8'));
+    const { page, log } = await boot({ 'frostVillage.save.v1': fx.keys['frostVillage.save.v1'] });
+    await advance(page, 3);
+    const d0 = await page.evaluate(() => { const gs = window.__FV.scene, G = gs.goals43, pr = gs.progress; return { remapped: !!(G.info && G.info.remapped), lay: gs.v43 && gs.v43.lay, s4half: pr.flags.s4half === true, level: gs.v4.rank.level, bank: gs.isBuilt('bank42'), depot: gs.isBuilt('depot42'), opened: G.opened(), seen: Object.keys((gs.v43 && gs.v43.seen) || {}) }; });
+    ok(d0.remapped && d0.lay === 2 && d0.s4half && d0.level === 2 && !d0.bank && !d0.depot && !d0.opened, 'remapped at this load (lay 2), 읍 so s4half; no bank / depot yet: the chain is closed', d0);
+    // (a 4.2.0.x 읍 village with no hall: step B's GOALS ask for the hall first (P), and the chain needs every GOALS row:
+    //  the hall on w_hall by hook, then the office + bank and the depot)
+    const dh = await page.evaluate(() => { const gs = window.__FV.scene, st = gs.sites.w_hall; const had = gs.isBuilt('town_hall'); if (!had && st && st.state === 'plot') { st.setShown(true); st.start('town_hall', { instant: true }); st.finish(true); } window.__step.run(1.5); return { had, now: gs.isBuilt('town_hall'), running0: gs.goals43.running() }; });
+    ok(dh.now && !dh.running0, 'the hall stands (' + (dh.had ? 'it had one' : 'built on w_hall by hook') + '); still no bank / depot: closed', dh);
+    await page.evaluate(() => { const F = window.__FV; F.v42.office({ build: 'all' }); window.__step.run(1); F.v42.depot({ build: true }); window.__step.run(2.5); });
+    info('D: ' + JSON.stringify(await people(page)));
+    let s = await S(page);
+    const pre = s.rows.filter((r) => r.state === 'done').map((r) => r.id);
+    ok(s.opened && (await gcoins(page)) === 0 && pre.every((id) => s.seen[id] === 1 || s.seen.g43all === 1 || id === 'mkt_s4' || id === 'g43_taste'), 'the bank and the depot built (hook): the chain opens; the rows it already has are ✓ with 0 coins (' + pre.join(', ') + ')', { pre, seen: s.seen });
+    await until(page, () => window.__FV.scene.goals43.shown.open >= 1, 25);
+    ok((await page.evaluate(() => window.__FV.scene.goals43.shown.open)) === 1, 'the open banner, once');
+    // rows 1–8 by their marker (A drives each one); 3단 and its clerk done so the 4단 pad has its spot
+    const d1 = await page.evaluate(() => {
+      const F = window.__FV, gs = F.scene, pr = gs.progress;
+      for (const id of ['mkt_s3', 'hire_clerk_s3']) if (!pr.isDone(id)) F.doneStep(id);
+      gs.v43.seen.g43all = 1;
+      window.__step.run(3);
+      const u = pr.pads.mkt_s4;
+      return { flag: pr.flags.g43s4 === true, pad: u ? { x: Math.round(u.x), y: Math.round(u.y), cost: u.cost, items: u.items } : null };
+    });
+    s = await S(page);
+    const r9 = row(s, 'mkt_s4');
+    if (r9) {
+      ok(s.cur === 'mkt_s4' && d1.flag, 'rows 1–8 done: row 9 is current and G set g43s4', { cur: s.cur, d1 });
+      ok(d1.pad && d1.pad.cost === 1000 && d1.pad.items && d1.pad.items.item_plank === 10 && d1.pad.items.item_ingot === 4, 'the 가게 4단 pad at half price for an s4half village: 1,000 + 판자 10 + 주괴 4', d1.pad);
+      ok(r9.place && d1.pad && r9.place.x === d1.pad.x && r9.place.y === d1.pad.y && /반값/.test(r9.sub || ''), 'row 9\'s 가기 is the pad; its line says 「반값」 (' + r9.sub + ')', r9);
+      const b = await book(page);
+      ok(b.cur && b.cur.id === 'mkt_s4' && /반값/.test(b.cur.sub || '') && !b.side.some((r) => r.id === 'mkt_s4'), 'the window: 지금 할 일 is row 9 with 「반값」, not a side row too', { cur: b.cur, side: b.side.map((r) => r.id) });
+    } else info('no row 9 in this tree (no mkt_s4 step)');
+    const errs = log.errors.filter((e) => !/favicon/i.test(e));
+    ok(errs.length === 0, 'D: 0 page errors', errs.slice(0, 5));
+    await page.context().close();
+  }
+
+  // ================================================================== E: an a2.2 village with a depot crew through the real remap
+  //  (postdepot_addendum.md §6.3 browser item 2, §6.9 final item 9): rows pre-done with coins unchanged, one open banner
+  //  after the letter; a second load (no remap) opens nothing again
+  if (!ONLY || ONLY === 'E') {
+    console.log('— E: the a2.2 late village (depot crew 2 + forklift) through the real remap, 412x915, ko');
+    const a22 = JSON.parse(fs.readFileSync(path.join(FIX, 'v43a22_late.json'), 'utf8')).keys;
+    const { page, log } = await boot(a22, null, 'ko', true);
+    const e0 = await page.evaluate(() => { const gs = window.__FV.scene, G = gs.goals43, D = gs.v42 && gs.v42.depot; return { remapped: !!(G && G.info && G.info.remapped), lay: gs.v43 && gs.v43.lay, level: gs.v4.rank.level, bank: gs.isBuilt('bank42'), depot: gs.isBuilt('depot42'), hires: D ? D.hires : null, fork: D ? D.fork : null, opened: !!(G && G.opened()) }; });
+    ok(e0.remapped && e0.lay === 2 && e0.level === 1 && e0.bank && e0.depot && e0.hires >= 2 && !!e0.fork && !e0.opened, 'remapped at this load (lay 2); bank and depot standing, depot crew ' + e0.hires + ' + forklift; still 마을: the chain is closed', e0);
+    await promote(page, false);
+    const g0 = await gcoins(page);
+    await until(page, () => { const g = window.__FV.scene.goals43; return !!(g && g.opened()); }, 6);
+    let s = await S(page);
+    ok(s.opened && row(s, 'g43_staff').state === 'done' && row(s, 'g43_fork').state === 'done' && (s.seen.g43_staff === 1 || s.seen.g43all === 1) && (s.seen.g43_fork === 1 || s.seen.g43all === 1), '읍 (hook): the chain opens with 직원 2명 and 지게차 ✓ (its crew), their markers written', { rows: s.rows.map((r) => r.id + ':' + r.state), seen: s.seen });
+    await advance(page, 5);
+    s = await S(page);
+    ok((await gcoins(page)) === g0 && s.log.length === 0, 'the rows it already had paid nothing (coins from the chain unchanged over 5 s)', { coins: (await gcoins(page)) - g0, log: s.log });
+    const held = await page.evaluate(() => ({ q: window.__qb.filter((k) => k === 'g43:open').length, due: window.__FV.scene.goals43.openDue, letter: !!(window.__FV.scene.v43.seen || {}).letter43 }));
+    ok(held.letter || (held.q === 0 && held.due === true), 'the open banner waits while the letter is unread (BP-48)', held);
+    await readLetter(page);
+    await until(page, () => window.__FV.scene.goals43.shown.open >= 1, 25);
+    await advance(page, 2);
+    const bn = await page.evaluate(() => ({ q: window.__qb.filter((k) => k === 'g43:open').length, n: window.__FV.scene.goals43.shown.open }));
+    ok(bn.q === 1 && bn.n === 1, 'then the open banner once, after the letter', bn);
+    // the second load: no remap, the chain already open: no banner, nothing paid
+    await page.evaluate(() => window.__FV.save());
+    await page.reload({ waitUntil: 'load' });
+    await enter(page);
+    await advance(page, 5);
+    s = await S(page);
+    const e2 = await page.evaluate(() => { const gs = window.__FV.scene, G = gs.goals43; return { remapped: !!(G.info && G.info.remapped), coins: window.__gc.coins, open: G.shown.open, due: G.openDue, q: window.__qb.filter((k) => /^g43:/.test(k)) }; });
+    ok(!e2.remapped && s.opened && row(s, 'g43_staff').state === 'done' && row(s, 'g43_fork').state === 'done' && e2.coins === 0 && e2.open === 0 && !e2.due && e2.q.length === 0, 'second load: no remap; the chain stays open with its ✓ rows; no open banner and no coins again', e2);
+    const errs = log.errors.filter((e) => !/favicon/i.test(e));
+    ok(errs.length === 0, 'E: 0 page errors', errs.slice(0, 5));
     await page.context().close();
   }
 

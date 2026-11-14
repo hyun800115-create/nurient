@@ -1,14 +1,18 @@
 // (v4.3 step B, WP-G — postdepot_addendum.md §6.3 Node acceptance) 물류창고 다음 목표 (GOALS43, src/systems/goals/Goals43.js),
 // Node only, on a mock village (like goals.test.mjs):   node tools/test/goals43.test.mjs
-//   rows by data (8 here: no mkt_s4 step, EupTaste off; 9 / 10 with them); the words (ko / en, same {slots}); closed
-//   before the depot, with the depot but no bank, below 읍; the opening (baselines, pre-done rows with 0 coins, one open
+//   rows by data (8 without a mkt_s4 step and with EupTaste off; 9 / 10 with them — the suite reads STEPS and V42_BUILDS
+//   as this build has them, and takes the mkt_s4 row out / puts a stand-in in only where a section needs the other case);
+//   the words (ko / en, same {slots}); closed before the depot, with the depot but no bank, below 읍, without any
+//   V42_BUILDS building (the office is not one since P: 「은행과 물류창고를 둘 다 지으면」); the opening (baselines, pre-done rows with 0 coins, one open
 //   banner after the screen is free); rewards once on a live transition (a banner when it was current, a toast out of
 //   order), a rule true at the first look after a load marked with 0 coins; the counters (standing cards only, departures
 //   with cargo only, capped) and the baselines (decor / 2단 count from the opening, 2단 ✓ when all five lines are 2단, a
 //   trimmed x.g43 re-taken for the unmarked rows only); passive trains never current and never holding row 10; every soft
 //   case (decor no plot, 2단 no gate / hidden behind MAX_OFFERS, first house lockVacant, shop before meat) waits without
 //   blocking and comes back when its path does; a missing first-house site counts, a foundation one leads to its drop
-//   pad; row 9 (a stand-in mkt_s4 step) sets g43s4 once, s4Early at 읍, a held-back pad is not "settled"; row 10's gate
+//   pad; row 9 (P's mkt_s4 step, or a stand-in on a tree without it) sets g43s4 once, s4Early at 읍, a held-back pad is
+//   not "settled", an s4half village's pad at half price; an a3.3 village (chain done with no row 9) gets stage 4 as
+//   its next goal; row 10's gate
 //   and its sticky pad; a marked row stays done; g43all compaction; x.g43 removed once rows 3, 4, 6, 7 are marked; the
 //   GoalBook seams (no row twice, the third staff pad a side row, sub lines) and Tutorial.v42Goal's order; row 6's place;
 //   the pause while a GOALS row regressed; listeners gone after a scene shutdown (BP-56); the save rules keep the keys
@@ -24,8 +28,9 @@ const { Goals43, GOALS43 } = await imp('src/systems/goals/Goals43.js');
 const { G43, SEEN43, FLAG43 } = await imp('src/data/ids43.js');
 const { EupTaste } = await imp('src/systems/v43/EupTaste.js');
 const { recent } = await imp('src/systems/v43/hooks.js');
-const { STEPS } = await imp('src/systems/Progression.js');
-const { GoalBook } = await imp('src/systems/goals/GoalBook.js');
+const PM = await imp('src/systems/Progression.js');
+const { STEPS } = PM;
+const { GoalBook, V42_BUILDS } = await imp('src/systems/goals/GoalBook.js');
 const { Tutorial } = await imp('src/systems/Tutorial.js');
 const { GOAL_STR, gt } = await imp('src/systems/goals/strings.js');
 const { STRINGS, setLang } = await imp('src/data/strings.js');
@@ -120,6 +125,20 @@ const seen = (vg) => (vg.gs.v43.seen || {});
 const X = (vg) => vg.gs.x43.get('g43');
 /** a reload: the same save bits (v43, x) in a new chain reader, the old one's listeners gone */
 const reload = (vg) => { vg.ev.emit('shutdown'); vg.gs.x43 = new SaveM.X43(JSON.parse(JSON.stringify(vg.gs.x43.serialize() || null)) || undefined); vg.gs.v43 = JSON.parse(JSON.stringify(vg.gs.v43)); vg.G = Goals43.attach(vg.gs, {}); return vg; };
+/** (rows by data, BP-53) this build's mkt_s4 step (P's row: { …, flag: 'g43s4', also: 'mkt_s3', side }), or null */
+const S4_REAL = STEPS.find((s) => s.id === G43.s4) || null;
+const S4_STAND = { id: 'mkt_s4', type: 'shop', level: 4, after: 'f:rankEup', flag: 'g43s4', also: 'mkt_s3', side: true, v4: true };
+/** run fn with (on) or without (!on) a mkt_s4 step in STEPS, whatever this build has; STEPS is put back after */
+function withS4(on, fn) {
+  const i = STEPS.findIndex((s) => s.id === G43.s4);
+  let took = null, added = false;
+  if (on && i < 0) { STEPS.push(S4_STAND); added = true; }
+  if (!on && i >= 0) took = STEPS.splice(i, 1)[0];
+  try { return fn(); } finally {
+    if (added) { const j = STEPS.indexOf(S4_STAND); if (j >= 0) STEPS.splice(j, 1); }
+    if (took) STEPS.splice(i, 0, took);
+  }
+}
 
 try {
   console.log('rows by data (BP-53)');
@@ -127,14 +146,22 @@ try {
     ok(GOALS43.map((r) => r.id).join() === [G43.staff, G43.fork, G43.st2, G43.deco, G43.house, G43.dlv, G43.train, G43.shop, G43.s4, G43.taste].join(), 'GOALS43 is exactly the 10 ids in the designer\'s order');
     ok(!('stub' in Goals43), 'the B0b stub flag is gone (G is in)');
     const vg = village();
+    const ids = () => vg.G.defs().map((d) => d.id);
     EupTaste.enabled = false;
-    ok(vg.G.defs().length === 8 && rowsOf(vg).length === 8, 'this build: 8 rows (no mkt_s4 step, EupTaste off)', vg.G.defs().map((d) => d.id));
-    EupTaste.enabled = true;
-    ok(vg.G.defs().length === 9 && vg.G.defs()[8].id === G43.taste, 'EupTaste.enabled: row 10 joins (9 rows without row 9)');
-    STEPS.push({ id: 'mkt_s4', type: 'shop', level: 4, after: 'f:rankEup', flag: 'g43s4', also: 'mkt_s3', side: true });
-    ok(vg.G.defs().length === 10, 'a mkt_s4 step: row 9 joins (10 rows)');
-    STEPS.pop();
-    EupTaste.enabled = false;
+    const n0 = 8 + (S4_REAL ? 1 : 0);
+    ok(vg.G.defs().length === n0 && rowsOf(vg).length === n0 && (!S4_REAL || ids()[8] === G43.s4), 'this build: ' + n0 + ' rows (' + (S4_REAL ? 'P\'s mkt_s4 step: row 9' : 'no mkt_s4 step') + ', EupTaste off)', ids());
+    ok(!S4_REAL || (S4_REAL.flag === FLAG43.g43s4 && S4_REAL.also === 'mkt_s3' && S4_REAL.side === true && S4_REAL.after === 'f:rankEup'), S4_REAL ? 'P\'s mkt_s4 step waits for G\'s flag g43s4, on top of 3단, a side step after 읍 (BP-41)' : 'no mkt_s4 step in this build', S4_REAL);
+    withS4(false, () => {
+      ok(vg.G.defs().length === 8 && ids().indexOf(G43.s4) < 0, 'without a mkt_s4 step: 8 rows, no row 9 (stage 4 cut by data)', ids());
+      EupTaste.enabled = true;
+      ok(vg.G.defs().length === 9 && ids()[8] === G43.taste, 'EupTaste.enabled: row 10 joins (9 rows without row 9)', ids());
+      EupTaste.enabled = false;
+    });
+    withS4(true, () => {
+      EupTaste.enabled = true;
+      ok(vg.G.defs().length === 10 && ids()[8] === G43.s4 && ids()[9] === G43.taste, 'a mkt_s4 step and the taste: 10 rows, row 9 then row 10', ids());
+      EupTaste.enabled = false;
+    });
   }
 
   console.log('the words (ko / en, same {slots})');
@@ -177,9 +204,14 @@ try {
     c.regress = true;
     tick(c, 3);
     ok(!seen(c).g43open, 'a GOALS row not done (below 읍 / 45 people): closed');
+    // (V42_BUILDS by import: P took the office out, so the chain opens on the bank and the depot — the designer's
+    //  「은행과 물류창고를 둘 다 지으면」; the bank's plot needs the office anyway, b:chief_office)
+    const names = V42_BUILDS.map(([, b]) => b);
+    const shut = names.filter((b) => { const v = village({ built: { [b]: 0 } }); tick(v, 2); return !!seen(v).g43open; });
+    ok(names.length >= 2 && names.indexOf('bank42') >= 0 && names.indexOf('depot42') >= 0 && shut.length === 0, 'every V42_BUILDS building is needed (' + names.join(', ') + '): one missing keeps it closed', { names, opened: shut });
     const o = village({ built: { chief_office: 0 } });
     tick(o, 2);
-    ok(!seen(o).g43open, 'every V42_BUILDS building is needed (this build: the office too)');
+    ok(names.indexOf('chief_office') >= 0 ? !seen(o).g43open : seen(o).g43open === 1, names.indexOf('chief_office') >= 0 ? 'the office is a V42_BUILDS building in this build: needed too' : 'the office is not a V42_BUILDS building (P): the bank and the depot open the chain', seen(o));
   }
 
   console.log('the opening: baselines, pre-done rows, one banner');
@@ -397,9 +429,8 @@ try {
     ok(rowById(sc, G43.house).why === 'passive' && rowById(sc, G43.house).state !== 'now', 'a first house building by itself: passive, never current');
   }
 
-  console.log('row 9 (a stand-in mkt_s4 step) and the g43s4 flag (BP-41, BP-43)');
-  {
-    STEPS.push({ id: 'mkt_s4', type: 'shop', level: 4, after: 'f:rankEup', flag: 'g43s4', also: 'mkt_s3', side: true });
+  console.log('row 9 (' + (S4_REAL ? 'P\'s mkt_s4 step' : 'a stand-in mkt_s4 step') + ') and the g43s4 flag (BP-41, BP-43)');
+  withS4(true, () => {
     EupTaste.enabled = true;
     const vg = village({ hires: 2, fork: true, up: { grill: 1 }, houses: { h43_1: 'done', h43_2: 'done' }, done: { mkt_s4: false } });
     tick(vg, 2);
@@ -409,6 +440,16 @@ try {
     tick(vg, 2);
     ok(vg.pr.flags.g43s4 === true && vg.flagsSet.filter((f) => f === 'g43s4').length === 1 && vg.G.current().id === G43.s4, 'rows 1–8 settled (trains counting): row 9 is current, g43s4 set exactly once', vg.flagsSet);
     ok(!vg.G.tasteReady() && rowById(vg, G43.taste).state === 'next', 'a mkt_s4 pad not standing yet (held back by paidPadNear): not settled, no taste pad');
+    // (its price before the pad stands: P's stepPrice — 2,000 + 판자 20 + 주괴 8; half for an s4half village)
+    if (PM.stepPrice) {
+      const s4 = STEPS.find((q) => q.id === G43.s4), full = PM.stepPrice(s4, {}), half = PM.stepPrice(s4, { s4half: true });
+      let r = rowById(vg, G43.s4);
+      ok(r.coins === full.coins && JSON.stringify(r.items) === JSON.stringify(full.items) && !vg.G.sub(r), 'before its pad: row 9 asks the full price (' + r.coins + ' + ' + JSON.stringify(r.items) + ')', { r: [r.coins, r.items], full });
+      vg.pr.flags.s4half = true;
+      r = rowById(vg, G43.s4);
+      ok(r.coins === half.coins && half.coins * 2 === full.coins && JSON.stringify(r.items) === JSON.stringify(half.items) && /반값/.test(vg.G.sub(r)), 'an s4half village: half (' + r.coins + ' + ' + JSON.stringify(r.items) + ') and 「반값」 under it', { r: [r.coins, r.items], half, sub: vg.G.sub(r) });
+      delete vg.pr.flags.s4half;
+    }
     vg.pr.pads.mkt_s4 = mkPad('mkt_s4', 1300, 900, 2000, { items: { item_plank: 20, item_ingot: 8 } });
     let r9 = rowById(vg, G43.s4);
     ok(r9.place && r9.place.ref === vg.pr.pads.mkt_s4 && r9.state === 'now', 'its pad stands: row 9\'s 가기');
@@ -425,15 +466,31 @@ try {
     for (let i = 0; i < 3; i++) u.ev.emit('v4:cardDone', { shop: null, need: {}, got: {} });
     tick(u, 2);
     ok(rowById(u, G43.s4).state === 'wait' && u.G.tasteReady(), 'mkt_s3 out of reach (no meat sold): row 9 settled, the taste gate opens');
+    ok(!u.pr.flags.g43s4, '…and g43s4 stays unset (row 9 never became current: its pad needs 3단 first)', u.flagsSet);
     // s4Early: the flag at 읍, before the chain opens
     const e = village({ built: { depot42: 0 } });
     BALANCE.goals43.s4Early = true;
     tick(e, 1);
     BALANCE.goals43.s4Early = false;
     ok(e.pr.flags.g43s4 === true && !seen(e).g43open, 's4Early: g43s4 at 읍 (the chain still closed)');
-    STEPS.pop();
     EupTaste.enabled = false;
-  }
+  });
+
+  console.log('an a3.3 village (its chain ran with no row 9: AAB 4316 / preview 4308) on this build');
+  withS4(true, () => {
+    EupTaste.enabled = true;
+    // (a3.3 had rows 1–8 and the taste: g43open + g43all, maybe g43ready / eup_taste; never g43s4. R43 keeps v43.seen)
+    const a = village({ hires: 2, fork: true, houses: { h43_1: 'done', h43_2: 'done' }, done: { mkt_s4: false }, seen: { g43open: 1, g43all: 1, g43ready: 1, eup_taste: 1 } });
+    const c0 = a.gs.economy.coins;
+    tick(a, 3);
+    ok(a.G.current() && a.G.current().id === G43.s4 && a.pr.flags.g43s4 === true && a.flagsSet.filter((f) => f === 'g43s4').length === 1 && a.gs.economy.coins === c0 && !a.banners.length, 'the taste already seen: row 9 (stage 4) is its next goal, g43s4 set once; no coins, no banner', { cur: a.G.current() && a.G.current().id, banners: a.banners });
+    ok(rowById(a, G43.taste).state === 'done' && !a.G.tasteReady(), '…row 10 stays done (eup_taste), no taste pad again');
+    const b = village({ hires: 2, fork: true, houses: { h43_1: 'done', h43_2: 'done' }, done: { mkt_s4: false }, seen: { g43open: 1, g43all: 1, g43ready: 1 } });
+    tick(b, 3);
+    ok(b.G.current().id === G43.s4 && b.pr.flags.g43s4 === true && b.G.tasteReady() && rowById(b, G43.taste).state === 'next' && rowById(b, G43.taste).place, 'its taste pad was up but not used: row 9 is current, and the pad stays where it was (sticky g43ready, BP-43)');
+    ok(!b.banners.some((q) => q.key === 'g43:ready' || q.key === 'g43:open'), '…no ready / open banner again');
+    EupTaste.enabled = false;
+  });
 
   console.log('g43all compaction and the save rules (BP-54, BP-46, BP-47)');
   {

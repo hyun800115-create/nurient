@@ -1,6 +1,9 @@
 // (v4.3 step B, WP-T) 읍장 취임 맛보기 (docs/redesign_v43/stepB/postdepot_addendum.md §5, §6.4), fixed-step clock:
 //   node tools/test/taste.mjs [--shots DIR]          (shots default: docs/previews/screens_v43/taste_*.png)
-// The late v4.2 village (hall, bank, depot; rank 1 with full bars) made 읍 by the step hook.
+// The late v4.2 village (hall, bank, depot; rank 1 with full bars) made 읍 by the step hook. (step B: a pre-B village, so it
+// loads through the real remap R43 and N's 「마을 새 단장」 letter is due: every boot reads it as a player does —
+// seen.letter43 / tour43, the card closed — since T never starts over the letter. Before section A saves the pre-taste
+// village it also buys stage 4 by hook when this build has P's mkt_s4 step, so the real G's row 9 is done in B–D)
 //   A 412×915 ko  the pad: absent at rank 1 and while the chain is not there (a stand-in gs.goals43 whose current row is
 //                 not row 10, or no G and no seen.g43all); present at the hall's 승격식 spot once it is (G's current row 10,
 //                 or without G seen.g43all), clear of the other pads; once shown it stays (a soft row back, g43all gone).
@@ -59,7 +62,15 @@ async function ready(page) {
   await waitFor(page, () => window.__FV.scene && window.__FV.game.scene.isActive('UI') && window.__FV.scene.player && window.__FV.game.scene.getScene('UI').ready, 180000);
   await sleep(2000);
   await installStepper(page);
-  await page.evaluate(() => { if (window.__FV.v42) window.__FV.v42.v.seen.whatsNew = 1; });
+  await page.evaluate(() => {
+    if (window.__FV.v42) window.__FV.v42.v.seen.whatsNew = 1;
+    // (step B) N's letter read (a remapped load): seen.letter43 / tour43, the card closed
+    const gs = window.__FV.scene, U = window.__FV.game.scene.getScene('UI'), C = U && U.renewal43;
+    if (!gs.v43 || typeof gs.v43 !== 'object') gs.v43 = { lay: 0 };
+    if (!gs.v43.seen || typeof gs.v43.seen !== 'object') gs.v43.seen = {};
+    gs.v43.seen.letter43 = 1; gs.v43.seen.tour43 = 1;
+    if (C && C.isOpen && C.close) C.close();
+  });
   await advance(page, 2);
 }
 const TS = (page) => page.evaluate(() => window.__FV43.taste.state());
@@ -153,9 +164,20 @@ try {
       return out.slice(0, 4);
     });
     ok(!sp.length || sp[0].d >= 90, 'the pad is ≥ 1.4 m from every other pad (nearest: ' + (sp[0] ? sp[0].name + ' ' + sp[0].d + ' px' : 'none') + ')', sp);
+    // (step B: the chain's row 9 is stage 4, P's mkt_s4 step: bought here by hook — G's flag g43s4, then the step done —
+    //  so the real G in B–D finds rows 1–9 settled; postdepot.mjs walks row 9 itself)
+    const s4 = await page.evaluate(() => {
+      const F = window.__FV, gs = F.scene, pr = gs.progress;
+      if (!pr.stepPrice || pr.isDone('mkt_s4')) return { has: pr.isDone('mkt_s4'), done: pr.isDone('mkt_s4') };
+      pr.setFlag('g43s4');
+      const ok1 = F.doneStep('mkt_s4');
+      window.__step.run(1.5);
+      return { has: ok1, done: pr.isDone('mkt_s4'), flag: !!pr.flags.g43s4 };
+    });
+    console.log('  info stage 4 for the pre-taste village: ' + JSON.stringify(s4));
     // the 읍 village with the chain done, before the taste (B, C, D start from it)
     preTaste = await page.evaluate(() => { const gs = window.__FV.scene; gs.save(true); return localStorage.getItem('frostVillage.save.v1'); });
-    ok(typeof preTaste === 'string' && preTaste.length > 1000 && JSON.parse(preTaste).v43 && JSON.parse(preTaste).v43.seen.g43all === 1, 'saved: the 읍 village with seen.g43all (for B, C, D)');
+    ok(typeof preTaste === 'string' && preTaste.length > 1000 && JSON.parse(preTaste).v43 && JSON.parse(preTaste).v43.seen.g43all === 1 && (!s4.has || JSON.parse(preTaste).progress.done.mkt_s4), 'saved: the 읍 village with seen.g43all' + (s4.has ? ' and stage 4 bought' : '') + ' (for B, C, D)');
 
     // ---- the start rules
     const pad = (await TS(page)).pad;
@@ -318,11 +340,11 @@ try {
     const gg0 = await page.evaluate(() => {
       const gs = window.__FV.scene, G = gs.goals43;
       if (!G || !G.state) return null;
-      const st = G.state(), cur = G.current(), pl = cur && cur.place, r10 = st.rows[st.rows.length - 1];
-      return { opened: st.opened, cur: st.cur, tasteReady: st.tasteReady, gate: window.__FV43.taste.gate(), seen: st.seen, paid: st.log.length, n: st.rows.length, r10: r10 && { id: r10.id, state: r10.state }, placeIsPad: !!(pl && gs.eupTaste && gs.eupTaste.pad && pl.ref === gs.eupTaste.pad) };
+      const st = G.state(), cur = G.current(), pl = cur && cur.place, r10 = st.rows[st.rows.length - 1], r9 = st.rows.find((r) => r.id === 'mkt_s4');
+      return { opened: st.opened, cur: st.cur, tasteReady: st.tasteReady, gate: window.__FV43.taste.gate(), seen: st.seen, paid: st.log.length, n: st.rows.length, nDefs: G.defs().length, r9: r9 ? r9.state : null, r10: r10 && { id: r10.id, state: r10.state }, placeIsPad: !!(pl && gs.eupTaste && gs.eupTaste.pad && pl.ref === gs.eupTaste.pad) };
     });
     ok(gg0 && gg0.opened && gg0.seen.g43all === 1 && gg0.seen.g43ready === 1 && gg0.paid === 0 && gg0.tasteReady === true && gg0.gate === true, 'the real G: the chain opened on load with rows 1–8 done (g43all, 0 coins) and wrote g43ready; tasteReady() opens T\'s gate', gg0);
-    ok(gg0 && gg0.n === 9 && gg0.cur === 'g43_taste' && gg0.r10 && gg0.r10.state === 'now' && gg0.placeIsPad, 'G\'s row 10 (9 rows: no mkt_s4 step) is current and its 가기 place is T\'s pad', gg0);
+    ok(gg0 && gg0.n === gg0.nDefs && (gg0.r9 === null || gg0.r9 === 'done') && gg0.cur === 'g43_taste' && gg0.r10 && gg0.r10.state === 'now' && gg0.placeIsPad, 'G\'s row 10 (' + (gg0 && gg0.n) + ' rows by data' + (gg0 && gg0.r9 ? ', row 9 stage 4 ✓' : ': no mkt_s4 step') + ') is current and its 가기 place is T\'s pad', gg0);
     // start; a short drag before skipAfter (3 s) does not skip
     const s1 = await page.evaluate(([x, y]) => {
       const F = window.__FV;

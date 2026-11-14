@@ -173,8 +173,10 @@ export class Goals43 {
 
   // ------------------------------------------------------------------ what the village has
   /** the chain may run: v4.2 running, village complete, every v4 GOALS row done (읍 included) and every V42_BUILDS
-   *  building built (BP-38: the depot alone is not enough — it can stand before the bank). A GOALS row that regressed
-   *  (people below 45) pauses it: no markers, rewards, banners, g43s4 or taste pad; the counters still count */
+   *  building built (BP-38: the depot alone is not enough — it can stand before the bank). Since step B's P that is the
+   *  bank and the depot (the designer: 「은행과 물류창고를 둘 다 지으면」); the 촌장 사무실 is a side goal and is not asked
+   *  for by itself (the bank's plot needs b:chief_office anyway). A GOALS row that regressed (people below 45) pauses
+   *  it: no markers, rewards, banners, g43s4 or taste pad; the counters still count */
   running() {
     const gs = this.gs, pr = gs.progress;
     if (!gs.v42 || !pr || !pr.complete) return false;
