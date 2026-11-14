@@ -574,6 +574,36 @@ export const STRINGS = {
     // <<< v43B:M end
 
     // >>> v43B:N start (renewal: 「마을 새 단장」 letter, 「새 지도 보기」 tour)
+    // (새 지도로 옮겨 온 예전 마을이 한 번 받는 편지 — src/systems/v43/Renewal43.js. 숫자는 R43 가 돌려준 그대로 (refunds43))
+    r43_title: '마을 새 단장',
+    r43_hello: '촌장님, 마을이 새 지도로 옮겨 왔어요. 잃은 건 하나도 없어요!',
+    r43_map: '공방과 마을회관이 들어설 자리가 새로 정해졌어요',
+    r43_moved: '{names|이/가} 정해진 자리로 옮겼어요',
+    r43_movedSub: '단계 · 쌓인 물건 · 일꾼 모두 그대로예요',
+    r43_kept: '{n}곳은 새 자리가 차 있어서 예전 자리에 그대로 있어요',
+    r43_hallMoved: '마을회관은 촌장님 사무실 옆 새 자리로 옮겼어요',
+    r43_hallGo: '짓던 마을회관은 사무실 옆 새 자리에서 이어 지어요',
+    r43_officeGo: '짓던 촌장님 사무실도 새 값으로 이어 지어요',
+    r43_thanks: '예전 값으로 지은 {names|은/는} 그대로예요. 고마워요!',
+    r43_coins: '새 값이 싸져서 코인 {n}개를 돌려 드렸어요',
+    r43_coinsMat: '남는 자재 값도 함께 넣었어요',
+    r43_wh: '남는 {list|은/는} 창고에 넣어 뒀어요',
+    r43_count: '{item} {n}개',
+    r43_house2: '둘째 첫 집은 마을 마당 동쪽으로 옮겼어요',
+    // (postdepot_addendum.md §4.3: 4단은 물류창고 다음 목표의 9번째 — 읍이 되자마자 발판이 나오지 않아요)
+    r43_s4half: '4단 「눈꽃마을 시장」은 반값에 지어요 · 차례가 오면 목표 창에 나와요',
+    r43_tour: '새 지도 보기', r43_close: '닫기',
+    // (「새 지도 보기」: 세 번 눌러 끝나는 둘러보기 — 회관 · 사무실 → 공방 거리 → 마을 마당과 가게)
+    r43_t1: '마을회관은 촌장님 사무실 바로 옆이에요',
+    r43_t1Built: '세금 상자와 게시판도 회관 앞에 있어요',
+    r43_t1Go: '짓던 회관은 여기서 이어 지어요',
+    r43_t1Site: '마을이 다 갖춰지면 여기에 지을 수 있어요',
+    r43_t1Open: '이제 바로 여기에 지을 수 있어요',
+    r43_t2: '공방 거리: 대장간과 창고 자리예요',
+    r43_t2b: '통조림 공장과 잡화점은 동쪽 바닷가 길에 있어요',
+    r43_t3: '마을 마당은 다 함께 쓰는 마당으로 비워 둬요',
+    r43_t3b: '첫 가게는 마당 위쪽 길가에 그대로 있어요',
+    r43_done: '다 봤어요',
     // <<< v43B:N end
 
     // >>> v43B:P1 start (play log: settings row, export screen)
@@ -1136,6 +1166,35 @@ export const STRINGS = {
     // <<< v43B:M end
 
     // >>> v43B:N start (renewal: 「마을 새 단장」 letter, 「새 지도 보기」 tour)
+    // (the letter an old village reads once after moving onto the new map — src/systems/v43/Renewal43.js; its numbers
+    //  are what R43 gave back, refunds43)
+    r43_title: 'A fresh look for the village',
+    r43_hello: 'Chief, your village has moved onto the new map. Nothing was lost!',
+    r43_map: 'The workshops and the town hall have their own spots now',
+    r43_moved: '{names} moved to their own spots',
+    r43_movedSub: 'Same level, same goods, same workers',
+    r43_kept: '{n} stayed where they were: their new spot was taken',
+    r43_hallMoved: "The town hall moved next to the chief's office",
+    r43_hallGo: 'The town hall you were building goes on next to the office',
+    r43_officeGo: "The chief's office you were building goes on at the new price",
+    r43_thanks: '{names} built at the old price stay as they are. Thank you!',
+    r43_coins: 'Prices went down: {n} coins came back to you',
+    r43_coinsMat: 'Spare materials sold are included',
+    r43_wh: 'the spare {list} went into the warehouse',
+    r43_count: '{n} {item}',
+    r43_house2: 'One of the first houses moved east of the village green',
+    r43_s4half: 'Shop stage 4 is half price for you · it appears in the goal window in turn',
+    r43_tour: 'See the new map', r43_close: 'Close',
+    r43_t1: "The town hall stands right next to the chief's office",
+    r43_t1Built: 'Its tax box and notice board are out front',
+    r43_t1Go: 'The hall you were building goes on here',
+    r43_t1Site: 'Build it here once the village is complete',
+    r43_t1Open: 'You can build it here now',
+    r43_t2: 'Workshop row: the toolsmith and the warehouse',
+    r43_t2b: 'The cannery and the general store are on the east shore road',
+    r43_t3: 'The village green stays open for everyone',
+    r43_t3b: 'The first shop is just north of it, as before',
+    r43_done: 'All seen',
     // <<< v43B:N end
 
     // >>> v43B:P1 start (play log: settings row, export screen)

@@ -12,6 +12,11 @@
 // the settings panel (it takes the tap instead of the button under it): every other touch starts the joystick as usual.
 // Never covers what it points at: the card slot, the ghost joystick spot and the spotlight are worked out in screen space
 // every frame (rects() is the test hook's view of them).
+// ((v4.3 step B, WP-N) the 「마을 새 단장」 letter's 「새 지도 보기」 tour (src/systems/v43/Renewal43.js, Tour43) is drawn
+//  here too: while the first-run tutorial is off and that tour runs, `ob` is its driver (mode 'tour43': the same card
+//  with 「다음 ›」 / 「건너뛰기」, the ring's place kept clear, and a TAP finger on 「다음 ›」). The village holds under it
+//  (the letter's run keeps ui.v42PanelOpen, which does not hide this card), and a see-through blocker under the card takes
+//  every other touch — the HUD buttons and the joystick wait until it ends)
 
 import { Assets } from '../core/Assets.js';
 import { Audio } from '../core/Audio.js';
@@ -45,7 +50,13 @@ export class OnboardOverlay {
     ui.events.once('shutdown', () => { ui.input.off('gameobjectdown', this.onObjDown, this); ui.input.off('pointerdown', this.onDown, this); ui.input.off('pointerup', this.onUp, this); });
   }
 
-  get ob() { return this.gs.onboard || null; }
+  /** the driver: the first-run tutorial (Onboarding) while it runs, else the 「새 지도 보기」 tour while that runs (WP-N) */
+  get ob() {
+    const o = this.gs.onboard || null;
+    if (o && o.mode !== 'off') return o;
+    const r = this.gs.renewal43, tr = r && !r.dead && r.phase === 'tour' ? r.tour : null;
+    return tr && tr.mode === 'tour43' ? tr : o;
+  }
 
   // ------------------------------------------------------------------ pieces
   build() {
@@ -86,6 +97,9 @@ export class OnboardOverlay {
     this.nextBtn = ui.makeButton(0, 0, 200, 64, 'blue', t('onb_next'), () => { const o = this.ob; if (o) o.next(); }, 26);
     this.tourSkip = ui.makeButton(0, 0, 200, 64, 'gray', t('onb_skip'), () => { const o = this.ob; if (o) o.skip(); }, 24);
     this.nextBtn.setDepth(59).setVisible(false); this.tourSkip.setDepth(59).setVisible(false);
+    // ((WP-N) the 「새 지도 보기」 tour: a see-through blocker under the card and its buttons takes every other touch)
+    this.block43 = ui.add.zone(ui.W / 2, ui.H / 2, 4000, 4000).setDepth(57).setInteractive();
+    this.block43.input.enabled = false;
     this.cardA = 0;
     // the skip chip: 150 x 52 to see, 200 x 84 to hit
     const sc = this.skipC = ui.add.container(0, 0).setDepth(58).setVisible(false);
@@ -224,6 +238,8 @@ export class OnboardOverlay {
       case 'move': return ui.panelOpen ? { x: cx - 130, y: cy + 428, r: 40, w: 240 } : null;
       case 'playTab': return ui.panelOpen ? { x: cx + 122, y: cy - 348, r: 33, w: 236 } : null;
       case 'dogbar': return ui.dogBar && ui.dogBar.visible ? { x: ui.dogBar.x, y: ui.dogBar.y, r: 102, w: 336, noFinger: true } : null;
+      // ((WP-N) the card's own 「다음 ›」 (200 x 64): tapped at its left end, the words stay clear)
+      case 'next': return this.nextBtn && this.nextBtn.visible ? { x: this.nextBtn.x, y: this.nextBtn.y, r: 32, w: 200 } : null;
       default: return null;
     }
   }
@@ -244,11 +260,14 @@ export class OnboardOverlay {
     const ob = this.ob, ui = this.ui;
     this.t += dt;
     this.ut = (this.ut || 0) + dt;
+    const t43 = !!(ob && ob.mode === 'tour43');
+    if (this.block43.input && this.block43.input.enabled !== t43) { this.block43.input.enabled = t43; if (t43) this.block43.setPosition(ui.W / 2, ui.H / 2); }
     if (!ob || ob.mode === 'off') { if (!this.allHidden) this.hideAll(); return; }
     this.allHidden = false;
     try { ob.ov = this; ob.uiUpdate(dt, ui, this); } catch (e) { if (!this._err) { this._err = true; console.error('[FrostVillage] onboarding tips:', e); } }
     const gs = this.gs;
-    const panelUp = !!(ui.panelOpen || ui.adminOpen || ui.buildOpen || ui.v4PanelOpen || ui.v42PanelOpen);     // ((v4.2.0.2) + 관리자 모드)
+    // ((WP-N) the 「새 지도 보기」 tour holds ui.v42PanelOpen itself: that one does not hide its card)
+    const panelUp = !!(ui.panelOpen || ui.adminOpen || ui.buildOpen || ui.v4PanelOpen || (ui.v42PanelOpen && !t43));     // ((v4.2.0.2) + 관리자 모드)
     const tip = ob.tip;
     const tipInPanel = tip && (tip.btn === 'move' || tip.btn === 'playTab');
     const tipInMap = tip && tip.id === 'T4' && gs.overview;
@@ -297,18 +316,20 @@ export class OnboardOverlay {
     }
     // the slot: bottom unless the place it talks about (or the chief, in "stay" steps) is under it; it changes
     // mid-step only when that lasts 0.5 s
-    const target = ob.mode === 'act1' || ob.mode === 'act2' || ob.mode === 'tour' ? this.targetBox() : null;
+    const target = ob.mode === 'act1' || ob.mode === 'act2' || ob.mode === 'tour' || ob.mode === 'tour43' ? this.targetBox() : null;
     const ch = this.cardH, cw = this.cardW;
-    const bottomY = H - 280 - View.safeBottom - (c.next ? 40 : 0);
+    // ((WP-N) c.lift: a card that keeps its bottom slot higher — the 「새 지도 보기」 tour's buttons stay above the toasts)
+    const bottomY = H - 280 - View.safeBottom - (c.next ? 40 : 0) - (c.lift || 0);
     const topY = ob.mode === 'act2' ? top + 168 : top + 96;
     const boxAt = (y) => [W / 2 - cw / 2, y - ch / 2, W / 2 + cw / 2, y + ch / 2];
     const over = (y) => hit(boxAt(y), target, 40) || (ob.spot && ob.spot.pts && hit(boxAt(y), this.chiefBox(), 30));
-    if (fresh) { this.cid = c.id; this.slot = c.top || c.mini ? 'top' : over(bottomY) ? 'top' : 'bottom'; this.overT = 0; this.popCard(); }
-    else if (!c.top && !c.mini) {
+    // ((WP-N) c.bottom: always the bottom slot — the tour frames its place in the upper half, the top slot is the HUD's)
+    if (fresh) { this.cid = c.id; this.slot = c.top || c.mini ? 'top' : c.bottom ? 'bottom' : over(bottomY) ? 'top' : 'bottom'; this.overT = 0; this.popCard(); }
+    else if (!c.top && !c.mini && !c.bottom) {
       const y = this.slot === 'top' ? topY : bottomY;
       this.overT = over(y) ? this.overT + dt : 0;
       if (this.overT > 0.5) { this.slot = this.slot === 'top' ? 'bottom' : 'top'; this.overT = 0; }
-    } else this.slot = 'top';
+    } else this.slot = c.bottom && !c.top && !c.mini ? 'bottom' : 'top';
     let y = this.slot === 'top' ? topY + (ch - 76) / 2 : bottomY;
     if (c.next && this.slot === 'top') y += 0;
     this.cardC.setPosition(W / 2, y);
@@ -319,6 +340,9 @@ export class OnboardOverlay {
     this.cardC.setVisible(this.cardA > 0.01).setAlpha(this.cardA);
     // the tour's buttons sit under the card
     const btns = !!c.next && this.cardA > 0.5;
+    // ((WP-N) the last stop of the 「새 지도 보기」 tour says 「다 봤어요」 on it)
+    const lbl = c.nextLabel || t('onb_next');
+    if (this.nextBtn.text && this.nextBtn.text.text !== lbl) { this.nextBtn.text.setScale(1).setText(lbl); if (this.nextBtn.text.width > 176) this.nextBtn.text.setScale(176 / this.nextBtn.text.width); }
     this.nextBtn.setVisible(btns); this.tourSkip.setVisible(btns);
     if (btns) { const by = y + ch / 2 + 44; this.nextBtn.setPosition(W / 2 + 110, by); this.tourSkip.setPosition(W / 2 - 110, by); }
     // a gentle wiggle when S1 waits long (10 s without a touch)
@@ -487,9 +511,17 @@ export class OnboardOverlay {
       return;
     }
     if (this.fingers[0].depth !== 75) for (const f of this.fingers) f.setDepth(75);
-    if (h.id !== this.hid) { this.hid = h.id; this.ht = 0; this.loopN = -1; }
+    if (h.id !== this.hid) { this.hid = h.id; this.ht = 0; this.loopN = -1; this.tapPh = -1; }
     this.ht += dt;
     this.fingers[1].setVisible(false);
+    // ((WP-N) TAP on a button of the card (the 「새 지도 보기」 tour's 「다음 ›」): the tip's tap, without its bubble)
+    if (h.g === 'tap') {
+      const b = this.btnPos(h.btn);
+      this.ghost(0, 0, 0, 0, 0); this.ghostC = null;
+      if (!b) { this.fingers[0].setVisible(false); this.fingerBox = null; return; }
+      this.tap(b, this.ht);
+      return;
+    }
     const P = h.g === 'lift' ? LIFT_T : h.g === 'stepoff' ? STEP_T : DRAG_T;
     const n = Math.floor(this.ht / P), lt = this.ht - n * P;
     if (n !== this.loopN) {
