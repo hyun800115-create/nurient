@@ -420,7 +420,10 @@ const strip2 = (o) => JSON.parse(JSON.stringify(o));
     const n = () => [...L.values()].reduce((s, a) => s + a.length, 0);
     ok(gs.goals43 === g && g instanceof v43.Goals43 && ['rows', 'sideRows', 'refs', 'sub', 'objective', 'current', 'tasteReady'].every((k) => typeof g[k] === 'function') && n() >= 3, 'the real Goals43: attach makes gs.goals43 with every seam (rows, sideRows, refs, sub, objective, current, tasteReady) and its listeners', n());
     const rs = g.rows(true, null), rf = g.refs();
-    ok(rs.length === v43.GOALS43.filter((d) => (d.step ? false : d.taste ? v43.EupTaste.enabled : true)).length && rs.every((r) => r.kind === 'g43' && (r.state === 'next' || r.state === 'done')) && rf instanceof Set && rf.size === 0 && same(g.sideRows(null, 0), []) && g.sub({ kind: 'pad' }) === null && g.objective({}, 'place') === null && g.objective({}, 'text') === null && g.current() === null && g.tasteReady() === false,
+    // (rows by data, BP-53: row 9 while STEPS has the mkt_s4 step (P), row 10 while EupTaste.enabled (T))
+    const { STEPS: ST } = await imp('src/systems/Progression.js');
+    const hasS4 = ST.some((s) => s.id === ids.STEP43.shop4);
+    ok(rs.length === v43.GOALS43.filter((d) => (d.step ? hasS4 : d.taste ? v43.EupTaste.enabled : true)).length && rs.every((r) => r.kind === 'g43' && (r.state === 'next' || r.state === 'done')) && rf instanceof Set && rf.size === 0 && same(g.sideRows(null, 0), []) && g.sub({ kind: 'pad' }) === null && g.objective({}, 'place') === null && g.objective({}, 'text') === null && g.current() === null && g.tasteReady() === false,
       'with no village it is closed: its rows locked, refs an empty Set, no side rows / objective / current row / taste gate');
     events.emit('shutdown');
     ok(gs.goals43 === null && n() === 0, 'the scene\'s shutdown removes every listener and gs.goals43 (BP-56)', n());
