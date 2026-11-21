@@ -1,0 +1,1251 @@
+{
+ "start": {
+  "coins": 0,
+  "firstCustomers": 3
+ },
+ "onboard": {
+  "arrowBig": 1.3,
+  "idleDrag": 3,
+  "idleDragLight": 5,
+  "dragRepeat": 12,
+  "assistIdle": 5,
+  "assistGap": 20,
+  "assistMax": 3,
+  "dwell": 1.5,
+  "beat": 0.7,
+  "tipGap": 45,
+  "tipShow": 7,
+  "settingsTipAfter": 480,
+  "stuckSec": 45,
+  "act1Max": 360
+ },
+ "camera": {
+  "zoom": 1.2,
+  "lerp": 0.12,
+  "revealPanMs": 750,
+  "revealHoldMs": 900,
+  "zoomMin": 0.6,
+  "zoomMax": 1.7,
+  "zoomStep": 1.25,
+  "zoomSmooth": 0.18
+ },
+ "player": {
+  "speed": 255,
+  "verticalFactor": 0.74,
+  "gatherRange": 78,
+  "stillDelay": 0.08,
+  "padDelay": 0.5,
+  "trashDelay": 0.6,
+  "padItemInterval": 0.075,
+  "carryScale": 0.62,
+  "carryOnHead": true
+ },
+ "upgrades": {
+  "capacity": {
+   "values": [
+    6,
+    10,
+    14,
+    18,
+    22,
+    26
+   ],
+   "costs": [
+    40,
+    90,
+    170,
+    300,
+    480
+   ]
+  },
+  "speed": {
+   "values": [
+    1,
+    1.15,
+    1.3,
+    1.45,
+    1.6
+   ],
+   "costs": [
+    50,
+    120,
+    240,
+    400
+   ]
+  }
+ },
+ "prices": {
+  "item_fish_cooked": 4,
+  "item_bread": 7,
+  "item_meat_cooked": 12,
+  "item_plank": 5,
+  "item_ingot": 10
+ },
+ "costs": {
+  "hire_clerk_market": 12,
+  "op_grill": 30,
+  "hire_fisherman": 45,
+  "raw_grill": 70,
+  "porter_grill": 100,
+  "zone_forest": 90,
+  "hire_clerk_trade": 50,
+  "op_sawmill": 110,
+  "hire_lumberjack": 150,
+  "raw_sawmill": 170,
+  "porter_sawmill": 220,
+  "zone_farm": 150,
+  "hire_clerk_bakery": 80,
+  "op_bakery": 260,
+  "hire_farmer": 380,
+  "raw_bakery": 340,
+  "porter_bakery": 420,
+  "zone_mine": 600,
+  "op_smelter": 480,
+  "hire_miner": 700,
+  "raw_smelter": 560,
+  "porter_smelter": 640,
+  "zone_hunt": 950,
+  "op_smokehouse": 760,
+  "hire_hunter": 1150,
+  "raw_smokehouse": 650,
+  "porter_smokehouse": 750
+ },
+ "payDuration": 1.6,
+ "stations": {
+  "grill": {
+   "time": 0.8,
+   "inputMax": 30,
+   "outputMax": 36
+  },
+  "sawmill": {
+   "time": 1,
+   "inputMax": 30,
+   "outputMax": 36
+  },
+  "bakery": {
+   "time": 1.1,
+   "inputMax": 30,
+   "outputMax": 36
+  },
+  "smelter": {
+   "time": 1.2,
+   "inputMax": 30,
+   "outputMax": 36
+  },
+  "smokehouse": {
+   "time": 1.2,
+   "inputMax": 30,
+   "outputMax": 36
+  }
+ },
+ "resources": {
+  "tree": {
+   "hp": 3,
+   "regrow": 7
+  },
+  "rock": {
+   "hp": 4,
+   "regrow": 9
+  },
+  "wheat": {
+   "growTime": 8,
+   "yield": 2
+  },
+  "net": {
+   "max": 6,
+   "refill": 1.1
+  },
+  "animal": {
+   "deer": 3,
+   "boar": 2,
+   "hp": 2,
+   "meat": 2,
+   "respawn": 6,
+   "speed": 55,
+   "fleeSpeed": 115,
+   "fleeRange": 120
+  }
+ },
+ "workers": {
+  "speed": 150,
+  "capacity": 5,
+  "porterCapacity": 14,
+  "cyclesPerItem": {
+   "fisherman": 2,
+   "lumberjack": 1,
+   "farmer": 1,
+   "miner": 1,
+   "hunter": 1
+  },
+  "hunterRange": 230
+ },
+ "customers": {
+  "spawnEvery": 2,
+  "spawnEveryLate": 1.3,
+  "maxQueue": 10,
+  "wantMin": 1,
+  "wantMax": 3,
+  "wantMaxLate": 5,
+  "takeInterval": 0.2,
+  "emptyCueS": 4,
+  "speed": 120,
+  "shelfMax": 40
+ },
+ "register": {
+  "chiefPayTime": 0.35,
+  "clerkPayTime": 0.55,
+  "clerkTradeSlow": 1.25
+ },
+ "population": {
+  "maxActive": 24,
+  "moveInDelay": 2.5,
+  "moveInGap": 2
+ },
+ "life": {
+  "walkSpeed": 70,
+  "runSpeed": 150,
+  "stayMin": 14,
+  "stayMax": 40,
+  "chatEvery": 5,
+  "snowballEvery": 16,
+  "tagEvery": 45,
+  "tagLength": 16,
+  "concertEvery": 80,
+  "concertLength": 24,
+  "snowmanStageTime": 9,
+  "snowmanKeep": 150,
+  "waveRange": 170,
+  "waveCooldown": 25,
+  "shiverChance": 0.08,
+  "bubbleTime": 2.6,
+  "partyLength": 22
+ },
+ "trade": {
+  "buyInterval": 0.28,
+  "shelfMax": 40
+ },
+ "market43": {
+  "stage3": {
+   "coins": 400,
+   "item_plank": 8
+  },
+  "stage4": {
+   "coins": 2000,
+   "item_plank": 20,
+   "item_ingot": 8
+  },
+  "stage4Old": 0.5,
+  "shelfMax": [
+   40,
+   40,
+   60,
+   80
+  ],
+  "spawnMul": [
+   1,
+   1,
+   1.1,
+   1.2
+  ],
+  "lineShow": 6,
+  "switchS": 4,
+  "clerk3": 150
+ },
+ "bakery43": {
+  "build": {
+   "coins": 70,
+   "item_plank": 4
+  },
+  "stallMax": 24,
+  "fullAt": 12,
+  "batch": 3,
+  "spawnEvery": 2.2,
+  "spawnEveryLate": 2.2,
+  "wantMax": 4,
+  "maxQueue": 5
+ },
+ "cash": {
+  "pileVisualMax": 48,
+  "collectInterval": 0.03
+ },
+ "autosaveEvery": 5,
+ "towers": {
+  "tower_east": {
+   "coins": 300,
+   "item_plank": 10,
+   "item_ingot": 0,
+   "time": 7
+  },
+  "tower_south": {
+   "coins": 1100,
+   "item_plank": 16,
+   "item_ingot": 4,
+   "time": 9
+  },
+  "tower_se": {
+   "coins": 1700,
+   "item_plank": 24,
+   "item_ingot": 10,
+   "time": 10
+  }
+ },
+ "buildings": {
+  "toolsmith": {
+   "coins": 400,
+   "item_plank": 8,
+   "item_ingot": 4,
+   "time": 9
+  },
+  "warehouse": {
+   "coins": 600,
+   "item_plank": 14,
+   "item_ingot": 4,
+   "time": 10
+  },
+  "boathouse": {
+   "coins": 700,
+   "item_plank": 12,
+   "item_ingot": 2,
+   "time": 10
+  },
+  "cannery": {
+   "coins": 1000,
+   "item_plank": 12,
+   "item_ingot": 6,
+   "time": 10
+  },
+  "store": {
+   "coins": 1300,
+   "item_plank": 16,
+   "item_ingot": 6,
+   "time": 10
+  },
+  "house_c": {
+   "coins": 80,
+   "item_plank": 6,
+   "item_ingot": 0,
+   "time": 6,
+   "people": 2
+  },
+  "house_a": {
+   "coins": 160,
+   "item_plank": 10,
+   "item_ingot": 0,
+   "time": 7,
+   "people": 3
+  },
+  "house_b": {
+   "coins": 320,
+   "item_plank": 10,
+   "item_ingot": 3,
+   "time": 8,
+   "people": 4
+  },
+  "town_hall": {
+   "coins": 1200,
+   "item_plank": 16,
+   "item_ingot": 4,
+   "time": 14
+  },
+  "big_restaurant": {
+   "coins": 1500,
+   "item_plank": 24,
+   "item_ingot": 6,
+   "time": 12
+  },
+  "deco_snowman": {
+   "coins": 120,
+   "item_plank": 0,
+   "item_ingot": 0,
+   "time": 3,
+   "happy": 2
+  },
+  "deco_bench": {
+   "coins": 90,
+   "item_plank": 4,
+   "item_ingot": 0,
+   "time": 3,
+   "happy": 1
+  },
+  "deco_lamp": {
+   "coins": 80,
+   "item_plank": 0,
+   "item_ingot": 1,
+   "time": 3,
+   "happy": 1
+  },
+  "deco_flowers": {
+   "coins": 160,
+   "item_plank": 3,
+   "item_ingot": 0,
+   "time": 4,
+   "happy": 2
+  },
+  "deco_rink": {
+   "coins": 400,
+   "item_plank": 0,
+   "item_ingot": 0,
+   "time": 5,
+   "happy": 3
+  },
+  "deco_playground": {
+   "coins": 550,
+   "item_plank": 12,
+   "item_ingot": 0,
+   "time": 6,
+   "happy": 4
+  },
+  "deco_fountain": {
+   "coins": 750,
+   "item_plank": 0,
+   "item_ingot": 4,
+   "time": 6,
+   "happy": 5
+  }
+ },
+ "population3": {
+  "baseCap": 19
+ },
+ "hire2": {
+  "hire2_lumberjack": 600,
+  "hire2_miner": 900,
+  "hire2_farmer": 800,
+  "hire2_fisherman": 500,
+  "hire2_hunter": 1200
+ },
+ "hire3": {
+  "hire3_fisherman": 450,
+  "hire3_lumberjack": 500,
+  "hire3_farmer": 600,
+  "hire3_hunter": 700
+ },
+ "costs3": {
+  "op_toolsmith": 220,
+  "op_cannery": 600,
+  "porter_toolsmith": 600,
+  "porter_cannery": 800,
+  "porter_dock": 600,
+  "hire_clerk_store": 400
+ },
+ "labour": {
+  "chiefSpeed": 1.25,
+  "pileMax": 40,
+  "rawCapacity": 8
+ },
+ "dog": {
+  "callRange": 140,
+  "stayTime": 12,
+  "treatCooldown": 25,
+  "playCooldown": 10,
+  "petCooldown": 15,
+  "treatLove": 8,
+  "playLove": 3,
+  "petLove": 3,
+  "trickAt": 50,
+  "giftAt": 75,
+  "giftEvery": 150,
+  "giftCoins": 6
+ },
+ "stations3": {
+  "toolsmith": {
+   "time": 3,
+   "inputMax": 8,
+   "outputMax": 12
+  },
+  "cannery": {
+   "time": 2.6,
+   "inputMax": 18,
+   "outputMax": 30
+  }
+ },
+ "prices3": {
+  "item_can": 12,
+  "item_can_meat": 12,
+  "item_axe": 40,
+  "item_pickaxe": 40,
+  "item_rod": 40,
+  "item_sickle": 40,
+  "item_bow": 40
+ },
+ "food": {
+  "boxMax": 20,
+  "orePerFood": 5,
+  "startGift": 6
+ },
+ "warehouse": {
+  "capacity": 300,
+  "porters": 2,
+  "crew": {
+   "from": 300,
+   "perMin": 70,
+   "cap": 6,
+   "window": 180,
+   "every": 60,
+   "bannerGap": 300,
+   "busyAt": 0.8,
+   "useFrom": 40,
+   "backlogS": 60
+  },
+  "overflowAt": 0.6,
+  "restockBelow": 0.25
+ },
+ "boats": {
+  "rowboat": {
+   "coins": 700,
+   "speed": 70,
+   "fishTime": 12,
+   "fish": 6,
+   "big": 0
+  },
+  "fishing": {
+   "coins": 1200,
+   "speed": 100,
+   "fishTime": 8,
+   "fish": 4,
+   "big": 4,
+   "tool": "item_rod"
+  },
+  "dockTime": 2.5
+ },
+ "build": {
+  "builders": 2,
+  "porterCapacity": 10
+ },
+ "v4": {
+  "station": {
+   "coins": 500,
+   "item_plank": 14,
+   "item_ingot": 4,
+   "time": 12
+  },
+  "train": {
+   "speed": 2.6,
+   "accel": 0.6,
+   "brake": 0.8,
+   "dwellOurs": 14,
+   "dwellTown": 10,
+   "seats": 12,
+   "coachSeats": 8,
+   "firstRide": 6,
+   "firstDelay": 3,
+   "whistleBefore": 2.5,
+   "blockAhead": 1.5
+  },
+  "visitors": {
+   "base": 4,
+   "perShop": 1,
+   "perRank": 3,
+   "dawn": 0.5,
+   "day": 1,
+   "dusk": 1.3,
+   "night": 0.1,
+   "wantMin": 2,
+   "wantMax": 4,
+   "patience": 60,
+   "shopChance": 0.45,
+   "storeChance": 0.25,
+   "regularAt": 3,
+   "speed": 105,
+   "maxInVillage": 24,
+   "bakeryChance": 0.35
+  },
+  "town": {
+   "people": 100,
+   "peopleRank2": 120,
+   "seed": 2611,
+   "walk": 70,
+   "tripChance": 0.35,
+   "inviteAfter": 480
+  },
+  "day": {
+   "on": true,
+   "length": 600,
+   "startHour": 8,
+   "darkness": 0.45,
+   "fade": 8,
+   "dawn": 6,
+   "dayStart": 8,
+   "dusk": 17,
+   "night": 20,
+   "lightsOn": 19,
+   "lightsOff": 6.5
+  },
+  "perf": {
+   "maxRigs": 32,
+   "maxRigsLow": 16,
+   "maxLite": 40,
+   "margin": 120,
+   "near": 600,
+   "maxGlows": 40
+  },
+  "townLife": {
+   "jitter": 0.4,
+   "school": {
+    "leave": 7.2,
+    "bell": 8,
+    "recess": 10.5,
+    "recessEnd": 10.83,
+    "lunch": 12,
+    "lunchEnd": 12.67,
+    "out": 15,
+    "home": 17.5
+   },
+   "teen": {
+    "cafe": 15.5,
+    "home": 17.5
+   },
+   "shop": {
+    "open": 7.67,
+    "lunch": 12,
+    "lunchEnd": 12.67,
+    "close": 18.5
+   },
+   "civic": {
+    "start": 7.75,
+    "teacherEnd": 16,
+    "end": 18
+   },
+   "adult": {
+    "out": 8,
+    "home": 19,
+    "walkChance": 0.3,
+    "walkEnd": 20,
+    "errandMin": 6,
+    "errandMax": 15,
+    "homeStay": 0.8,
+    "tripFrom": 13,
+    "tripTo": 18
+   },
+   "elder": {
+    "out": 9,
+    "cafe": 11,
+    "clinicChance": 0.2,
+    "home": 18,
+    "tripMorning": [
+     9,
+     12
+    ],
+    "tripAfternoon": [
+     14,
+     17
+    ]
+   },
+   "night": {
+    "dozers": 3,
+    "patrol": 1
+   }
+  },
+  "wholesale": {
+   "rate": 0.7
+  },
+  "orders": {
+   "cards": 3,
+   "swapAfter": 180,
+   "bonus": 0.5,
+   "standingBonus": 0.3,
+   "standingBonusRank2": 0.5,
+   "standing": [
+    {
+     "item_bread": 40
+    },
+    {
+     "item_fish_cooked": 50
+    },
+    {
+     "item_plank": 40
+    },
+    {
+     "item_ingot": 25
+    },
+    {
+     "item_can": 30
+    },
+    {
+     "item_meat_cooked": 25
+    }
+   ]
+  },
+  "founding": {
+   "buildTime": 25,
+   "ribbonAuto": 90,
+   "household": 2,
+   "order": [
+    "cafe",
+    "restaurant",
+    "carpenter_workshop",
+    "hardware_store",
+    "supermarket"
+   ],
+   "lots": {
+    "cafe": "lotA1",
+    "restaurant": "lotA2",
+    "carpenter_workshop": "lotA3",
+    "hardware_store": "lotB1",
+    "supermarket": "lotB5"
+   },
+   "shops": {
+    "cafe": {
+     "need": {
+      "item_bread": 30
+     },
+     "rent": 20,
+     "sells": [
+      "item_bread"
+     ],
+     "after": "zone_farm"
+    },
+    "restaurant": {
+     "need": {
+      "item_fish_cooked": 40,
+      "item_meat_cooked": 15
+     },
+     "rent": 30,
+     "sells": [
+      "item_fish_cooked",
+      "item_meat_cooked"
+     ],
+     "after": "zone_hunt"
+    },
+    "carpenter_workshop": {
+     "need": {
+      "item_plank": 50
+     },
+     "rent": 25,
+     "sells": [],
+     "after": "zone_forest"
+    },
+    "hardware_store": {
+     "need": {
+      "item_ingot": 25,
+      "item_axe": 1,
+      "item_pickaxe": 1
+     },
+     "rent": 30,
+     "sells": [
+      "item_axe",
+      "item_pickaxe",
+      "item_rod",
+      "item_sickle",
+      "item_bow"
+     ],
+     "after": "b:toolsmith"
+    },
+    "supermarket": {
+     "need": {
+      "item_can": 10,
+      "item_bread": 20
+     },
+     "rent": 40,
+     "sells": [
+      "item_can",
+      "item_bread"
+     ],
+     "after": "b:cannery"
+    }
+   },
+   "shopShelf": 20,
+   "inlandEvery": 40,
+   "restockBelow": 0.4,
+   "inlandEveryRank2": 20
+  },
+  "stationPorter": [
+   600,
+   1100
+  ],
+  "stationPorterCapacity": 12,
+  "stationPorterFoundingMin": 1,
+  "houses": {
+   "item_plank": 20,
+   "time": 30,
+   "people": 4,
+   "lots": [
+    "lotH1",
+    "lotH2",
+    "lotH3"
+   ],
+   "lotsRank2": [
+    "lotH4",
+    "lotH5",
+    "lotB2",
+    "lotB3"
+   ]
+  },
+  "rent": {
+   "cap": 2000,
+   "autoFromRank": 2,
+   "autoEvery": 15
+  },
+  "happiness": {
+   "window": 40,
+   "base": 30
+  },
+  "rank": {
+   "2": {
+    "people": 45,
+    "shops": 5,
+    "happy": 80,
+    "coins": 11000
+   }
+  },
+  "ceremony": {
+   "length": 12,
+   "skipAfter": 3
+  },
+  "tex": {
+   "mustMiB": 455,
+   "targetMiB": 300,
+   "lowMiB": 200,
+   "softGap": 24,
+   "uploadsPerSec": 10,
+   "socialPages": 5,
+   "socialTtl": 30,
+   "townTtl": 10
+  }
+ },
+ "civic": {
+  "hall": {
+   "taxPerPerson": 1.2,
+   "taxCap": 1500,
+   "people": 6,
+   "happy": 8
+  },
+  "restaurant": {
+   "dishMult": 1.3,
+   "comboMult": 1.6,
+   "comboChance": 0.4,
+   "spawnEvery": 5,
+   "maxQueue": 6,
+   "pantryMax": 30,
+   "cookTime": 1.4,
+   "cookTimeCombo": 2.4,
+   "eatTime": 9,
+   "eatTimeCombo": 13,
+   "patience": 70,
+   "serverCarry": 2,
+   "holdTickets": 3,
+   "tables": {
+    "offerS": 60,
+    "meals": [
+     150,
+     450
+    ],
+    "costs": [
+     1200,
+     2000
+    ]
+   },
+   "seatsPull": 0.5,
+   "backYardWait": 1,
+   "server2": {
+    "offerS": 60,
+    "cost": 1000
+   },
+   "visitorChance": 0.3,
+   "staff": {
+    "cashier": 450,
+    "cook": 700,
+    "server": 900
+   }
+  },
+  "happyCap": 12,
+  "settlers": {
+   "every": 45,
+   "householdMin": 1,
+   "householdMax": 2,
+   "maxVacant": 6
+  }
+ },
+ "logistics": {
+  "raw": {
+   "stayOnLine": true,
+   "localPx": 900,
+   "pileAt": 0.85,
+   "waitS": 4,
+   "workS": 15
+  },
+  "link": {
+   "fishToCannery": true,
+   "canneryBelow": 0.5,
+   "fishPileAt": 0.6
+  },
+  "cards": {
+   "surplusFirst": true,
+   "outAt": 0.8,
+   "outForS": 60
+  }
+ },
+ "meatcan": {
+  "cost": 1500,
+  "offerFullAt": 0.9,
+  "offerFullS": 90,
+  "meatIn": 3,
+  "out": 3,
+  "timeMult": 0.7,
+  "inPrio": 41,
+  "ingotUrgentBelow": 0.5,
+  "porterBag": 12,
+  "pileFrom": 0.5,
+  "pileKeep": 0.3,
+  "smokeHas": 0.5,
+  "shareAt": 12,
+  "loadMin": 10,
+  "loadWaitS": 10,
+  "jamExport": true,
+  "farAt": 0.8,
+  "farPx": 1500,
+  "storeGuestK": 0.75,
+  "storeQueueAdd": 2,
+  "padMax": 12,
+  "standing": 30
+ },
+ "v42": {
+  "aura": {
+   "ringPx": 70,
+   "fullZoom": 1.2,
+   "maxScale": 2,
+   "pinZoom": 0.8,
+   "crowdN": 4,
+   "crowdR": 160,
+   "glowDay": 0.35,
+   "glowNight": 0.6
+  },
+  "cheer": {
+   "mult": 1.1,
+   "still": 2,
+   "radius": 200
+  },
+  "pickup": {
+   "stillS": 0.35,
+   "stillSpeed": 20,
+   "gatherStillS": 0.35,
+   "tipSpeed": 0.6
+  },
+  "nav": {
+   "dotEvery": 48,
+   "maxDots": 16,
+   "hideNear": 90,
+   "replanEvery": 1,
+   "strayPx": 80,
+   "straightUnder": 360,
+   "rawDockPx": 1600,
+   "pinMaxS": 240,
+   "pinArrivePx": 90
+  },
+  "porters": {
+   "shelfEmptyPrio": 48,
+   "shelfEmptyAfter": 10,
+   "inputUrgentBelow": 0.25,
+   "inputCalmPrio": 42,
+   "travelPxPerPoint": 300,
+   "fullLoadAt": 0.7
+  },
+  "trade": {
+   "displayKeep": 2
+  },
+  "warehouse": {
+   "direct": true,
+   "directMinPrio": 40
+  },
+  "porter2": {
+   "fullAt": 0.8,
+   "fullForS": 45,
+   "costs": {
+    "grill": 500,
+    "sawmill": 600,
+    "bakery": 700,
+    "smelter": 800,
+    "smokehouse": 900,
+    "toolsmith": 700,
+    "cannery": 700,
+    "dock": 500
+   }
+  },
+  "station2": {
+   "timeMult": 0.66,
+   "costs": {
+    "grill": 900,
+    "sawmill": 1000,
+    "bakery": 1100,
+    "smelter": 1400,
+    "smokehouse": 1600
+   }
+  },
+  "surplus": {
+   "outAt": 0.7,
+   "outForS": 20,
+   "localPx": 1500,
+   "pileAt": 0.9,
+   "pileForS": 10,
+   "pileKeep": 8,
+   "whAt": 0.7,
+   "whKeep": 0.5,
+   "boatAt": 0.9,
+   "pileToWh": 0.85,
+   "pilePrio": 33,
+   "whRaw": true,
+   "rawMinLoad": 6
+  },
+  "stationPorter34": [
+   1000,
+   1500
+  ],
+  "freight": {
+   "perTrain": 56,
+   "big": 88,
+   "bigCost": 2000,
+   "bigOfferWait": 60,
+   "bigOfferS": 120,
+   "exportRate": 0.5,
+   "loadEvery": 0.14,
+   "surplusShare": 0.25
+  },
+  "depot": {
+   "site": {
+    "coins": 6000,
+    "item_plank": 40,
+    "item_ingot": 20,
+    "time": 20
+   },
+   "caps": {
+    "materials": 160,
+    "food": 160,
+    "goods": 120,
+    "tools": 60
+   },
+   "sleigh": {
+    "cap": 60,
+    "speed": 2.5,
+    "loadS": 8,
+    "secondCost": 2500,
+    "offerS": 120
+   },
+   "sleighShare": {
+    "depotShare": 0.5,
+    "minLoad": 8
+   },
+   "hire": {
+    "staff": [
+     1200,
+     2000,
+     3000
+    ],
+    "forklift": 3500,
+    "staffSell": 0.25,
+    "forkSell": 0.25,
+    "forkUnload": 0.5
+   },
+   "sell": {
+    "every": 8,
+    "rate": 0.6,
+    "open": 7,
+    "close": 20,
+    "perMin": {
+     "materials": 20,
+     "food": 30,
+     "goods": 20,
+     "tools": 6
+    },
+    "rawPerMin": 40,
+    "keep": {
+     "materials": 12,
+     "food": 12,
+     "goods": 10,
+     "tools": 4
+    },
+    "rawKeep": 8
+   },
+   "rawPrice": {
+    "item_fish_raw": 1,
+    "item_log": 1,
+    "item_wheat": 1,
+    "item_ore": 2,
+    "item_meat_raw": 3
+   },
+   "rawRack": 0.5
+  },
+  "office": {
+   "site": {
+    "coins": 1800,
+    "item_plank": 20,
+    "item_ingot": 6,
+    "time": 10
+   },
+   "hire": {
+    "sem": 500,
+    "ttal": 900,
+    "bok": 700,
+    "chong": 900
+   },
+   "revealPx": 260,
+   "revealHyst": 60,
+   "deskPadS": 0.4
+  },
+  "courier": {
+   "every": 60,
+   "rushAt": 1000,
+   "minPad": 100,
+   "speed": 150,
+   "vaultAt": 5000,
+   "from": 7,
+   "to": 21
+  },
+  "aide": {
+   "catchUp": 0.35,
+   "catchFrom": 16,
+   "catchFull": 256,
+   "pull": 3,
+   "back": 120,
+   "side": 60,
+   "backStill": 40,
+   "sideStill": 80,
+   "arrive": 14,
+   "routeFrom": 320,
+   "replan": 0.6,
+   "teleport": 900,
+   "minSpeed": 120,
+   "walkPx": 120,
+   "animMin": 0.6,
+   "animMax": 2.2
+  },
+  "bank": {
+   "site": {
+    "coins": 3000,
+    "item_plank": 24,
+    "item_ingot": 12,
+    "time": 12
+   }
+  },
+  "ledger": {
+   "window": 300,
+   "emptyS": 30,
+   "fullS": 60
+  },
+  "news": {
+   "hour": 6,
+   "keep": 3
+  },
+  "letters": {
+   "minH": 2,
+   "maxH": 4,
+   "maxUnread": 6,
+   "archiveDays": 2
+  },
+  "pilot": {
+   "decideEvery": 0.5,
+   "jitter": 0.1,
+   "hysteresis": 0.2,
+   "minZoom": 0.7,
+   "camLerp": 0.08,
+   "panKeys": 900,
+   "cutEvery": [
+    45,
+    90
+   ],
+   "cutHold": [
+    6,
+    8
+   ],
+   "cutRange": 2500,
+   "stuckSide": 3,
+   "stuckDrop": 8,
+   "breakAfter": 150,
+   "breakFor": 20,
+   "agenda": [
+    [
+     7,
+     9,
+     "office",
+     1.5
+    ],
+    [
+     9,
+     12,
+     "work",
+     1.3
+    ],
+    [
+     13,
+     17,
+     "work",
+     1.15
+    ],
+    [
+     17,
+     20,
+     "chat",
+     1.5
+    ],
+    [
+     17,
+     20,
+     "rest",
+     1.2
+    ]
+   ]
+  },
+  "train": {
+   "speed": 3.4,
+   "curve": 2.2,
+   "accel": 0.7,
+   "brake": 0.8,
+   "dwellOurs": 12,
+   "dwellTown": 8,
+   "coachSeats": 16,
+   "labels": 3
+  }
+ },
+ "deck": {
+  "reelS": 0.6,
+  "castS": 0.6,
+  "waitMin": 1,
+  "waitMax": 2.8,
+  "biteS": 0.25,
+  "fishReelS": 0.6,
+  "restS": 0.15,
+  "fishPerReel": 2
+ },
+ "hut": {
+  "office": {
+   "coins": 400,
+   "item_plank": 8,
+   "item_ingot": 0,
+   "time": 8
+  }
+ },
+ "houses43": [
+  {
+   "coins": 80,
+   "item_plank": 4
+  },
+  {
+   "coins": 160,
+   "item_plank": 6
+  }
+ ],
+ "goals43": {
+  "need": {
+   "staff": 2,
+   "st2": 1,
+   "deco": 2,
+   "dlv": 3,
+   "train": 3
+  },
+  "reward": {
+   "staff": 300,
+   "fork": 300,
+   "st2": 150,
+   "deco": 100,
+   "house": 100,
+   "dlv": 200,
+   "train": 200,
+   "shop": 150
+  },
+  "s4Early": false,
+  "taste": {
+   "standS": 0.6,
+   "len": 21,
+   "skipAfter": 3,
+   "cardAuto": 20
+  }
+ }
+}

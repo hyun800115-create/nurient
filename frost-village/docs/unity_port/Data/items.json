@@ -1,0 +1,93 @@
+{
+ "BAKERY_GOODS": [
+  "item_bread"
+ ],
+ "FISH": [
+  "item_fish_raw",
+  "item_fish_big"
+ ],
+ "FOODS": [
+  "item_fish_cooked",
+  "item_bread",
+  "item_meat_cooked"
+ ],
+ "GOODS": [
+  "item_plank",
+  "item_ingot"
+ ],
+ "ITEMS": [
+  "item_fish_raw",
+  "item_fish_cooked",
+  "item_log",
+  "item_plank",
+  "item_wheat",
+  "item_bread",
+  "item_ore",
+  "item_ingot",
+  "item_meat_raw",
+  "item_meat_cooked",
+  "item_can",
+  "item_fish_big",
+  "item_axe",
+  "item_pickaxe",
+  "item_rod",
+  "item_sickle",
+  "item_bow",
+  "item_can_meat"
+ ],
+ "MATERIALS": [
+  "item_plank",
+  "item_ingot"
+ ],
+ "MINER_FOOD": [
+  "item_bread",
+  "item_meat_cooked"
+ ],
+ "SHOP_FOODS": [
+  "item_fish_cooked",
+  "item_meat_cooked"
+ ],
+ "STORE_GOODS": [
+  "item_can",
+  "item_axe",
+  "item_pickaxe",
+  "item_rod",
+  "item_sickle",
+  "item_bow",
+  "item_can_meat"
+ ],
+ "TOOLS": [
+  "item_axe",
+  "item_pickaxe",
+  "item_rod",
+  "item_sickle",
+  "item_bow"
+ ],
+ "TOOL_OF": {
+  "lumberjack": "item_axe",
+  "miner": "item_pickaxe",
+  "fisherman": "item_rod",
+  "farmer": "item_sickle",
+  "hunter": "item_bow"
+ },
+ "PRICES": {
+  "item_fish_raw": 1,
+  "item_fish_cooked": 4,
+  "item_log": 1,
+  "item_plank": 5,
+  "item_wheat": 1,
+  "item_bread": 7,
+  "item_ore": 1,
+  "item_ingot": 10,
+  "item_meat_raw": 1,
+  "item_meat_cooked": 12,
+  "item_can": 12,
+  "item_fish_big": 1,
+  "item_axe": 40,
+  "item_pickaxe": 40,
+  "item_rod": 40,
+  "item_sickle": 40,
+  "item_bow": 40,
+  "item_can_meat": 12
+ }
+}

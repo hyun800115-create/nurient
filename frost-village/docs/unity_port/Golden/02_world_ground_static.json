@@ -1,0 +1,10606 @@
+{
+ "meta": {
+  "source": "frost-village src/data/world.js + Game.buildTrees/blockedForDecor + Ground.pathDecor, dumped by the spec writer",
+  "note": "visibleAtStart = new game (regions start+west open, every zone except plaza locked)"
+ },
+ "shore": {
+  "maxShore": 2467.8884860071707,
+  "seaH": 2508,
+  "samples": [
+   [
+    -1400,
+    357.29
+   ],
+   [
+    -1200,
+    386.49
+   ],
+   [
+    -1000,
+    382.3
+   ],
+   [
+    -800,
+    384.63
+   ],
+   [
+    -600,
+    360.87
+   ],
+   [
+    -400,
+    364.39
+   ],
+   [
+    -200,
+    352.48
+   ],
+   [
+    0,
+    385.77
+   ],
+   [
+    200,
+    383.71
+   ],
+   [
+    400,
+    385.81
+   ],
+   [
+    600,
+    359.35
+   ],
+   [
+    800,
+    364.25
+   ],
+   [
+    1000,
+    356.61
+   ],
+   [
+    1200,
+    378.61
+   ],
+   [
+    1400,
+    388.08
+   ],
+   [
+    1600,
+    384.1
+   ],
+   [
+    1800,
+    363.67
+   ],
+   [
+    2000,
+    373.16
+   ],
+   [
+    2200,
+    470.39
+   ],
+   [
+    2400,
+    576.03
+   ],
+   [
+    2600,
+    696.64
+   ],
+   [
+    2800,
+    785.82
+   ],
+   [
+    3000,
+    876.14
+   ],
+   [
+    3200,
+    953.68
+   ],
+   [
+    3400,
+    1075.45
+   ],
+   [
+    3600,
+    1173.93
+   ],
+   [
+    3800,
+    1296.82
+   ],
+   [
+    4000,
+    1383.69
+   ],
+   [
+    4200,
+    1480.85
+   ],
+   [
+    4400,
+    1552.4
+   ],
+   [
+    4600,
+    1671.93
+   ],
+   [
+    4800,
+    1778.06
+   ],
+   [
+    5000,
+    1893.83
+   ],
+   [
+    5200,
+    1985.04
+   ],
+   [
+    5400,
+    2078.82
+   ],
+   [
+    5600,
+    2159.47
+   ],
+   [
+    5800,
+    2262.77
+   ],
+   [
+    6000,
+    2383.85
+   ]
+  ]
+ },
+ "zones": {
+  "plaza": {
+   "center": [
+    990,
+    800
+   ],
+   "size": [
+    14,
+    14
+   ],
+   "floor": "ground_plaza",
+   "floorAlpha": 1,
+   "unlock": null,
+   "region": null,
+   "corners_LTRB": [
+    [
+     356.5,
+     800
+    ],
+    [
+     990,
+     483.18
+    ],
+    [
+     1623.5,
+     800
+    ],
+    [
+     990,
+     1116.82
+    ]
+   ]
+  },
+  "forest": {
+   "center": [
+    470,
+    1250
+   ],
+   "size": [
+    9,
+    9
+   ],
+   "floor": "ground_dirt",
+   "floorAlpha": 0.5,
+   "unlock": "zone_forest",
+   "region": null,
+   "corners_LTRB": [
+    [
+     62.75,
+     1250
+    ],
+    [
+     470,
+     1046.33
+    ],
+    [
+     877.25,
+     1250
+    ],
+    [
+     470,
+     1453.67
+    ]
+   ]
+  },
+  "farm": {
+   "center": [
+    1478,
+    1304
+   ],
+   "size": [
+    5,
+    8
+   ],
+   "floor": "ground_farm",
+   "floorAlpha": 1,
+   "unlock": "zone_farm",
+   "region": null,
+   "corners_LTRB": [
+    [
+     1183.88,
+     1337.94
+    ],
+    [
+     1545.88,
+     1156.9
+    ],
+    [
+     1772.13,
+     1270.06
+    ],
+    [
+     1410.13,
+     1451.1
+    ]
+   ]
+  },
+  "mine": {
+   "center": [
+    430,
+    1900
+   ],
+   "size": [
+    9,
+    9
+   ],
+   "floor": "ground_rock",
+   "floorAlpha": 1,
+   "unlock": "zone_mine",
+   "region": null,
+   "corners_LTRB": [
+    [
+     22.75,
+     1900
+    ],
+    [
+     430,
+     1696.33
+    ],
+    [
+     837.25,
+     1900
+    ],
+    [
+     430,
+     2103.67
+    ]
+   ]
+  },
+  "hunt": {
+   "center": [
+    1400,
+    1960
+   ],
+   "size": [
+    8.5,
+    8.5
+   ],
+   "floor": "ground_dirt",
+   "floorAlpha": 0.45,
+   "unlock": "zone_hunt",
+   "region": null,
+   "corners_LTRB": [
+    [
+     1015.38,
+     1960
+    ],
+    [
+     1400,
+     1767.64
+    ],
+    [
+     1784.63,
+     1960
+    ],
+    [
+     1400,
+     2152.35
+    ]
+   ]
+  },
+  "field2": {
+   "center": [
+    520,
+    2980
+   ],
+   "size": [
+    6.6,
+    6.6
+   ],
+   "floor": "ground_farm",
+   "floorAlpha": 1,
+   "unlock": null,
+   "region": "south",
+   "corners_LTRB": [
+    [
+     221.35,
+     2980
+    ],
+    [
+     520,
+     2830.64
+    ],
+    [
+     818.65,
+     2980
+    ],
+    [
+     520,
+     3129.36
+    ]
+   ]
+  },
+  "quarry": {
+   "center": [
+    2560,
+    2060
+   ],
+   "size": [
+    6.6,
+    6.6
+   ],
+   "floor": "ground_rock",
+   "floorAlpha": 1,
+   "unlock": null,
+   "region": "se",
+   "corners_LTRB": [
+    [
+     2261.35,
+     2060
+    ],
+    [
+     2560,
+     1910.64
+    ],
+    [
+     2858.65,
+     2060
+    ],
+    [
+     2560,
+     2209.36
+    ]
+   ]
+  }
+ },
+ "fences": [
+  {
+   "key": "fence_post",
+   "x": 1125.75,
+   "y": 551.07,
+   "zone": null,
+   "r": 16,
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1148.38,
+   "y": 562.38,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1193.63,
+   "y": 585.01,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1238.88,
+   "y": 607.64,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1284.13,
+   "y": 630.27,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1329.38,
+   "y": 652.91,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1374.63,
+   "y": 675.54,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1419.88,
+   "y": 698.17,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1465.13,
+   "y": 720.8,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1510.38,
+   "y": 743.43,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1555.63,
+   "y": 766.06,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1600.88,
+   "y": 788.69,
+   "zone": null,
+   "r": 22,
+   "edge": "plaza.tr",
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_post",
+   "x": 1623.5,
+   "y": 800,
+   "zone": null,
+   "r": 16,
+   "visibleAtStart": true
+  },
+  {
+   "key": "fence_log_y",
+   "x": 85.38,
+   "y": 1238.68,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 130.63,
+   "y": 1216.06,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 175.88,
+   "y": 1193.42,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 221.13,
+   "y": 1170.8,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 266.38,
+   "y": 1148.16,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 311.63,
+   "y": 1125.53,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 356.88,
+   "y": 1102.9,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 402.13,
+   "y": 1080.27,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 447.38,
+   "y": 1057.64,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 62.75,
+   "y": 1250,
+   "zone": "forest",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 470,
+   "y": 1046.33,
+   "zone": "forest",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 85.38,
+   "y": 1261.32,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 130.63,
+   "y": 1283.94,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 175.88,
+   "y": 1306.58,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 221.13,
+   "y": 1329.2,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 266.38,
+   "y": 1351.84,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 311.63,
+   "y": 1374.47,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 356.88,
+   "y": 1397.1,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 402.13,
+   "y": 1419.73,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 447.38,
+   "y": 1442.36,
+   "zone": "forest",
+   "r": 22,
+   "edge": "forest.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 470,
+   "y": 1453.67,
+   "zone": "forest",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1568.5,
+   "y": 1168.22,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1613.75,
+   "y": 1190.85,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1659,
+   "y": 1213.48,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1704.25,
+   "y": 1236.11,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1749.5,
+   "y": 1258.74,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1545.88,
+   "y": 1156.9,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1772.13,
+   "y": 1270.06,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1432.75,
+   "y": 1439.78,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1478,
+   "y": 1417.15,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1523.25,
+   "y": 1394.52,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1568.5,
+   "y": 1371.89,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1613.75,
+   "y": 1349.26,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1659,
+   "y": 1326.63,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1704.25,
+   "y": 1304,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1749.5,
+   "y": 1281.37,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1410.13,
+   "y": 1451.1,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1206.5,
+   "y": 1326.63,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1229.13,
+   "y": 1315.32,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1319.63,
+   "y": 1270.06,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1342.25,
+   "y": 1258.74,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1387.5,
+   "y": 1236.11,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1410.13,
+   "y": 1224.79,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1500.63,
+   "y": 1179.53,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1523.25,
+   "y": 1168.22,
+   "zone": "farm",
+   "r": 22,
+   "edge": "farm.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1183.88,
+   "y": 1337.94,
+   "zone": "farm",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 45.38,
+   "y": 1888.68,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 90.63,
+   "y": 1866.06,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 135.88,
+   "y": 1843.42,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 181.13,
+   "y": 1820.8,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 226.38,
+   "y": 1798.16,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 271.63,
+   "y": 1775.53,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 294.25,
+   "y": 1764.22,
+   "zone": "mine",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 22.75,
+   "y": 1900,
+   "zone": "mine",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 45.38,
+   "y": 1911.32,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 90.63,
+   "y": 1933.94,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 135.88,
+   "y": 1956.58,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 181.13,
+   "y": 1979.2,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 226.38,
+   "y": 2001.84,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 271.63,
+   "y": 2024.47,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 316.88,
+   "y": 2047.1,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 362.13,
+   "y": 2069.72,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 407.38,
+   "y": 2092.36,
+   "zone": "mine",
+   "r": 22,
+   "edge": "mine.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 430,
+   "y": 2103.67,
+   "zone": "mine",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1433.94,
+   "y": 1784.62,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1479.19,
+   "y": 1807.25,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1524.44,
+   "y": 1829.88,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1569.69,
+   "y": 1852.51,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1614.94,
+   "y": 1875.14,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1660.19,
+   "y": 1897.77,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1705.44,
+   "y": 1920.4,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1750.69,
+   "y": 1943.03,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tr",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1400,
+   "y": 1767.64,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1784.63,
+   "y": 1960,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1433.94,
+   "y": 2135.38,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1479.19,
+   "y": 2112.75,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1524.44,
+   "y": 2090.12,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1569.69,
+   "y": 2067.49,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1614.94,
+   "y": 2044.86,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1660.19,
+   "y": 2022.23,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1705.44,
+   "y": 1999.6,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1750.69,
+   "y": 1976.97,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.br",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1400,
+   "y": 2152.35,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1117.19,
+   "y": 2010.92,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1139.81,
+   "y": 2022.23,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1185.06,
+   "y": 2044.86,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1230.31,
+   "y": 2067.49,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1275.56,
+   "y": 2090.12,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1320.81,
+   "y": 2112.75,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_x",
+   "x": 1366.06,
+   "y": 2135.38,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.bl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1049.31,
+   "y": 1943.03,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1071.94,
+   "y": 1931.71,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1252.94,
+   "y": 1841.19,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1275.56,
+   "y": 1829.88,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1320.81,
+   "y": 1807.25,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_log_y",
+   "x": 1366.06,
+   "y": 1784.62,
+   "zone": "hunt",
+   "r": 22,
+   "edge": "hunt.tl",
+   "visibleAtStart": false
+  },
+  {
+   "key": "fence_post",
+   "x": 1015.38,
+   "y": 1960,
+   "zone": "hunt",
+   "r": 16,
+   "visibleAtStart": false
+  }
+ ],
+ "decor": [
+  {
+   "key": "dock_pier",
+   "x": 1460,
+   "y": 300,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "boat_small",
+   "x": 1650,
+   "y": 250,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "ice_chunk",
+   "x": 210,
+   "y": 318,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "ice_chunk",
+   "x": 470,
+   "y": 340,
+   "flip": false,
+   "scale": 0.7,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "boat_small",
+   "x": 1290,
+   "y": 214,
+   "flip": true,
+   "scale": 0.85,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "ice_chunk",
+   "x": 1305,
+   "y": 330,
+   "flip": false,
+   "scale": 0.55,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 800,
+   "y": 480,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": 1150,
+   "y": 470,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "crate",
+   "x": 1205,
+   "y": 492,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "crate",
+   "x": 1182,
+   "y": 448,
+   "flip": false,
+   "scale": 0.8,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "flag_pole",
+   "x": 1250,
+   "y": 530,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 14,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_a",
+   "x": 236,
+   "y": 512,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 345,
+   "y": 700,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": 1620,
+   "y": 545,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": 1640,
+   "y": 660,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 1720,
+   "y": 600,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "campfire",
+   "x": -45,
+   "y": 505,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "firewood_pile",
+   "x": 470,
+   "y": 498,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 36,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": 728,
+   "y": 503,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 393,
+   "y": 800,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 990,
+   "y": 1099,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 1271,
+   "y": 637,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bench",
+   "x": 637,
+   "y": 913,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 40,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": 1545,
+   "y": 800,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "crate",
+   "x": 1522,
+   "y": 826,
+   "flip": false,
+   "scale": 0.85,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": 1366,
+   "y": 657,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 1393,
+   "y": 934,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "tent_a",
+   "x": 660,
+   "y": 2380,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": "tent43_1",
+   "r": 80,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "tent_a",
+   "x": 1260,
+   "y": 2370,
+   "flip": true,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": "tent43_2",
+   "r": 80,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "tent_a",
+   "x": 880,
+   "y": 2392,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": "tent43_3",
+   "r": 80,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "tent_a",
+   "x": 1112,
+   "y": 2422,
+   "flip": true,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": "tent43_4",
+   "r": 80,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "campfire",
+   "x": 870,
+   "y": 2525,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "flag_pole",
+   "x": 1345,
+   "y": 2285,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 14,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 700,
+   "y": 2270,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 1080,
+   "y": 2560,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "firewood_pile",
+   "x": 760,
+   "y": 2500,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 36,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": 1200,
+   "y": 2500,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "crate",
+   "x": 1240,
+   "y": 2530,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bench",
+   "x": 975,
+   "y": 2555,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 40,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "hay_bale",
+   "x": 1340,
+   "y": 2470,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_a",
+   "x": 520,
+   "y": 2490,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": 1420,
+   "y": 2480,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 780,
+   "y": 2250,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": 820,
+   "y": 2420,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 1040,
+   "y": 1500,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 940,
+   "y": 1850,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "signpost",
+   "x": 940,
+   "y": 1520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": 1052,
+   "y": 1660,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 900,
+   "y": 1720,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": 1050,
+   "y": 1900,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "crate",
+   "x": 920,
+   "y": 2080,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": 900,
+   "y": 1250,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": 920,
+   "y": 1215,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "ice_chunk",
+   "x": 1060,
+   "y": 1760,
+   "flip": false,
+   "scale": 0.6,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "campfire",
+   "x": 740,
+   "y": 1575,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "tree_stump",
+   "x": 533,
+   "y": 1336,
+   "flip": false,
+   "scale": 1,
+   "zone": "forest",
+   "region": null,
+   "id": null,
+   "r": 18,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "farm43_hut",
+   "x": 1669,
+   "y": 1266,
+   "flip": false,
+   "scale": 1,
+   "zone": "farm",
+   "region": null,
+   "id": "farm43_hut",
+   "r": 62,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "farm43_scarecrow",
+   "x": 1401,
+   "y": 1279,
+   "flip": false,
+   "scale": 1,
+   "zone": "farm",
+   "region": null,
+   "id": null,
+   "r": 14,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "farm43_sledcart",
+   "x": 1587,
+   "y": 1207,
+   "flip": false,
+   "scale": 1,
+   "zone": "farm",
+   "region": null,
+   "id": null,
+   "r": 34,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "mine_entrance",
+   "x": 430,
+   "y": 1782,
+   "flip": false,
+   "scale": 1,
+   "zone": "mine",
+   "region": null,
+   "id": null,
+   "r": 120,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 625,
+   "y": 1821,
+   "flip": false,
+   "scale": 1,
+   "zone": "mine",
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "hay_bale",
+   "x": 1391,
+   "y": 2082,
+   "flip": false,
+   "scale": 1,
+   "zone": "hunt",
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bush_snow",
+   "x": 1563,
+   "y": 2023,
+   "flip": false,
+   "scale": 1,
+   "zone": "hunt",
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bush_snow",
+   "x": 1156,
+   "y": 1955,
+   "flip": false,
+   "scale": 1,
+   "zone": "hunt",
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 1264,
+   "y": 2046,
+   "flip": false,
+   "scale": 1,
+   "zone": "hunt",
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "signpost",
+   "x": 1880,
+   "y": 1005,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 2010,
+   "y": 905,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 2230,
+   "y": 1060,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "barrel",
+   "x": 2150,
+   "y": 690,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "crate",
+   "x": 2180,
+   "y": 712,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "crate",
+   "x": 2158,
+   "y": 735,
+   "flip": false,
+   "scale": 0.8,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "ice_chunk",
+   "x": 2620,
+   "y": 520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": false
+  },
+  {
+   "key": "ice_chunk",
+   "x": 2380,
+   "y": 420,
+   "flip": false,
+   "scale": 0.7,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": false
+  },
+  {
+   "key": "boat_small",
+   "x": 2760,
+   "y": 560,
+   "flip": true,
+   "scale": 0.9,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": false
+  },
+  {
+   "key": "firewood_pile",
+   "x": 2440,
+   "y": 1310,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 36,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "tree_stump",
+   "x": 2700,
+   "y": 1360,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 18,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "tree_stump",
+   "x": 2580,
+   "y": 1400,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 18,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bush_snow",
+   "x": 2180,
+   "y": 1020,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_a",
+   "x": 2440,
+   "y": 1440,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 2860,
+   "y": 880,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "campfire",
+   "x": 2060,
+   "y": 790,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bench",
+   "x": 2330,
+   "y": 960,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 40,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "flag_pole",
+   "x": 2480,
+   "y": 760,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "east",
+   "id": null,
+   "r": 14,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "hay_bale",
+   "x": 840,
+   "y": 2900,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "hay_bale",
+   "x": 880,
+   "y": 2930,
+   "flip": false,
+   "scale": 0.85,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "hay_bale",
+   "x": 260,
+   "y": 3260,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 1060,
+   "y": 2920,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 920,
+   "y": 3200,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "signpost",
+   "x": 1060,
+   "y": 3060,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "barrel",
+   "x": 640,
+   "y": 2760,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "crate",
+   "x": 670,
+   "y": 2785,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bush_snow",
+   "x": 1560,
+   "y": 2780,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_a",
+   "x": 420,
+   "y": 3290,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 1640,
+   "y": 3100,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "campfire",
+   "x": 560,
+   "y": 2700,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bench",
+   "x": 640,
+   "y": 2668,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "south",
+   "id": null,
+   "r": 40,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "mine_entrance",
+   "x": 2770,
+   "y": 1960,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 120,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "crate",
+   "x": 2380,
+   "y": 1880,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "barrel",
+   "x": 2410,
+   "y": 1905,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 2420,
+   "y": 2240,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "lamp_post",
+   "x": 2260,
+   "y": 2700,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "signpost",
+   "x": 2250,
+   "y": 2400,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "tree_stump",
+   "x": 2150,
+   "y": 1960,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 18,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_a",
+   "x": 2600,
+   "y": 2350,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_pile_b",
+   "x": 1980,
+   "y": 3200,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bush_snow",
+   "x": 2850,
+   "y": 2520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "bush_snow",
+   "x": 2200,
+   "y": 3150,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "firewood_pile",
+   "x": 2480,
+   "y": 2520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 36,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "campfire",
+   "x": 2440,
+   "y": 2620,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "ice_chunk",
+   "x": 2750,
+   "y": 3220,
+   "flip": false,
+   "scale": 0.6,
+   "zone": null,
+   "region": "se",
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": false
+  },
+  {
+   "key": "ice_chunk",
+   "x": -380,
+   "y": 330,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "ice_chunk",
+   "x": -1050,
+   "y": 322,
+   "flip": false,
+   "scale": 0.7,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "boat_small",
+   "x": -760,
+   "y": 262,
+   "flip": true,
+   "scale": 0.85,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": true,
+   "visibleAtStart": true
+  },
+  {
+   "key": "signpost",
+   "x": -40,
+   "y": 720,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": -190,
+   "y": 690,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": -470,
+   "y": 1080,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": -640,
+   "y": 1580,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lamp_post",
+   "x": -245,
+   "y": 1835,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 12,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_a",
+   "x": -140,
+   "y": 500,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": -520,
+   "y": 520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "barrel",
+   "x": -960,
+   "y": 520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 20,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "crate",
+   "x": -930,
+   "y": 546,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 26,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": -1250,
+   "y": 520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": -1300,
+   "y": 1250,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_a",
+   "x": -1000,
+   "y": 1450,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": -60,
+   "y": 1500,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_pile_b",
+   "x": -180,
+   "y": 2300,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 0,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "campfire",
+   "x": -260,
+   "y": 2350,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "firewood_pile",
+   "x": -310,
+   "y": 2450,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 36,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "hay_bale",
+   "x": -1220,
+   "y": 2100,
+   "flip": false,
+   "scale": 0.9,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 30,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "bush_snow",
+   "x": -820,
+   "y": 2200,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 24,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  },
+  {
+   "key": "flag_pole",
+   "x": -1000,
+   "y": 1520,
+   "flip": false,
+   "scale": 1,
+   "zone": null,
+   "region": null,
+   "id": null,
+   "r": 14,
+   "floatsInSea": false,
+   "visibleAtStart": true
+  }
+ ],
+ "trees": [
+  {
+   "src": "border#1",
+   "key": "tree_pine_snow",
+   "x": 1650.595,
+   "y": 412.012,
+   "flip": false,
+   "scale": 0.92586,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1773.607,
+   "y": 1423.514,
+   "flip": true,
+   "scale": 0.95012,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_snow",
+   "x": 1812.167,
+   "y": 1467.647,
+   "flip": true,
+   "scale": 0.96929,
+   "region": "east",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_a",
+   "x": 1765.129,
+   "y": 1514.519,
+   "flip": false,
+   "scale": 0.97391,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1717.999,
+   "y": 1571.731,
+   "flip": true,
+   "scale": 1.02175,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_snow",
+   "x": 1829.999,
+   "y": 1574.085,
+   "flip": true,
+   "scale": 0.946,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1807.679,
+   "y": 1699.489,
+   "flip": true,
+   "scale": 0.92703,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_a",
+   "x": 1744.28,
+   "y": 1725.202,
+   "flip": false,
+   "scale": 0.91397,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_a",
+   "x": 1784.573,
+   "y": 1791.826,
+   "flip": true,
+   "scale": 0.99345,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_snow",
+   "x": 1788.299,
+   "y": 1911.177,
+   "flip": true,
+   "scale": 1.1283,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1819.643,
+   "y": 2023.624,
+   "flip": false,
+   "scale": 1.08,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_snow",
+   "x": 1802.075,
+   "y": 2136.5,
+   "flip": false,
+   "scale": 1.11152,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1770.437,
+   "y": 2302.134,
+   "flip": false,
+   "scale": 0.91707,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1717.918,
+   "y": 2566.548,
+   "flip": true,
+   "scale": 0.98571,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_a",
+   "x": 1811.824,
+   "y": 2562.605,
+   "flip": true,
+   "scale": 1.11033,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_snow",
+   "x": 1658.671,
+   "y": 2617.238,
+   "flip": false,
+   "scale": 1.04691,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#1",
+   "key": "tree_pine_b",
+   "x": 1747.005,
+   "y": 2632.572,
+   "flip": true,
+   "scale": 0.99677,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#2",
+   "key": "tree_pine_b",
+   "x": -10.593,
+   "y": 2543.018,
+   "flip": false,
+   "scale": 1.01761,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#2",
+   "key": "tree_pine_snow",
+   "x": 106.256,
+   "y": 2566.868,
+   "flip": false,
+   "scale": 1.03055,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#2",
+   "key": "tree_pine_a",
+   "x": 225.443,
+   "y": 2568.78,
+   "flip": true,
+   "scale": 1.09048,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#2",
+   "key": "tree_pine_snow",
+   "x": 703.663,
+   "y": 2566.024,
+   "flip": false,
+   "scale": 0.93018,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#3",
+   "key": "tree_pine_snow",
+   "x": 1193.687,
+   "y": 2554.67,
+   "flip": false,
+   "scale": 0.96552,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#3",
+   "key": "tree_pine_snow",
+   "x": 1280.204,
+   "y": 2561.93,
+   "flip": false,
+   "scale": 0.95996,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#3",
+   "key": "tree_pine_a",
+   "x": 1721.118,
+   "y": 2555.043,
+   "flip": false,
+   "scale": 0.96642,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_snow",
+   "x": 2919.071,
+   "y": 890.268,
+   "flip": false,
+   "scale": 1.11616,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_snow",
+   "x": 2871.15,
+   "y": 956.985,
+   "flip": true,
+   "scale": 0.98795,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_b",
+   "x": 2984.649,
+   "y": 973.756,
+   "flip": false,
+   "scale": 1.0838,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_a",
+   "x": 2947.033,
+   "y": 1004.456,
+   "flip": false,
+   "scale": 1.06912,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_snow",
+   "x": 3003.663,
+   "y": 1017.829,
+   "flip": true,
+   "scale": 1.13696,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_b",
+   "x": 2871.406,
+   "y": 1070.5,
+   "flip": true,
+   "scale": 0.92825,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_a",
+   "x": 3004.708,
+   "y": 1072.099,
+   "flip": false,
+   "scale": 1.04673,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_a",
+   "x": 2914.161,
+   "y": 1111.107,
+   "flip": true,
+   "scale": 1.03052,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_snow",
+   "x": 3009.79,
+   "y": 1123.583,
+   "flip": true,
+   "scale": 1.08161,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_snow",
+   "x": 2968.796,
+   "y": 1173.233,
+   "flip": false,
+   "scale": 0.94922,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_a",
+   "x": 3009.843,
+   "y": 1222.638,
+   "flip": false,
+   "scale": 1.01601,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#4",
+   "key": "tree_pine_snow",
+   "x": 3007.289,
+   "y": 1447.727,
+   "flip": false,
+   "scale": 1.00012,
+   "region": "east",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 3049.533,
+   "y": 1557.803,
+   "flip": true,
+   "scale": 1.09417,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2936.658,
+   "y": 1650.987,
+   "flip": false,
+   "scale": 1.12775,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 3026.899,
+   "y": 1673.073,
+   "flip": true,
+   "scale": 1.00535,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2857.867,
+   "y": 1705.482,
+   "flip": false,
+   "scale": 1.06436,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 2978.705,
+   "y": 1718.362,
+   "flip": false,
+   "scale": 0.97131,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 2926.754,
+   "y": 1787.52,
+   "flip": false,
+   "scale": 0.98192,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 3051.469,
+   "y": 1780.41,
+   "flip": true,
+   "scale": 1.02126,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2859.566,
+   "y": 1840.156,
+   "flip": false,
+   "scale": 0.93654,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2992.285,
+   "y": 1817.508,
+   "flip": true,
+   "scale": 1.10527,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2944.472,
+   "y": 1886.896,
+   "flip": true,
+   "scale": 0.93777,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 3009.916,
+   "y": 1893.441,
+   "flip": true,
+   "scale": 1.0801,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2868.621,
+   "y": 1925.045,
+   "flip": false,
+   "scale": 0.9361,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2998.359,
+   "y": 1940.12,
+   "flip": true,
+   "scale": 0.90236,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2908.983,
+   "y": 1980.44,
+   "flip": false,
+   "scale": 0.9565,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 3034.606,
+   "y": 1986.907,
+   "flip": true,
+   "scale": 1.03843,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2987.45,
+   "y": 2055.787,
+   "flip": true,
+   "scale": 0.92779,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2949.834,
+   "y": 2094.461,
+   "flip": false,
+   "scale": 0.95244,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 3031.762,
+   "y": 2117.698,
+   "flip": true,
+   "scale": 1.00807,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2884.696,
+   "y": 2157.711,
+   "flip": true,
+   "scale": 1.12386,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 2988.44,
+   "y": 2168.23,
+   "flip": true,
+   "scale": 0.95518,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2913.817,
+   "y": 2226.122,
+   "flip": true,
+   "scale": 0.95501,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 3004.081,
+   "y": 2205.606,
+   "flip": false,
+   "scale": 1.08514,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2869.502,
+   "y": 2274.315,
+   "flip": false,
+   "scale": 0.90337,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2952.641,
+   "y": 2274.194,
+   "flip": false,
+   "scale": 1.06183,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 2909.761,
+   "y": 2334.863,
+   "flip": true,
+   "scale": 0.98333,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 3056.111,
+   "y": 2318.412,
+   "flip": true,
+   "scale": 1.07612,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2896.725,
+   "y": 2390.036,
+   "flip": false,
+   "scale": 0.96419,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2987.951,
+   "y": 2371.321,
+   "flip": true,
+   "scale": 1.06124,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2930.059,
+   "y": 2427.607,
+   "flip": true,
+   "scale": 0.90384,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 3028.31,
+   "y": 2435.786,
+   "flip": true,
+   "scale": 1.05878,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2868.274,
+   "y": 2480.092,
+   "flip": true,
+   "scale": 0.97625,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2985.427,
+   "y": 2495.618,
+   "flip": true,
+   "scale": 0.9295,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2910.342,
+   "y": 2548.366,
+   "flip": true,
+   "scale": 1.05681,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 3032.009,
+   "y": 2547.717,
+   "flip": true,
+   "scale": 1.14538,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2953.945,
+   "y": 2604.821,
+   "flip": false,
+   "scale": 1.09286,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 3004.367,
+   "y": 2644.037,
+   "flip": true,
+   "scale": 1.1223,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2970.52,
+   "y": 2698.04,
+   "flip": true,
+   "scale": 0.96664,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2902.96,
+   "y": 2758.291,
+   "flip": true,
+   "scale": 1.14739,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 3051.074,
+   "y": 2775.313,
+   "flip": false,
+   "scale": 0.98454,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 3003.416,
+   "y": 2815.008,
+   "flip": true,
+   "scale": 0.90313,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2929.237,
+   "y": 2870.056,
+   "flip": true,
+   "scale": 1.10071,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 3058.01,
+   "y": 2874.987,
+   "flip": false,
+   "scale": 0.96641,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 2865.845,
+   "y": 2935.56,
+   "flip": true,
+   "scale": 1.06197,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 3009.046,
+   "y": 2933.098,
+   "flip": false,
+   "scale": 1.00655,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2913.25,
+   "y": 2970.821,
+   "flip": true,
+   "scale": 0.93811,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2862.153,
+   "y": 3042.824,
+   "flip": true,
+   "scale": 0.95075,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2858.254,
+   "y": 3145.31,
+   "flip": true,
+   "scale": 1.04433,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2959.079,
+   "y": 3217.825,
+   "flip": false,
+   "scale": 1.14914,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_b",
+   "x": 2854.512,
+   "y": 3272.401,
+   "flip": true,
+   "scale": 0.94973,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2985.504,
+   "y": 3267.384,
+   "flip": true,
+   "scale": 0.94274,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_a",
+   "x": 2956.369,
+   "y": 3309.173,
+   "flip": true,
+   "scale": 1.02575,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2858.891,
+   "y": 3382.304,
+   "flip": false,
+   "scale": 1.13084,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2984.67,
+   "y": 3374.353,
+   "flip": false,
+   "scale": 1.06578,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#5",
+   "key": "tree_pine_snow",
+   "x": 2946.815,
+   "y": 3417.13,
+   "flip": true,
+   "scale": 0.97918,
+   "region": "se",
+   "until": "rail",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_b",
+   "x": 1893.241,
+   "y": 3384.026,
+   "flip": true,
+   "scale": 0.95159,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 1996.47,
+   "y": 3377.083,
+   "flip": true,
+   "scale": 0.9634,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2169.654,
+   "y": 3372.255,
+   "flip": false,
+   "scale": 1.05534,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_a",
+   "x": 2274.059,
+   "y": 3376.377,
+   "flip": true,
+   "scale": 0.94038,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_a",
+   "x": 2405.932,
+   "y": 3388.006,
+   "flip": false,
+   "scale": 1.14611,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2694.559,
+   "y": 3395.757,
+   "flip": true,
+   "scale": 0.98978,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_a",
+   "x": 2832.807,
+   "y": 3379.516,
+   "flip": true,
+   "scale": 1.03178,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2975.084,
+   "y": 3376.883,
+   "flip": false,
+   "scale": 1.01713,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_b",
+   "x": 2005.553,
+   "y": 3440.094,
+   "flip": false,
+   "scale": 1.10335,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2077.329,
+   "y": 3439.875,
+   "flip": true,
+   "scale": 0.92288,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_b",
+   "x": 2209.284,
+   "y": 3447.438,
+   "flip": true,
+   "scale": 1.12188,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2425.918,
+   "y": 3444.548,
+   "flip": false,
+   "scale": 0.95646,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2774.909,
+   "y": 3446.58,
+   "flip": true,
+   "scale": 1.147,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#6",
+   "key": "tree_pine_snow",
+   "x": 2900.491,
+   "y": 3433.788,
+   "flip": true,
+   "scale": 1.0194,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": -5.087,
+   "y": 2625.209,
+   "flip": false,
+   "scale": 0.93944,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 70.496,
+   "y": 2611.952,
+   "flip": false,
+   "scale": 1.10571,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 75.286,
+   "y": 2677.87,
+   "flip": true,
+   "scale": 1.03557,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 122.175,
+   "y": 2675.338,
+   "flip": false,
+   "scale": 1.00835,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": -3.319,
+   "y": 2738.245,
+   "flip": true,
+   "scale": 1.09001,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 72.272,
+   "y": 2735.201,
+   "flip": false,
+   "scale": 1.11415,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 57.047,
+   "y": 2780.197,
+   "flip": false,
+   "scale": 1.03816,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 166.353,
+   "y": 2776.465,
+   "flip": false,
+   "scale": 1.10973,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 21.386,
+   "y": 2850.336,
+   "flip": false,
+   "scale": 0.90406,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 121.673,
+   "y": 2849.539,
+   "flip": true,
+   "scale": 1.03581,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 73.044,
+   "y": 2904.201,
+   "flip": false,
+   "scale": 1.04861,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 120.531,
+   "y": 2886.785,
+   "flip": false,
+   "scale": 1.01358,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": -24.766,
+   "y": 2938.776,
+   "flip": true,
+   "scale": 1.00721,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 78.1,
+   "y": 2940.305,
+   "flip": false,
+   "scale": 0.95548,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 29.397,
+   "y": 2994.807,
+   "flip": true,
+   "scale": 0.9196,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 146.291,
+   "y": 2998.995,
+   "flip": false,
+   "scale": 0.91271,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 12.006,
+   "y": 3066.909,
+   "flip": false,
+   "scale": 1.09062,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 119.535,
+   "y": 3058.879,
+   "flip": true,
+   "scale": 1.03175,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 56.627,
+   "y": 3118.468,
+   "flip": true,
+   "scale": 1.11862,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 152.941,
+   "y": 3102.267,
+   "flip": false,
+   "scale": 1.12187,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": -7.1,
+   "y": 3174.395,
+   "flip": false,
+   "scale": 1.02949,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 127.875,
+   "y": 3170.859,
+   "flip": false,
+   "scale": 1.0307,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 69.209,
+   "y": 3215.934,
+   "flip": false,
+   "scale": 1.12701,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 142.214,
+   "y": 3218.396,
+   "flip": true,
+   "scale": 0.94439,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 14.341,
+   "y": 3272.572,
+   "flip": false,
+   "scale": 0.97805,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 92.431,
+   "y": 3272.394,
+   "flip": true,
+   "scale": 1.10604,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 68.455,
+   "y": 3328.6,
+   "flip": false,
+   "scale": 1.08759,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": 150.987,
+   "y": 3335.936,
+   "flip": false,
+   "scale": 1.08841,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_b",
+   "x": -3.945,
+   "y": 3397.694,
+   "flip": true,
+   "scale": 1.04575,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 119.995,
+   "y": 3385.816,
+   "flip": false,
+   "scale": 1.1213,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_snow",
+   "x": 60.048,
+   "y": 3434.941,
+   "flip": true,
+   "scale": 0.96304,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#7",
+   "key": "tree_pine_a",
+   "x": 170.774,
+   "y": 3430.636,
+   "flip": true,
+   "scale": 0.98598,
+   "region": "south",
+   "until": "west_s",
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_snow",
+   "x": 28.493,
+   "y": 3392.565,
+   "flip": true,
+   "scale": 1.0288,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_snow",
+   "x": 134.681,
+   "y": 3368.767,
+   "flip": true,
+   "scale": 1.12636,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_snow",
+   "x": 256.481,
+   "y": 3382.285,
+   "flip": true,
+   "scale": 0.99771,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_a",
+   "x": 315.982,
+   "y": 3394.362,
+   "flip": true,
+   "scale": 1.02238,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_snow",
+   "x": 440.64,
+   "y": 3392.932,
+   "flip": true,
+   "scale": 1.02611,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_a",
+   "x": 551.816,
+   "y": 3390.986,
+   "flip": false,
+   "scale": 1.09652,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_b",
+   "x": 168.809,
+   "y": 3437.695,
+   "flip": false,
+   "scale": 0.96727,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_snow",
+   "x": 271.558,
+   "y": 3426.012,
+   "flip": true,
+   "scale": 1.13079,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#8",
+   "key": "tree_pine_a",
+   "x": 433.732,
+   "y": 3438.776,
+   "flip": false,
+   "scale": 0.99172,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_a",
+   "x": 3710.644,
+   "y": 3365.181,
+   "flip": false,
+   "scale": 0.91227,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_b",
+   "x": 3825.124,
+   "y": 3367.776,
+   "flip": true,
+   "scale": 1.03054,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_snow",
+   "x": 3929.891,
+   "y": 3387.851,
+   "flip": true,
+   "scale": 1.09238,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_a",
+   "x": 4016.665,
+   "y": 3365.241,
+   "flip": true,
+   "scale": 0.94493,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_snow",
+   "x": 4120.936,
+   "y": 3365.563,
+   "flip": true,
+   "scale": 0.91853,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_snow",
+   "x": 3714.842,
+   "y": 3437.204,
+   "flip": false,
+   "scale": 0.94914,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_snow",
+   "x": 3895.127,
+   "y": 3449.262,
+   "flip": true,
+   "scale": 0.90348,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#9",
+   "key": "tree_pine_snow",
+   "x": 4121.37,
+   "y": 3426.185,
+   "flip": true,
+   "scale": 1.12971,
+   "region": "rail",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4145.819,
+   "y": 3365.479,
+   "flip": true,
+   "scale": 1.12128,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_a",
+   "x": 4257.057,
+   "y": 3386.425,
+   "flip": false,
+   "scale": 1.04068,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 4354.713,
+   "y": 3383.888,
+   "flip": false,
+   "scale": 1.0499,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4485.493,
+   "y": 3364.947,
+   "flip": false,
+   "scale": 1.10085,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4629.584,
+   "y": 3390.644,
+   "flip": true,
+   "scale": 1.12616,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_a",
+   "x": 4738.882,
+   "y": 3375.499,
+   "flip": false,
+   "scale": 1.02767,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_a",
+   "x": 4824.135,
+   "y": 3381.573,
+   "flip": false,
+   "scale": 0.9206,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4934.62,
+   "y": 3389.173,
+   "flip": false,
+   "scale": 1.00455,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5063.956,
+   "y": 3382.242,
+   "flip": false,
+   "scale": 1.04163,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_a",
+   "x": 5214.809,
+   "y": 3365.796,
+   "flip": true,
+   "scale": 1.08919,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5322.812,
+   "y": 3395.535,
+   "flip": true,
+   "scale": 1.12816,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 5412.884,
+   "y": 3376.409,
+   "flip": false,
+   "scale": 1.10187,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 5526.04,
+   "y": 3373.608,
+   "flip": false,
+   "scale": 0.99379,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5649.821,
+   "y": 3372.773,
+   "flip": true,
+   "scale": 0.97069,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5756.07,
+   "y": 3396.821,
+   "flip": false,
+   "scale": 1.0811,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 5895.413,
+   "y": 3386.95,
+   "flip": true,
+   "scale": 0.91639,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 5997.483,
+   "y": 3379.068,
+   "flip": false,
+   "scale": 0.98312,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 6072.386,
+   "y": 3369.613,
+   "flip": true,
+   "scale": 1.05113,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 4226.904,
+   "y": 3448.348,
+   "flip": true,
+   "scale": 1.11179,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4533.203,
+   "y": 3432.757,
+   "flip": true,
+   "scale": 0.90071,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4669.701,
+   "y": 3433.509,
+   "flip": false,
+   "scale": 1.1272,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 4775.377,
+   "y": 3442.132,
+   "flip": true,
+   "scale": 1.12869,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 4873.964,
+   "y": 3434.501,
+   "flip": true,
+   "scale": 1.0562,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5036.863,
+   "y": 3431.995,
+   "flip": true,
+   "scale": 0.96483,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5100.024,
+   "y": 3427.589,
+   "flip": true,
+   "scale": 1.05127,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_b",
+   "x": 5274.753,
+   "y": 3440.957,
+   "flip": true,
+   "scale": 1.14823,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5329.357,
+   "y": 3427.321,
+   "flip": true,
+   "scale": 1.03685,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5496.891,
+   "y": 3449.126,
+   "flip": false,
+   "scale": 0.92787,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5730.292,
+   "y": 3445.321,
+   "flip": false,
+   "scale": 1.04364,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5808.517,
+   "y": 3430.916,
+   "flip": false,
+   "scale": 1.10784,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 5907.293,
+   "y": 3442.486,
+   "flip": false,
+   "scale": 0.99888,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#10",
+   "key": "tree_pine_snow",
+   "x": 6017.945,
+   "y": 3445.228,
+   "flip": true,
+   "scale": 1.08404,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_snow",
+   "x": 6079.725,
+   "y": 2896.82,
+   "flip": true,
+   "scale": 0.94534,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_a",
+   "x": 5996.025,
+   "y": 2935.594,
+   "flip": false,
+   "scale": 0.92935,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_snow",
+   "x": 6117.676,
+   "y": 2933.12,
+   "flip": true,
+   "scale": 0.94179,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_snow",
+   "x": 6059.872,
+   "y": 2998.797,
+   "flip": false,
+   "scale": 1.05432,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_a",
+   "x": 6053.128,
+   "y": 3045.147,
+   "flip": true,
+   "scale": 1.10121,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_snow",
+   "x": 6081.778,
+   "y": 3119.717,
+   "flip": true,
+   "scale": 1.0178,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_b",
+   "x": 5998.753,
+   "y": 3161.541,
+   "flip": false,
+   "scale": 0.93667,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_a",
+   "x": 6113.228,
+   "y": 3151.975,
+   "flip": true,
+   "scale": 0.93692,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_b",
+   "x": 6069.252,
+   "y": 3229.372,
+   "flip": true,
+   "scale": 0.91073,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_b",
+   "x": 5997.955,
+   "y": 3272.626,
+   "flip": true,
+   "scale": 1.14772,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_snow",
+   "x": 6094.189,
+   "y": 3265.95,
+   "flip": true,
+   "scale": 0.99791,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_snow",
+   "x": 6065.46,
+   "y": 3336.982,
+   "flip": true,
+   "scale": 1.01159,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_a",
+   "x": 5998.322,
+   "y": 3374.64,
+   "flip": false,
+   "scale": 0.99254,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#11",
+   "key": "tree_pine_a",
+   "x": 6054.791,
+   "y": 3423.478,
+   "flip": true,
+   "scale": 1.03918,
+   "region": "town",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1310.959,
+   "y": 418.313,
+   "flip": true,
+   "scale": 1.08307,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1336.425,
+   "y": 477.249,
+   "flip": false,
+   "scale": 1.04259,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1270.436,
+   "y": 472.512,
+   "flip": true,
+   "scale": 1.01817,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1373.035,
+   "y": 534.006,
+   "flip": true,
+   "scale": 0.96226,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1292.442,
+   "y": 542.301,
+   "flip": false,
+   "scale": 1.07354,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1339.933,
+   "y": 583.538,
+   "flip": true,
+   "scale": 0.9401,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1229.502,
+   "y": 579.604,
+   "flip": false,
+   "scale": 1.04888,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1294.358,
+   "y": 631.146,
+   "flip": false,
+   "scale": 1.10885,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1378.402,
+   "y": 709.092,
+   "flip": true,
+   "scale": 1.10765,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1253.854,
+   "y": 692.25,
+   "flip": true,
+   "scale": 1.09777,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1318.246,
+   "y": 751.766,
+   "flip": true,
+   "scale": 1.01998,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1325.772,
+   "y": 817.433,
+   "flip": true,
+   "scale": 1.07976,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1236.381,
+   "y": 801.455,
+   "flip": false,
+   "scale": 1.05243,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1353.164,
+   "y": 910.114,
+   "flip": false,
+   "scale": 0.91471,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1376.145,
+   "y": 967.153,
+   "flip": true,
+   "scale": 1.1408,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1323.963,
+   "y": 969.94,
+   "flip": true,
+   "scale": 1.08824,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1376.088,
+   "y": 1028.922,
+   "flip": false,
+   "scale": 0.93154,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1261.426,
+   "y": 1028.743,
+   "flip": false,
+   "scale": 0.98625,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1353.926,
+   "y": 1123.517,
+   "flip": true,
+   "scale": 1.11656,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1370.242,
+   "y": 1177.073,
+   "flip": false,
+   "scale": 0.99251,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1323.003,
+   "y": 1259.042,
+   "flip": false,
+   "scale": 0.90176,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1271.5,
+   "y": 1243.372,
+   "flip": false,
+   "scale": 0.90156,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1324.268,
+   "y": 1300.861,
+   "flip": true,
+   "scale": 0.94895,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1378.385,
+   "y": 1345.811,
+   "flip": true,
+   "scale": 1.08413,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1292.069,
+   "y": 1404.575,
+   "flip": true,
+   "scale": 1.02233,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1323.686,
+   "y": 1478.454,
+   "flip": true,
+   "scale": 1.00427,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1270.072,
+   "y": 1472.953,
+   "flip": false,
+   "scale": 1.14249,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1314.046,
+   "y": 1528.463,
+   "flip": false,
+   "scale": 1.12249,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1374.461,
+   "y": 1583.279,
+   "flip": false,
+   "scale": 0.93253,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1253.488,
+   "y": 1567.014,
+   "flip": false,
+   "scale": 1.09601,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1328.158,
+   "y": 1787.224,
+   "flip": false,
+   "scale": 1.08403,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1316.752,
+   "y": 1956.421,
+   "flip": false,
+   "scale": 1.0787,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1363.146,
+   "y": 2025.278,
+   "flip": false,
+   "scale": 1.01181,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1296.004,
+   "y": 2078.8,
+   "flip": true,
+   "scale": 1.144,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1369.576,
+   "y": 2128.258,
+   "flip": true,
+   "scale": 0.91603,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1224.11,
+   "y": 2133.863,
+   "flip": true,
+   "scale": 0.93201,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1303.174,
+   "y": 2192.484,
+   "flip": true,
+   "scale": 0.91268,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1322.805,
+   "y": 2249.56,
+   "flip": false,
+   "scale": 1.14102,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1249.653,
+   "y": 2236.386,
+   "flip": true,
+   "scale": 0.91547,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1300.221,
+   "y": 2297.605,
+   "flip": true,
+   "scale": 0.9984,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1370.849,
+   "y": 2332.192,
+   "flip": true,
+   "scale": 1.13596,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1267.396,
+   "y": 2358.164,
+   "flip": true,
+   "scale": 1.00932,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_a",
+   "x": -1312.358,
+   "y": 2399.908,
+   "flip": false,
+   "scale": 1.11005,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1369.33,
+   "y": 2461.058,
+   "flip": true,
+   "scale": 1.10692,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1251.447,
+   "y": 2458.263,
+   "flip": false,
+   "scale": 1.0114,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1291.626,
+   "y": 2500.821,
+   "flip": false,
+   "scale": 1.13091,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1338.933,
+   "y": 2554.56,
+   "flip": true,
+   "scale": 1.06818,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_b",
+   "x": -1229.214,
+   "y": 2560.701,
+   "flip": true,
+   "scale": 1.10812,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#12",
+   "key": "tree_pine_snow",
+   "x": -1329.997,
+   "y": 2631.423,
+   "flip": false,
+   "scale": 0.99617,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_snow",
+   "x": -1280.426,
+   "y": 2572.228,
+   "flip": false,
+   "scale": 1.05566,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_b",
+   "x": -1177.385,
+   "y": 2545.579,
+   "flip": true,
+   "scale": 0.91909,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_snow",
+   "x": -1054.346,
+   "y": 2557.389,
+   "flip": false,
+   "scale": 1.06446,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_snow",
+   "x": -959.918,
+   "y": 2568.243,
+   "flip": false,
+   "scale": 1.00835,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_a",
+   "x": -844.929,
+   "y": 2565.151,
+   "flip": false,
+   "scale": 1.09749,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_a",
+   "x": -722.523,
+   "y": 2573.216,
+   "flip": false,
+   "scale": 1.11727,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_snow",
+   "x": -217.05,
+   "y": 2564.66,
+   "flip": true,
+   "scale": 1.11349,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_a",
+   "x": -125.681,
+   "y": 2563.317,
+   "flip": true,
+   "scale": 0.99974,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#13",
+   "key": "tree_pine_a",
+   "x": 7.943,
+   "y": 2556.567,
+   "flip": false,
+   "scale": 0.92123,
+   "region": "start",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1379.994,
+   "y": 2613.364,
+   "flip": false,
+   "scale": 1.02789,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_b",
+   "x": -1329.837,
+   "y": 2627.252,
+   "flip": false,
+   "scale": 0.93205,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1341.388,
+   "y": 2687.717,
+   "flip": true,
+   "scale": 1.1478,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1263.614,
+   "y": 2683.625,
+   "flip": true,
+   "scale": 0.9589,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1281.8,
+   "y": 2727.575,
+   "flip": true,
+   "scale": 1.04062,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1373.91,
+   "y": 2792.947,
+   "flip": true,
+   "scale": 1.13764,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_a",
+   "x": -1260.393,
+   "y": 2777.076,
+   "flip": false,
+   "scale": 0.99186,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1280.628,
+   "y": 2830.318,
+   "flip": false,
+   "scale": 1.13176,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1379.12,
+   "y": 2908.377,
+   "flip": true,
+   "scale": 0.90958,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_b",
+   "x": -1252.056,
+   "y": 2884.487,
+   "flip": true,
+   "scale": 0.92785,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1293.538,
+   "y": 2942.47,
+   "flip": false,
+   "scale": 1.12371,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_b",
+   "x": -1358.464,
+   "y": 3012.666,
+   "flip": true,
+   "scale": 1.14814,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_a",
+   "x": -1270.779,
+   "y": 3008.078,
+   "flip": false,
+   "scale": 1.0983,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_a",
+   "x": -1289.137,
+   "y": 3048.83,
+   "flip": false,
+   "scale": 0.97109,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1339.755,
+   "y": 3115.678,
+   "flip": true,
+   "scale": 1.13391,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_a",
+   "x": -1239.061,
+   "y": 3115.988,
+   "flip": true,
+   "scale": 1.02538,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1272.036,
+   "y": 3172.017,
+   "flip": true,
+   "scale": 0.965,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_b",
+   "x": -1343.435,
+   "y": 3234.522,
+   "flip": true,
+   "scale": 0.93549,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1264.139,
+   "y": 3212.377,
+   "flip": true,
+   "scale": 1.14338,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1315.443,
+   "y": 3281.642,
+   "flip": false,
+   "scale": 1.06868,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1334.567,
+   "y": 3326.064,
+   "flip": true,
+   "scale": 0.91471,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_b",
+   "x": -1220.545,
+   "y": 3323.966,
+   "flip": false,
+   "scale": 0.91349,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#14",
+   "key": "tree_pine_snow",
+   "x": -1306.743,
+   "y": 3390.014,
+   "flip": false,
+   "scale": 1.06565,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_a",
+   "x": -1310.891,
+   "y": 3367.494,
+   "flip": false,
+   "scale": 0.92459,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -1198.52,
+   "y": 3391.381,
+   "flip": false,
+   "scale": 1.0031,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -1029.047,
+   "y": 3366.201,
+   "flip": true,
+   "scale": 1.04137,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -924.12,
+   "y": 3364.336,
+   "flip": false,
+   "scale": 1.08907,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -815.499,
+   "y": 3368.551,
+   "flip": true,
+   "scale": 0.95078,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_a",
+   "x": -714.619,
+   "y": 3365.18,
+   "flip": false,
+   "scale": 0.90435,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -603.556,
+   "y": 3372.322,
+   "flip": false,
+   "scale": 0.91691,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -481.316,
+   "y": 3375.664,
+   "flip": false,
+   "scale": 1.09957,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -332.525,
+   "y": 3395.675,
+   "flip": true,
+   "scale": 1.01781,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -216.494,
+   "y": 3377.765,
+   "flip": false,
+   "scale": 1.13155,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -144.444,
+   "y": 3378.43,
+   "flip": false,
+   "scale": 1.11846,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": 2.974,
+   "y": 3371.584,
+   "flip": true,
+   "scale": 0.95632,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -1120.74,
+   "y": 3444.167,
+   "flip": true,
+   "scale": 0.96391,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -994.134,
+   "y": 3439.527,
+   "flip": true,
+   "scale": 1.02569,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_a",
+   "x": -890.394,
+   "y": 3431.479,
+   "flip": false,
+   "scale": 1.01007,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_b",
+   "x": -631.609,
+   "y": 3432.737,
+   "flip": false,
+   "scale": 0.92278,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -558.363,
+   "y": 3439.968,
+   "flip": true,
+   "scale": 1.06602,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -436.309,
+   "y": 3445.889,
+   "flip": true,
+   "scale": 1.02501,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": -282.895,
+   "y": 3436.394,
+   "flip": false,
+   "scale": 1.13295,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#15",
+   "key": "tree_pine_snow",
+   "x": 4.263,
+   "y": 3449.767,
+   "flip": true,
+   "scale": 1.0911,
+   "region": "west_s",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_snow",
+   "x": -1213.313,
+   "y": 2196.479,
+   "flip": false,
+   "scale": 1.05621,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_a",
+   "x": -1173.858,
+   "y": 2250.797,
+   "flip": true,
+   "scale": 0.90831,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_a",
+   "x": -1219.221,
+   "y": 2317.055,
+   "flip": false,
+   "scale": 0.9012,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_b",
+   "x": -1128.602,
+   "y": 2325.303,
+   "flip": true,
+   "scale": 0.95555,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_snow",
+   "x": -1188.308,
+   "y": 2390.434,
+   "flip": true,
+   "scale": 0.93433,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_snow",
+   "x": -1077.6,
+   "y": 2367.205,
+   "flip": true,
+   "scale": 0.90203,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_snow",
+   "x": -974.61,
+   "y": 2366.645,
+   "flip": true,
+   "scale": 0.96681,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_snow",
+   "x": -1235.708,
+   "y": 2461.331,
+   "flip": true,
+   "scale": 1.14422,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_b",
+   "x": -1149.812,
+   "y": 2432.436,
+   "flip": true,
+   "scale": 1.07248,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_a",
+   "x": -968.526,
+   "y": 2438.095,
+   "flip": false,
+   "scale": 0.97694,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_b",
+   "x": -1211.17,
+   "y": 2519.396,
+   "flip": false,
+   "scale": 1.08337,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_snow",
+   "x": -1090.748,
+   "y": 2504.057,
+   "flip": false,
+   "scale": 0.97553,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#16",
+   "key": "tree_pine_a",
+   "x": -920.881,
+   "y": 2524.323,
+   "flip": false,
+   "scale": 1.0975,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#17",
+   "key": "tree_pine_snow",
+   "x": -749.71,
+   "y": 2350.978,
+   "flip": true,
+   "scale": 1.08525,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#17",
+   "key": "tree_pine_a",
+   "x": -626.912,
+   "y": 2351.553,
+   "flip": true,
+   "scale": 0.90346,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#17",
+   "key": "tree_pine_snow",
+   "x": -806.709,
+   "y": 2421.363,
+   "flip": true,
+   "scale": 0.9222,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#17",
+   "key": "tree_pine_a",
+   "x": -688.898,
+   "y": 2408.485,
+   "flip": true,
+   "scale": 1.07436,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#17",
+   "key": "tree_pine_a",
+   "x": -755.843,
+   "y": 2470.815,
+   "flip": true,
+   "scale": 1.05238,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "border#17",
+   "key": "tree_pine_b",
+   "x": -657.783,
+   "y": 2470.431,
+   "flip": false,
+   "scale": 1.11271,
+   "region": "west",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_a",
+   "x": 760,
+   "y": 2220,
+   "flip": true,
+   "scale": 1,
+   "region": null,
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_a",
+   "x": 180,
+   "y": 2260,
+   "flip": true,
+   "scale": 1,
+   "region": null,
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_b",
+   "x": -1230,
+   "y": 1480,
+   "flip": true,
+   "scale": 1,
+   "region": null,
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_b",
+   "x": -130,
+   "y": 1900,
+   "flip": true,
+   "scale": 1,
+   "region": null,
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": -60,
+   "y": 2060,
+   "flip": true,
+   "scale": 1,
+   "region": null,
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": true
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": 2120,
+   "y": 1420,
+   "flip": true,
+   "scale": 1,
+   "region": "east",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_b",
+   "x": 2250,
+   "y": 1440,
+   "flip": true,
+   "scale": 1,
+   "region": "east",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": 300,
+   "y": 2780,
+   "flip": true,
+   "scale": 1,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_a",
+   "x": 180,
+   "y": 3150,
+   "flip": true,
+   "scale": 1,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_b",
+   "x": 1650,
+   "y": 2760,
+   "flip": true,
+   "scale": 1,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": 1700,
+   "y": 3020,
+   "flip": true,
+   "scale": 1,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_a",
+   "x": 880,
+   "y": 2800,
+   "flip": true,
+   "scale": 1,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": 1240,
+   "y": 2720,
+   "flip": true,
+   "scale": 1,
+   "region": "south",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": 1980,
+   "y": 1700,
+   "flip": true,
+   "scale": 1,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_b",
+   "x": 2850,
+   "y": 2250,
+   "flip": true,
+   "scale": 1,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_a",
+   "x": 1950,
+   "y": 2600,
+   "flip": true,
+   "scale": 1,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_a",
+   "x": 2820,
+   "y": 2950,
+   "flip": true,
+   "scale": 1,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_snow",
+   "x": 2150,
+   "y": 2150,
+   "flip": true,
+   "scale": 1,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "extra",
+   "key": "tree_pine_b",
+   "x": 2480,
+   "y": 2860,
+   "flip": true,
+   "scale": 1,
+   "region": "se",
+   "until": null,
+   "choppable": false,
+   "visibleAtStart": false
+  },
+  {
+   "src": "forest",
+   "key": "tree_pine_snow",
+   "x": 328.787,
+   "y": 1159.978,
+   "flip": false,
+   "scale": 0.9,
+   "zone": "forest",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "forest",
+   "key": "tree_pine_a",
+   "x": 426.427,
+   "y": 1201.75,
+   "flip": false,
+   "scale": 0.9,
+   "zone": "forest",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "forest-extra",
+   "key": "tree_pine_b",
+   "x": 488.1,
+   "y": 1286.208,
+   "flip": false,
+   "scale": 0.9,
+   "zone": "forest",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "forest-extra",
+   "key": "tree_pine_b",
+   "x": 442.85,
+   "y": 1345.046,
+   "flip": false,
+   "scale": 0.9,
+   "zone": "forest",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_a",
+   "x": 2620,
+   "y": 1290,
+   "flip": false,
+   "scale": 0.9,
+   "region": "east",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_b",
+   "x": 2690,
+   "y": 1360,
+   "flip": false,
+   "scale": 0.9,
+   "region": "east",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_a",
+   "x": 2590,
+   "y": 1420,
+   "flip": false,
+   "scale": 0.9,
+   "region": "east",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_snow",
+   "x": 2780,
+   "y": 1420,
+   "flip": false,
+   "scale": 0.9,
+   "region": "east",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_snow",
+   "x": 230,
+   "y": 2860,
+   "flip": false,
+   "scale": 0.9,
+   "region": "south",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_a",
+   "x": 320,
+   "y": 2940,
+   "flip": false,
+   "scale": 0.9,
+   "region": "south",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_b",
+   "x": 220,
+   "y": 3020,
+   "flip": false,
+   "scale": 0.9,
+   "region": "south",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_snow",
+   "x": 300,
+   "y": 3150,
+   "flip": false,
+   "scale": 0.9,
+   "region": "south",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_a",
+   "x": 2770,
+   "y": 1900,
+   "flip": false,
+   "scale": 0.9,
+   "region": "se",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_snow",
+   "x": 2860,
+   "y": 1990,
+   "flip": false,
+   "scale": 0.9,
+   "region": "se",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_b",
+   "x": 2780,
+   "y": 2090,
+   "flip": false,
+   "scale": 0.9,
+   "region": "se",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_a",
+   "x": 2880,
+   "y": 2140,
+   "flip": false,
+   "scale": 0.9,
+   "region": "se",
+   "choppable": true,
+   "visibleAtStart": false
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_a",
+   "x": -1170,
+   "y": 660,
+   "flip": false,
+   "scale": 0.9,
+   "region": "west",
+   "choppable": true,
+   "visibleAtStart": true
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_snow",
+   "x": -1080,
+   "y": 720,
+   "flip": false,
+   "scale": 0.9,
+   "region": "west",
+   "choppable": true,
+   "visibleAtStart": true
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_b",
+   "x": -1200,
+   "y": 780,
+   "flip": false,
+   "scale": 0.9,
+   "region": "west",
+   "choppable": true,
+   "visibleAtStart": true
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_snow",
+   "x": -1010,
+   "y": 640,
+   "flip": false,
+   "scale": 0.9,
+   "region": "west",
+   "choppable": true,
+   "visibleAtStart": true
+  },
+  {
+   "src": "region",
+   "key": "tree_pine_b",
+   "x": -990,
+   "y": 780,
+   "flip": false,
+   "scale": 0.9,
+   "region": "west",
+   "choppable": true,
+   "visibleAtStart": true
+  }
+ ],
+ "rocks": [
+  {
+   "key": "rock_ore",
+   "x": 412,
+   "y": 1954,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore_b",
+   "x": 330,
+   "y": 1923,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore_b",
+   "x": 177,
+   "y": 1900,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore",
+   "x": 394,
+   "y": 2031,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore",
+   "x": 480,
+   "y": 1925,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore_b",
+   "x": 502,
+   "y": 1981,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore",
+   "x": 199,
+   "y": 1961,
+   "zone": "mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore",
+   "x": 2460,
+   "y": 2037,
+   "region": "se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore_b",
+   "x": 2497,
+   "y": 2110,
+   "region": "se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore",
+   "x": 2641,
+   "y": 2092,
+   "region": "se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore_b",
+   "x": 2596,
+   "y": 2015,
+   "region": "se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "rock_ore",
+   "x": 2374,
+   "y": 2067,
+   "region": "se",
+   "visibleAtStart": false
+  }
+ ],
+ "wheat": [
+  {
+   "x": 1265.25,
+   "y": 1347,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1333.13,
+   "y": 1313.06,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1333.13,
+   "y": 1380.94,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1401,
+   "y": 1347,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1468.88,
+   "y": 1313.06,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1401,
+   "y": 1414.89,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1468.88,
+   "y": 1380.94,
+   "zone": "farm",
+   "visibleAtStart": false
+  },
+  {
+   "x": 1536.75,
+   "y": 1347,
+   "zone": "farm",
+   "visibleAtStart": false
+  }
+ ],
+ "roads": {
+  "drawnAtStart": [
+   {
+    "spine": true,
+    "pts": [
+     [
+      990,
+      1095
+     ],
+     [
+      990,
+      1150
+     ],
+     [
+      990,
+      1440
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      705,
+      965
+     ],
+     [
+      772,
+      1148
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      772,
+      1148
+     ],
+     [
+      786,
+      1230
+     ],
+     [
+      790,
+      1300
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      1440
+     ],
+     [
+      880,
+      1390
+     ],
+     [
+      790,
+      1300
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      1440
+     ],
+     [
+      1090,
+      1390
+     ],
+     [
+      1180,
+      1320
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      990,
+      1440
+     ],
+     [
+      990,
+      1700
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      990,
+      1700
+     ],
+     [
+      990,
+      2040
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      2040
+     ],
+     [
+      880,
+      2000
+     ],
+     [
+      790,
+      1950
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      2040
+     ],
+     [
+      1090,
+      2010
+     ],
+     [
+      1170,
+      1980
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      2040
+     ],
+     [
+      990,
+      2240
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      2240
+     ],
+     [
+      800,
+      2330
+     ],
+     [
+      620,
+      2380
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      2240
+     ],
+     [
+      1180,
+      2330
+     ],
+     [
+      1360,
+      2380
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      2240
+     ],
+     [
+      990,
+      2560
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      600,
+      830
+     ],
+     [
+      420,
+      700
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      420,
+      700
+     ],
+     [
+      230,
+      620
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      230,
+      620
+     ],
+     [
+      -60,
+      640
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      990,
+      1700
+     ],
+     [
+      560,
+      1700
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      560,
+      1700
+     ],
+     [
+      300,
+      1660
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      300,
+      1660
+     ],
+     [
+      -40,
+      1640
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      -60,
+      640
+     ],
+     [
+      -200,
+      760
+     ],
+     [
+      -330,
+      900
+     ]
+    ]
+   },
+   {
+    "spine": true,
+    "pts": [
+     [
+      -330,
+      900
+     ],
+     [
+      -110,
+      1000
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -330,
+      900
+     ],
+     [
+      -470,
+      1190
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -470,
+      1190
+     ],
+     [
+      -860,
+      1040
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -470,
+      1190
+     ],
+     [
+      -520,
+      1420
+     ],
+     [
+      -560,
+      1640
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -40,
+      1640
+     ],
+     [
+      -560,
+      1640
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -560,
+      1640
+     ],
+     [
+      -900,
+      1640
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -560,
+      1640
+     ],
+     [
+      -400,
+      1900
+     ],
+     [
+      -420,
+      2120
+     ]
+    ]
+   },
+   {
+    "spine": false,
+    "pts": [
+     [
+      -420,
+      2120
+     ],
+     [
+      -880,
+      2110
+     ]
+    ]
+   }
+  ],
+  "zoneOverlays": {
+   "forest": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       790,
+       1300
+      ],
+      [
+       690,
+       1290
+      ]
+     ]
+    }
+   ],
+   "farm": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       1180,
+       1320
+      ],
+      [
+       1290,
+       1290
+      ]
+     ]
+    }
+   ],
+   "mine": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       790,
+       1950
+      ],
+      [
+       700,
+       1960
+      ]
+     ]
+    }
+   ],
+   "hunt": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       1170,
+       1980
+      ],
+      [
+       1260,
+       1980
+      ]
+     ]
+    }
+   ]
+  },
+  "regionOverlays": {
+   "east": [
+    {
+     "spine": true,
+     "pts": [
+      [
+       1335,
+       905
+      ],
+      [
+       1600,
+       930
+      ]
+     ]
+    },
+    {
+     "spine": true,
+     "pts": [
+      [
+       1600,
+       930
+      ],
+      [
+       1830,
+       950
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       1830,
+       950
+      ],
+      [
+       2120,
+       980
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2120,
+       980
+      ],
+      [
+       2200,
+       880
+      ],
+      [
+       2270,
+       790
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2120,
+       980
+      ],
+      [
+       2230,
+       1150
+      ],
+      [
+       2330,
+       1290
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2330,
+       1290
+      ],
+      [
+       2560,
+       1180
+      ]
+     ]
+    }
+   ],
+   "south": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       990,
+       2560
+      ],
+      [
+       990,
+       2760
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       990,
+       2760
+      ],
+      [
+       990,
+       2980
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       990,
+       2980
+      ],
+      [
+       800,
+       3040
+      ],
+      [
+       600,
+       3090
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       990,
+       2980
+      ],
+      [
+       1180,
+       3010
+      ],
+      [
+       1360,
+       3050
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       990,
+       2980
+      ],
+      [
+       990,
+       3290
+      ]
+     ]
+    }
+   ],
+   "se": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       2330,
+       1290
+      ],
+      [
+       2330,
+       1650
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2330,
+       1650
+      ],
+      [
+       2360,
+       2000
+      ],
+      [
+       2330,
+       2330
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2330,
+       2330
+      ],
+      [
+       2300,
+       2650
+      ],
+      [
+       2320,
+       2960
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       1360,
+       2380
+      ],
+      [
+       1600,
+       2400
+      ],
+      [
+       1830,
+       2400
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       1830,
+       2400
+      ],
+      [
+       2080,
+       2360
+      ],
+      [
+       2330,
+       2330
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2330,
+       2330
+      ],
+      [
+       2700,
+       2420
+      ]
+     ]
+    }
+   ],
+   "rail": [
+    {
+     "spine": false,
+     "pts": [
+      [
+       2560,
+       1180
+      ],
+      [
+       2640,
+       1139
+      ]
+     ]
+    },
+    {
+     "spine": false,
+     "pts": [
+      [
+       2640,
+       1139
+      ],
+      [
+       3184,
+       1411
+      ]
+     ]
+    }
+   ]
+  }
+ },
+ "pathDecor": [
+  {
+   "key": "decal_snow_drift_b",
+   "x": 1025.72,
+   "y": 1240,
+   "scale": 0.4682,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 775.68,
+   "y": 1034.96,
+   "scale": 0.5783,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 948.79,
+   "y": 1530,
+   "scale": 0.4918,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 1026.53,
+   "y": 1790,
+   "scale": 0.5582,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 1031.02,
+   "y": 2130,
+   "scale": 0.5592,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 925.09,
+   "y": 2313.22,
+   "scale": 0.5969,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 703.44,
+   "y": 2318.66,
+   "scale": 0.5916,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 1086.83,
+   "y": 2245.82,
+   "scale": 0.5474,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 1276.99,
+   "y": 2317.11,
+   "scale": 0.5318,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 947.41,
+   "y": 2330,
+   "scale": 0.5633,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 549.6,
+   "y": 746.07,
+   "scale": 0.4522,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 321.21,
+   "y": 702.7,
+   "scale": 0.4976,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 137.68,
+   "y": 589.52,
+   "scale": 0.5727,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 900,
+   "y": 1662.75,
+   "scale": 0.5596,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 476.82,
+   "y": 1648.8,
+   "scale": 0.4485,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 207.66,
+   "y": 1697.21,
+   "scale": 0.6126,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -101.49,
+   "y": 729.89,
+   "scale": 0.591,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -230.23,
+   "y": 854.74,
+   "scale": 0.4587,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": -233.96,
+   "y": 906.2,
+   "scale": 0.5422,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -334.27,
+   "y": 997.88,
+   "scale": 0.4595,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -539.28,
+   "y": 1119.41,
+   "scale": 0.451,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -528.73,
+   "y": 1269.34,
+   "scale": 0.4708,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -570.99,
+   "y": 1502.2,
+   "scale": 0.4422,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": -130,
+   "y": 1680.31,
+   "scale": 0.477,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": -376.54,
+   "y": 1605.43,
+   "scale": 0.4363,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -650,
+   "y": 1681.31,
+   "scale": 0.5818,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -541.99,
+   "y": 1734.59,
+   "scale": 0.5779,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": -444.59,
+   "y": 1986.32,
+   "scale": 0.4357,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -510.89,
+   "y": 2159.8,
+   "scale": 0.509,
+   "rotRad": 0,
+   "alpha": 0.55
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1001.99,
+   "y": 1210,
+   "scale": 0.42,
+   "rotRad": 4.24865,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 999.75,
+   "y": 1379.69,
+   "scale": 0.42,
+   "rotRad": 4.24865,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 732.8,
+   "y": 1018.72,
+   "scale": 0.42,
+   "rotRad": 3.89769,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 936.78,
+   "y": 1412.09,
+   "scale": 0.42,
+   "rotRad": -0.03711,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 831.16,
+   "y": 1353.98,
+   "scale": 0.42,
+   "rotRad": -2.81993,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1046.94,
+   "y": 1419.71,
+   "scale": 0.42,
+   "rotRad": -0.92738,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1142.8,
+   "y": 1360.16,
+   "scale": 0.42,
+   "rotRad": 2.01681,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 993.25,
+   "y": 1500,
+   "scale": 0.42,
+   "rotRad": 1.10706,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 999.38,
+   "y": 1760,
+   "scale": 0.42,
+   "rotRad": 4.24865,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 994.3,
+   "y": 1943.65,
+   "scale": 0.42,
+   "rotRad": 1.10706,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 933.86,
+   "y": 2018.81,
+   "scale": 0.42,
+   "rotRad": -0.11496,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 822.38,
+   "y": 1980.17,
+   "scale": 0.42,
+   "rotRad": 0.04336,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1048.84,
+   "y": 2027.33,
+   "scale": 0.42,
+   "rotRad": -0.75519,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 987.72,
+   "y": 2100,
+   "scale": 0.42,
+   "rotRad": 1.10706,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 932.45,
+   "y": 2258.67,
+   "scale": 0.42,
+   "rotRad": 2.23548,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 739.55,
+   "y": 2336.55,
+   "scale": 0.42,
+   "rotRad": 2.40691,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1039.61,
+   "y": 2275.44,
+   "scale": 0.42,
+   "rotRad": 3.12023,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1240.63,
+   "y": 2335.91,
+   "scale": 0.42,
+   "rotRad": 2.9488,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 981,
+   "y": 2300,
+   "scale": 0.42,
+   "rotRad": 4.24865,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 995.04,
+   "y": 2519.73,
+   "scale": 0.42,
+   "rotRad": 4.24865,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 554.27,
+   "y": 790.84,
+   "scale": 0.42,
+   "rotRad": -2.97984,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 365.37,
+   "y": 675.13,
+   "scale": 0.42,
+   "rotRad": -0.06521,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 170.4,
+   "y": 627.9,
+   "scale": 0.42,
+   "rotRad": 5.75059,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 10.76,
+   "y": 641.35,
+   "scale": 0.42,
+   "rotRad": 5.75059,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 930,
+   "y": 1689.1,
+   "scale": 0.42,
+   "rotRad": 5.81945,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 729.55,
+   "y": 1696.84,
+   "scale": 0.42,
+   "rotRad": 5.81945,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 499.69,
+   "y": 1697.43,
+   "scale": 0.42,
+   "rotRad": -3.45268,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 240.63,
+   "y": 1647.54,
+   "scale": 0.42,
+   "rotRad": -3.54657,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": 25.33,
+   "y": 1650.95,
+   "scale": 0.42,
+   "rotRad": -0.40498,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -101.47,
+   "y": 683.81,
+   "scale": 0.42,
+   "rotRad": 5.11082,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -237.51,
+   "y": 807.05,
+   "scale": 0.42,
+   "rotRad": 4.99703,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -278.27,
+   "y": 931.18,
+   "scale": 0.42,
+   "rotRad": -0.03711,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -354.21,
+   "y": 954.94,
+   "scale": 0.42,
+   "rotRad": 4.69841,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -433.37,
+   "y": 1095.39,
+   "scale": 0.42,
+   "rotRad": 4.69841,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -529.1,
+   "y": 1176.53,
+   "scale": 0.42,
+   "rotRad": -0.09656,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -737.92,
+   "y": 1089.98,
+   "scale": 0.42,
+   "rotRad": -0.09656,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -484.75,
+   "y": 1248.2,
+   "scale": 0.42,
+   "rotRad": 4.46271,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -525.7,
+   "y": 1479.95,
+   "scale": 0.42,
+   "rotRad": 4.42851,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -100,
+   "y": 1646.9,
+   "scale": 0.42,
+   "rotRad": 5.81945,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -322.99,
+   "y": 1632.67,
+   "scale": 0.42,
+   "rotRad": 2.67786,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -620,
+   "y": 1650.67,
+   "scale": 0.42,
+   "rotRad": 2.67786,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -814.4,
+   "y": 1631.8,
+   "scale": 0.42,
+   "rotRad": 5.81945,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -519.94,
+   "y": 1685.8,
+   "scale": 0.42,
+   "rotRad": 3.697,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -425.29,
+   "y": 1837.65,
+   "scale": 0.42,
+   "rotRad": 3.697,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -409.74,
+   "y": 1959.36,
+   "scale": 0.42,
+   "rotRad": 4.33931,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -480.22,
+   "y": 2129.58,
+   "scale": 0.42,
+   "rotRad": -0.442,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -632.51,
+   "y": 2120.45,
+   "scale": 0.42,
+   "rotRad": -3.58359,
+   "alpha": 0.45
+  },
+  {
+   "key": "decal_footprints",
+   "x": -822.28,
+   "y": 2105.57,
+   "scale": 0.42,
+   "rotRad": -0.442,
+   "alpha": 0.45
+  }
+ ],
+ "decals": [
+  {
+   "key": "decal_snow_drift_a",
+   "x": 360,
+   "y": 660,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 1580,
+   "y": 700,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 760,
+   "y": 1580,
+   "scale": 1.1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 1220,
+   "y": 1590,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": 1580,
+   "y": 2420,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": 330,
+   "y": 2440,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_puddle_ice",
+   "x": 1120,
+   "y": 1520,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_puddle_ice",
+   "x": 640,
+   "y": 2250,
+   "scale": 0.9,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_dirt_patch",
+   "x": 560,
+   "y": 1720,
+   "scale": 0.9,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_dirt_patch",
+   "x": 300,
+   "y": 2120,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_footprints",
+   "x": 1010,
+   "y": 1720,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_footprints",
+   "x": 970,
+   "y": 2100,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_footprints",
+   "x": 760,
+   "y": 520,
+   "scale": 0.9,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": -700,
+   "y": 1200,
+   "scale": 1.1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_b",
+   "x": -1150,
+   "y": 1450,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_puddle_ice",
+   "x": -980,
+   "y": 1880,
+   "scale": 1.2,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_snow_drift_a",
+   "x": -360,
+   "y": 2200,
+   "scale": 1,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_footprints",
+   "x": -280,
+   "y": 820,
+   "scale": 0.9,
+   "rotDeg": 0,
+   "alpha": 0.95
+  },
+  {
+   "key": "decal_dirt_patch",
+   "x": -1000,
+   "y": 980,
+   "scale": 0.9,
+   "rotDeg": 0,
+   "alpha": 0.95
+  }
+ ],
+ "lifeProps": [
+  {
+   "key": "log_seat",
+   "x": -45,
+   "y": 452,
+   "id": "seat_beach_n",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "log_seat_y",
+   "x": -125,
+   "y": 520,
+   "id": "seat_beach_w",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "notice_board",
+   "x": 500,
+   "y": 890,
+   "id": "notice",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "lantern_string",
+   "x": 990,
+   "y": 1182,
+   "id": "lanterns_s",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snowman_0",
+   "x": 1352,
+   "y": 486,
+   "id": "snowman",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snow_fort",
+   "x": 1530,
+   "y": 612,
+   "id": "fort",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "snowball_pile",
+   "x": 1440,
+   "y": 556,
+   "id": "pile",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "sled",
+   "x": 1600,
+   "y": 470,
+   "id": "sled_beach",
+   "after": "hire_fisherman",
+   "visibleAtStart": false
+  },
+  {
+   "key": "dog_house",
+   "x": 1490,
+   "y": 1000,
+   "id": "doghouse",
+   "after": null,
+   "visibleAtStart": true
+  },
+  {
+   "key": "log_seat",
+   "x": 740,
+   "y": 1521,
+   "id": "seat_green_n",
+   "after": "zone_forest",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat_y",
+   "x": 645,
+   "y": 1546,
+   "id": "seat_green_w",
+   "after": "zone_forest",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat_x",
+   "x": 835,
+   "y": 1546,
+   "id": "seat_green_e",
+   "after": "zone_forest",
+   "visibleAtStart": false
+  },
+  {
+   "key": "music_stand",
+   "x": 640,
+   "y": 1630,
+   "id": "stand",
+   "after": "hire_lumberjack",
+   "visibleAtStart": false
+  },
+  {
+   "key": "picnic_table",
+   "x": 1235,
+   "y": 1555,
+   "id": "picnic",
+   "after": "zone_farm",
+   "visibleAtStart": false
+  },
+  {
+   "key": "kids_swing",
+   "x": 1440,
+   "y": 1610,
+   "id": "swing",
+   "after": "hire_farmer",
+   "visibleAtStart": false
+  },
+  {
+   "key": "ice_rink",
+   "x": 1215,
+   "y": 1700,
+   "id": "rink",
+   "after": "zone_mine",
+   "visibleAtStart": false
+  },
+  {
+   "key": "igloo",
+   "x": 230,
+   "y": 1420,
+   "id": "igloo",
+   "after": "hire_miner",
+   "visibleAtStart": false
+  },
+  {
+   "key": "clothesline",
+   "x": 575,
+   "y": 2475,
+   "id": "clothes",
+   "after": "zone_hunt",
+   "visibleAtStart": false
+  },
+  {
+   "key": "lantern_string",
+   "x": 800,
+   "y": 2290,
+   "id": "lanterns_v",
+   "after": "zone_hunt",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat",
+   "x": 2060,
+   "y": 740,
+   "id": "seat_east_n",
+   "after": "r:east",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat_y",
+   "x": 1965,
+   "y": 765,
+   "id": "seat_east_w",
+   "after": "r:east",
+   "visibleAtStart": false
+  },
+  {
+   "key": "picnic_table",
+   "x": 470,
+   "y": 2760,
+   "id": "picnic_s",
+   "after": "r:south",
+   "visibleAtStart": false
+  },
+  {
+   "key": "sled",
+   "x": 700,
+   "y": 2840,
+   "id": "sled_s",
+   "after": "r:south",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat",
+   "x": 2440,
+   "y": 2570,
+   "id": "seat_se_n",
+   "after": "r:se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat_x",
+   "x": 2535,
+   "y": 2595,
+   "id": "seat_se_e",
+   "after": "r:se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "igloo",
+   "x": 2120,
+   "y": 2420,
+   "id": "igloo_se",
+   "after": "r:se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_fort",
+   "x": 2620,
+   "y": 2860,
+   "id": "fort_se",
+   "after": "r:se",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat",
+   "x": -260,
+   "y": 2296,
+   "id": "seat_west_n",
+   "after": "zone_forest",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat_y",
+   "x": -355,
+   "y": 2321,
+   "id": "seat_west_w",
+   "after": "zone_forest",
+   "visibleAtStart": false
+  },
+  {
+   "key": "log_seat_x",
+   "x": -165,
+   "y": 2321,
+   "id": "seat_west_e",
+   "after": "zone_forest",
+   "visibleAtStart": false
+  },
+  {
+   "key": "snow_fort",
+   "x": -880,
+   "y": 1260,
+   "id": "fort_west",
+   "after": "zone_farm",
+   "visibleAtStart": false
+  }
+ ],
+ "plots": [
+  {
+   "id": "v_house1",
+   "x": 1600,
+   "y": 2235,
+   "size": "S",
+   "region": "start",
+   "after": "hire_miner",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "v_house2",
+   "x": 430,
+   "y": 2310,
+   "size": "S",
+   "region": "start",
+   "after": "hire_miner",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "h43_1",
+   "x": 600,
+   "y": 1040,
+   "size": "S",
+   "region": "start",
+   "after": "zone_forest",
+   "also": null,
+   "only": "house_c",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "h43_2",
+   "x": 1560,
+   "y": 1640,
+   "size": "S",
+   "region": "start",
+   "after": "zone_forest",
+   "also": null,
+   "only": "house_a",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "d_tool",
+   "x": 60,
+   "y": 1530,
+   "size": "M",
+   "region": "start",
+   "after": "r:east",
+   "also": null,
+   "only": "toolsmith",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "d_wh",
+   "x": 475,
+   "y": 1525,
+   "size": "M",
+   "region": "start",
+   "after": "hire_hunter",
+   "also": null,
+   "only": "warehouse",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "d_cannery",
+   "x": 1890,
+   "y": 485,
+   "size": "M",
+   "region": "east",
+   "after": "boat_rowboat",
+   "also": null,
+   "only": "cannery",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    2000,
+    700
+   ],
+   "clear": [
+    [
+     -200,
+     80,
+     180
+    ]
+   ]
+  },
+  {
+   "id": "d_store",
+   "x": 1990,
+   "y": 1070,
+   "size": "M",
+   "region": "east",
+   "after": "b:cannery",
+   "also": null,
+   "only": "store",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": [
+    [
+     -250,
+     -40,
+     250
+    ],
+    [
+     -250,
+     60,
+     150
+    ],
+    [
+     -250,
+     180,
+     200
+    ]
+   ]
+  },
+  {
+   "id": "e_dock",
+   "x": 2330,
+   "y": 595,
+   "size": "M",
+   "region": "east",
+   "after": null,
+   "also": null,
+   "only": "boathouse",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "e_m1",
+   "x": 2600,
+   "y": 830,
+   "size": "M",
+   "region": "east",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    2750,
+    880
+   ],
+   "clear": null
+  },
+  {
+   "id": "e_m2",
+   "x": 2520,
+   "y": 985,
+   "size": "M",
+   "region": "east",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "s_m1",
+   "x": 1360,
+   "y": 2860,
+   "size": "M",
+   "region": "south",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "s_m2",
+   "x": 1470,
+   "y": 3235,
+   "size": "M",
+   "region": "south",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "s_l1",
+   "x": 780,
+   "y": 3220,
+   "size": "L",
+   "region": "south",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "s_s1",
+   "x": 1160,
+   "y": 3190,
+   "size": "S",
+   "region": "south",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "se_m1",
+   "x": 2700,
+   "y": 2640,
+   "size": "M",
+   "region": "se",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "se_l1",
+   "x": 2060,
+   "y": 2860,
+   "size": "L",
+   "region": "se",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "se_s1",
+   "x": 2560,
+   "y": 3090,
+   "size": "S",
+   "region": "se",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "se_s3",
+   "x": 2560,
+   "y": 1700,
+   "size": "S",
+   "region": "se",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "se_s2",
+   "x": 2060,
+   "y": 1820,
+   "size": "S",
+   "region": "se",
+   "after": null,
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "r_station",
+   "x": 3410,
+   "y": 1330,
+   "size": "XL",
+   "region": "rail",
+   "after": null,
+   "also": null,
+   "only": "station",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    3200,
+    1441
+   ],
+   "clear": null
+  },
+  {
+   "id": "w_rest",
+   "x": -600,
+   "y": 880,
+   "size": "XL",
+   "region": "west",
+   "after": "tower_east",
+   "also": null,
+   "only": null,
+   "types": [
+    "big_restaurant"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    -390,
+    1000
+   ],
+   "clear": null
+  },
+  {
+   "id": "w_hall",
+   "x": 180,
+   "y": 760,
+   "size": "XL",
+   "region": "start",
+   "after": "hire_hunter",
+   "also": null,
+   "only": "town_hall",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    -30,
+    870
+   ],
+   "clear": [
+    [
+     -140,
+     230,
+     220
+    ],
+    [
+     -20,
+     200,
+     130
+    ]
+   ]
+  },
+  {
+   "id": "w_m1",
+   "x": -250,
+   "y": 1360,
+   "size": "M",
+   "region": "west",
+   "after": "zone_hunt",
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "w_m2",
+   "x": -1100,
+   "y": 1130,
+   "size": "M",
+   "region": "west",
+   "after": "hire_hunter",
+   "also": null,
+   "only": null,
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "w_s1",
+   "x": -170,
+   "y": 1080,
+   "size": "S",
+   "region": "west",
+   "after": "hire_miner",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    -60,
+    1110
+   ],
+   "clear": null
+  },
+  {
+   "id": "w_s2",
+   "x": -330,
+   "y": 1660,
+   "size": "S",
+   "region": "west",
+   "after": "hire_miner",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "w_s3",
+   "x": -1150,
+   "y": 1660,
+   "size": "S",
+   "region": "west",
+   "after": "hire_hunter",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "w_s4",
+   "x": -440,
+   "y": 2290,
+   "size": "S",
+   "region": "west",
+   "after": "hire_hunter",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "w_s5",
+   "x": -250,
+   "y": 2010,
+   "size": "S",
+   "region": "west",
+   "after": "hire_hunter",
+   "also": null,
+   "only": null,
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "w_civic",
+   "x": -780,
+   "y": 1880,
+   "size": "XL",
+   "region": "west",
+   "after": null,
+   "also": null,
+   "only": "civic43",
+   "types": null,
+   "hidden": true,
+   "replace": null,
+   "drop": null,
+   "clear": [
+    [
+     0,
+     0,
+     250
+    ],
+    [
+     0,
+     100,
+     150
+    ],
+    [
+     0,
+     220,
+     200
+    ],
+    [
+     -150,
+     300,
+     260
+    ],
+    [
+     60,
+     300,
+     240
+    ]
+   ]
+  },
+  {
+   "id": "d_school",
+   "x": -1080,
+   "y": 2000,
+   "size": "XL",
+   "region": "west",
+   "after": null,
+   "also": null,
+   "only": "school43",
+   "types": null,
+   "hidden": true,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "d_clinic",
+   "x": -1160,
+   "y": 870,
+   "size": "L",
+   "region": "west",
+   "after": null,
+   "also": null,
+   "only": "clinic43",
+   "types": null,
+   "hidden": true,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "d_labour",
+   "x": -760,
+   "y": 1440,
+   "size": "L",
+   "region": "west",
+   "after": "f:rankEup",
+   "also": null,
+   "only": "labour_office",
+   "types": null,
+   "hidden": true,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  },
+  {
+   "id": "v42_office",
+   "x": 600,
+   "y": 640,
+   "size": "M",
+   "region": "start",
+   "after": "zone_mine",
+   "also": null,
+   "only": "chief_office",
+   "types": null,
+   "hidden": false,
+   "replace": "chief_hut",
+   "drop": [
+    545,
+    790
+   ],
+   "clear": null
+  },
+  {
+   "id": "v42_bank",
+   "x": -340,
+   "y": 570,
+   "size": "M",
+   "region": "west",
+   "after": "f:rankEup",
+   "also": "b:chief_office",
+   "only": "bank42",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": [
+    -210,
+    660
+   ],
+   "clear": null
+  },
+  {
+   "id": "v42_depot",
+   "x": 3184,
+   "y": 3101,
+   "size": "L",
+   "region": "rail",
+   "after": "f:rankEup",
+   "also": [
+    "b:warehouse",
+    "r:se"
+   ],
+   "only": "depot42",
+   "types": null,
+   "hidden": false,
+   "replace": null,
+   "drop": null,
+   "clear": null
+  }
+ ],
+ "reserves": {
+  "p47_plaza": {
+   "zone": "plaza",
+   "m": [
+    13,
+    22.8,
+    -22,
+    -11
+   ],
+   "poly": [
+    [
+     583,
+     1592
+    ],
+    [
+     1081,
+     1343
+    ],
+    [
+     1524,
+     1565
+    ],
+    [
+     1026,
+     1814
+    ]
+   ]
+  }
+ },
+ "territory": {
+  "start": {
+   "rect": [
+    0,
+    0,
+    1800,
+    2620
+   ]
+  },
+  "east": {
+   "rect": [
+    1800,
+    0,
+    3000,
+    1500
+   ],
+   "tower": "tower_east",
+   "name": "r_east",
+   "center": [
+    2330,
+    1020
+   ]
+  },
+  "south": {
+   "rect": [
+    0,
+    2620,
+    1800,
+    3450
+   ],
+   "tower": "tower_south",
+   "name": "r_south",
+   "center": [
+    960,
+    3000
+   ]
+  },
+  "se": {
+   "rect": [
+    1800,
+    1500,
+    3000,
+    3450
+   ],
+   "tower": "tower_se",
+   "name": "r_se",
+   "center": [
+    2360,
+    2380
+   ]
+  },
+  "rail": {
+   "rect": [
+    3000,
+    0,
+    4150,
+    3450
+   ],
+   "name": "r_rail",
+   "center": [
+    3420,
+    1560
+   ],
+   "openWith": "east"
+  },
+  "town": {
+   "rect": [
+    4150,
+    0,
+    6144,
+    3450
+   ],
+   "name": "r_town",
+   "center": [
+    4900,
+    2450
+   ],
+   "openFlag": "townInvite"
+  },
+  "west": {
+   "rect": [
+    -1400,
+    0,
+    0,
+    2620
+   ],
+   "name": "r_west",
+   "center": [
+    -660,
+    1250
+   ],
+   "open": true
+  },
+  "west_s": {
+   "rect": [
+    -1400,
+    2620,
+    0,
+    3450
+   ],
+   "name": "r_west_s",
+   "center": [
+    -700,
+    3000
+   ],
+   "openWith": "south"
+  }
+ },
+ "towers": {
+  "tower_east": {
+   "x": 1660,
+   "y": 845,
+   "region": "east"
+  },
+  "tower_south": {
+   "x": 1450,
+   "y": 2505,
+   "region": "south",
+   "pad": [
+    -20,
+    -106
+   ]
+  },
+  "tower_se": {
+   "x": 2870,
+   "y": 1370,
+   "region": "se",
+   "in": "east",
+   "pad": [
+    -8,
+    -94
+   ]
+  }
+ },
+ "keyPoints": {
+  "player": {
+   "x": 1130,
+   "y": 412
+  },
+  "tutorialView": [
+   985,
+   600
+  ],
+  "hut": {
+   "x": 600,
+   "y": 640,
+   "key": "chief_hut",
+   "sprite": "chief_lodge",
+   "door": [
+    -172,
+    23
+   ],
+   "desk": [
+    32,
+    2
+   ],
+   "mailbox": [
+    -110,
+    50
+   ],
+   "yard": [
+    245,
+    -142
+   ],
+   "walls": [
+    [
+     -86,
+     -29,
+     50
+    ],
+    [
+     -36,
+     -5,
+     50
+    ],
+    [
+     9,
+     23,
+     50
+    ],
+    [
+     54,
+     45,
+     46
+    ],
+    [
+     -36,
+     -54,
+     50
+    ],
+    [
+     18,
+     -32,
+     50
+    ],
+    [
+     68,
+     -7,
+     50
+    ],
+    [
+     109,
+     18,
+     46
+    ],
+    [
+     90,
+     45,
+     40
+    ]
+   ]
+  },
+  "deck": {
+   "x": 1073,
+   "y": 299,
+   "reel": [
+    1089,
+    386
+   ],
+   "foot": [
+    890,
+    420
+   ],
+   "crate": [
+    1000,
+    440
+   ],
+   "landing": [
+    1100,
+    380
+   ]
+  },
+  "grill": {
+   "id": "grill",
+   "sprite": "station_grill",
+   "x": 1004,
+   "y": 590,
+   "in": [
+    -97,
+    -49
+   ],
+   "out": [
+    97,
+    49
+   ],
+   "input": "item_fish_raw",
+   "output": "item_fish_cooked",
+   "zone": "plaza",
+   "sfx": "sfx_sizzle",
+   "fire": [
+    0,
+    -30
+   ],
+   "porterHome": [
+    -52,
+    44
+   ]
+  },
+  "market": {
+   "x": 1207,
+   "y": 782,
+   "sprite": "market_s1_back"
+  },
+  "bakery43": {
+   "x": 1316,
+   "y": 1144
+  },
+  "bench": {
+   "x": 945,
+   "y": 986
+  },
+  "trash": {
+   "x": -45,
+   "y": 585,
+   "fire": [
+    -45,
+    489
+   ]
+  },
+  "v43": {
+   "oldStart": [
+    370,
+    680
+   ],
+   "shopFront": [
+    1250,
+    1000
+   ]
+  },
+  "stations": [
+   {
+    "id": "grill",
+    "sprite": "station_grill",
+    "x": 1004,
+    "y": 590,
+    "zone": "plaza"
+   },
+   {
+    "id": "sawmill",
+    "sprite": "station_sawmill",
+    "x": 646,
+    "y": 1221,
+    "zone": "forest"
+   },
+   {
+    "id": "bakery",
+    "sprite": "bakery43_back",
+    "x": 1316,
+    "y": 1144,
+    "zone": "farm"
+   },
+   {
+    "id": "smelter",
+    "sprite": "station_smelter",
+    "x": 611,
+    "y": 1882,
+    "zone": "mine"
+   },
+   {
+    "id": "smokehouse",
+    "sprite": "station_smokehouse",
+    "x": 1391,
+    "y": 1883,
+    "zone": "hunt"
+   }
+  ]
+ },
+ "lockedOutlines": {
+  "forest": {
+   "lock": [
+    470,
+    1236
+   ],
+   "text": [
+    470,
+    1284
+   ],
+   "name": "z_forest",
+   "ghosts": [
+    {
+     "key": "station_sawmill",
+     "x": 646,
+     "y": 1221,
+     "scale": 1
+    },
+    {
+     "key": "tree_pine_a",
+     "x": 442.85,
+     "y": 1191.16,
+     "scale": 0.85
+    },
+    {
+     "key": "tree_pine_snow",
+     "x": 451.9,
+     "y": 1322.42,
+     "scale": 0.85
+    },
+    {
+     "key": "tree_pine_b",
+     "x": 279.95,
+     "y": 1227.37,
+     "scale": 0.85
+    },
+    {
+     "key": "tree_pine_a",
+     "x": 343.3,
+     "y": 1322.42,
+     "scale": 0.85
+    }
+   ]
+  },
+  "farm": {
+   "lock": [
+    1478,
+    1290
+   ],
+   "text": [
+    1478,
+    1338
+   ],
+   "name": "z_farm",
+   "ghosts": [
+    {
+     "key": "crop_wheat_3",
+     "x": 1265.25,
+     "y": 1347,
+     "scale": 1
+    },
+    {
+     "key": "crop_wheat_3",
+     "x": 1401,
+     "y": 1347,
+     "scale": 1
+    },
+    {
+     "key": "crop_wheat_3",
+     "x": 1401,
+     "y": 1414.89,
+     "scale": 1
+    },
+    {
+     "key": "crop_wheat_3",
+     "x": 1536.75,
+     "y": 1347,
+     "scale": 1
+    }
+   ]
+  },
+  "mine": {
+   "lock": [
+    430,
+    1886
+   ],
+   "text": [
+    430,
+    1934
+   ],
+   "name": "z_mine",
+   "ghosts": [
+    {
+     "key": "station_smelter",
+     "x": 611,
+     "y": 1882,
+     "scale": 1
+    },
+    {
+     "key": "rock_ore",
+     "x": 412,
+     "y": 1954,
+     "scale": 1
+    },
+    {
+     "key": "rock_ore_b",
+     "x": 330,
+     "y": 1923,
+     "scale": 1
+    },
+    {
+     "key": "rock_ore_b",
+     "x": 177,
+     "y": 1900,
+     "scale": 1
+    },
+    {
+     "key": "rock_ore",
+     "x": 394,
+     "y": 2031,
+     "scale": 1
+    }
+   ]
+  },
+  "hunt": {
+   "lock": [
+    1400,
+    1946
+   ],
+   "text": [
+    1400,
+    1994
+   ],
+   "name": "z_hunt",
+   "ghosts": [
+    {
+     "key": "station_smokehouse",
+     "x": 1391,
+     "y": 1883,
+     "scale": 1
+    },
+    {
+     "key": "hay_bale",
+     "x": 1390.95,
+     "y": 2082.2,
+     "scale": 1
+    },
+    {
+     "key": "bush_snow",
+     "x": 1155.65,
+     "y": 1955.47,
+     "scale": 1
+    },
+    {
+     "key": "bush_snow",
+     "x": 1562.9,
+     "y": 2023.36,
+     "scale": 1
+    }
+   ]
+  }
+ },
+ "entitiesAtStart": {
+  "chief_hut": {
+   "key": "chief_lodge",
+   "x": 600,
+   "y": 640,
+   "walls": [
+    [
+     -86,
+     -29,
+     50
+    ],
+    [
+     -36,
+     -5,
+     50
+    ],
+    [
+     9,
+     23,
+     50
+    ],
+    [
+     54,
+     45,
+     46
+    ],
+    [
+     -36,
+     -54,
+     50
+    ],
+    [
+     18,
+     -32,
+     50
+    ],
+    [
+     68,
+     -7,
+     50
+    ],
+    [
+     109,
+     18,
+     46
+    ],
+    [
+     90,
+     45,
+     40
+    ]
+   ],
+   "door": [
+    428,
+    663
+   ]
+  },
+  "fisherman_hut": {
+   "key": "worker_hut",
+   "x": -760,
+   "y": 490,
+   "scale": 0.8
+  },
+  "grill": {
+   "key": "station_grill",
+   "x": 1004,
+   "y": 590,
+   "opPad": [
+    934,
+    625
+   ],
+   "inPad": [
+    907,
+    541
+   ],
+   "outPad": [
+    1101,
+    639
+   ]
+  },
+  "market_s1": {
+   "back": "market_s1_back",
+   "front": "market_s1_front",
+   "x": 1207,
+   "y": 782,
+   "shelf": [
+    1314,
+    835
+   ],
+   "cash": [
+    1216,
+    900
+   ],
+   "register": [
+    1415,
+    859
+   ],
+   "queueStart": [
+    1107,
+    798
+   ]
+  },
+  "deck": {
+   "back": "deck43_t1_back",
+   "front": "deck43_t1_front",
+   "x": 1073,
+   "y": 299,
+   "reel": [
+    1089,
+    386
+   ],
+   "foot": [
+    890,
+    420
+   ],
+   "landing": [
+    1100,
+    380
+   ]
+  },
+  "player": {
+   "x": 1130,
+   "y": 412
+  },
+  "tutorialView": [
+   985,
+   600
+  ]
+ }
+}

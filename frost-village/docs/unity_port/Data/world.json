@@ -1,0 +1,7336 @@
+{
+ "width": 6144,
+ "height": 3450,
+ "left": -1400,
+ "shore": {
+  "base": 372,
+  "waves": [
+   [
+    16,
+    0.0052,
+    0.4
+   ],
+   [
+    7,
+    0.0165,
+    1.7
+   ],
+   [
+    3,
+    0.041,
+    0.2
+   ]
+  ],
+  "slope": {
+   "from": 1880,
+   "knee": 220,
+   "k": 0.5
+  }
+ },
+ "player": {
+  "x": 1130,
+  "y": 412
+ },
+ "tutorialView": [
+  985,
+  600
+ ],
+ "onboard": {
+  "views": {
+   "register": [
+    1215,
+    760
+   ],
+   "pad": [
+    1320,
+    800
+   ]
+  }
+ },
+ "zones": {
+  "plaza": {
+   "center": [
+    990,
+    800
+   ],
+   "size": [
+    14,
+    14
+   ],
+   "floor": "ground_plaza",
+   "unlock": null,
+   "name": "z_plaza"
+  },
+  "forest": {
+   "center": [
+    470,
+    1250
+   ],
+   "size": [
+    9,
+    9
+   ],
+   "floor": "ground_dirt",
+   "unlock": "zone_forest",
+   "name": "z_forest",
+   "floorAlpha": 0.5
+  },
+  "farm": {
+   "center": [
+    1478,
+    1304
+   ],
+   "size": [
+    5,
+    8
+   ],
+   "floor": "ground_farm",
+   "unlock": "zone_farm",
+   "name": "z_farm"
+  },
+  "mine": {
+   "center": [
+    430,
+    1900
+   ],
+   "size": [
+    9,
+    9
+   ],
+   "floor": "ground_rock",
+   "unlock": "zone_mine",
+   "name": "z_mine"
+  },
+  "hunt": {
+   "center": [
+    1400,
+    1960
+   ],
+   "size": [
+    8.5,
+    8.5
+   ],
+   "floor": "ground_dirt",
+   "unlock": "zone_hunt",
+   "name": "z_hunt",
+   "floorAlpha": 0.45
+  },
+  "field2": {
+   "center": [
+    520,
+    2980
+   ],
+   "size": [
+    6.6,
+    6.6
+   ],
+   "floor": "ground_farm",
+   "unlock": null,
+   "region": "south",
+   "name": "z_field2"
+  },
+  "quarry": {
+   "center": [
+    2560,
+    2060
+   ],
+   "size": [
+    6.6,
+    6.6
+   ],
+   "floor": "ground_rock",
+   "unlock": null,
+   "region": "se",
+   "name": "z_quarry"
+  }
+ },
+ "stations": [
+  {
+   "id": "grill",
+   "sprite": "station_grill",
+   "x": 1004,
+   "y": 590,
+   "in": [
+    -97,
+    -49
+   ],
+   "out": [
+    97,
+    49
+   ],
+   "input": "item_fish_raw",
+   "output": "item_fish_cooked",
+   "zone": "plaza",
+   "sfx": "sfx_sizzle",
+   "fire": [
+    0,
+    -30
+   ],
+   "porterHome": [
+    -52,
+    44
+   ]
+  },
+  {
+   "id": "sawmill",
+   "sprite": "station_sawmill",
+   "x": 646,
+   "y": 1221,
+   "in": [
+    -104,
+    -52
+   ],
+   "out": [
+    104,
+    52
+   ],
+   "input": "item_log",
+   "output": "item_plank",
+   "zone": "forest",
+   "sfx": "sfx_saw"
+  },
+  {
+   "id": "bakery",
+   "sprite": "bakery43_back",
+   "x": 1316,
+   "y": 1144,
+   "in": [
+    104,
+    38
+   ],
+   "out": [
+    36,
+    72
+   ],
+   "input": "item_wheat",
+   "output": "item_bread",
+   "zone": "farm",
+   "gate": "bld_bakery",
+   "sfx": "sfx_oven",
+   "smoke": [
+    -60,
+    -199
+   ],
+   "fire": [
+    -37,
+    -23
+   ],
+   "porterHome": [
+    -30,
+    18
+   ]
+  },
+  {
+   "id": "smelter",
+   "sprite": "station_smelter",
+   "x": 611,
+   "y": 1882,
+   "in": [
+    -122,
+    4
+   ],
+   "out": [
+    112,
+    52
+   ],
+   "input": "item_ore",
+   "output": "item_ingot",
+   "zone": "mine",
+   "sfx": "sfx_smelt",
+   "smoke": [
+    -14,
+    -150
+   ]
+  },
+  {
+   "id": "smokehouse",
+   "sprite": "station_smokehouse",
+   "x": 1391,
+   "y": 1883,
+   "in": [
+    122,
+    26
+   ],
+   "out": [
+    -124,
+    40
+   ],
+   "input": "item_meat_raw",
+   "output": "item_meat_cooked",
+   "zone": "hunt",
+   "sfx": "sfx_sizzle",
+   "smoke": [
+    -10,
+    -140
+   ]
+  }
+ ],
+ "market": {
+  "sprite": "market_s1_back",
+  "x": 1207,
+  "y": 782,
+  "shelf": [
+   107,
+   53
+  ],
+  "stockDrawMax": 18,
+  "stockDrawMaxBy": null,
+  "cash": [
+   9,
+   118
+  ],
+  "queueStart": [
+   -100,
+   16
+  ],
+  "queueStep": [
+   -41,
+   20
+  ],
+  "queueTurn": 6,
+  "queueStep2": [
+   41,
+   20
+  ],
+  "entry": [
+   [
+    990,
+    2200
+   ],
+   [
+    990,
+    1260
+   ],
+   [
+    1080,
+    1080
+   ]
+  ],
+  "exit": [
+   [
+    1080,
+    1080
+   ],
+   [
+    990,
+    1260
+   ],
+   [
+    990,
+    2200
+   ]
+  ],
+  "register": [
+   208,
+   77
+  ],
+  "staff": [
+   57,
+   -24
+  ],
+  "clerk": [
+   "npc_clerk_a",
+   "villager_c"
+  ],
+  "mat": {
+   "clerk": [
+    "npc_clerk_b",
+    "npc_merchant"
+   ]
+  },
+  "clerk3": [
+   "npc_clerk_a",
+   "villager_c"
+  ],
+  "stages": {
+   "2": {
+    "sprite": "market_s2_back",
+    "at": [
+     68,
+     34
+    ],
+    "shelf": [
+     208,
+     104
+    ],
+    "matShelf": [
+     -72,
+     -36
+    ],
+    "cash": [
+     95,
+     152
+    ],
+    "registers": {
+     "mat": [
+      -26,
+      44
+     ],
+     "food": [
+      65,
+      89
+     ]
+    },
+    "wall": [
+     [
+      -18,
+      -16
+     ],
+     [
+      168,
+      77
+     ]
+    ],
+    "wallR": 46,
+    "sled": {
+     "at": [
+      -466,
+      -34
+     ],
+     "scale": 1
+    }
+   },
+   "3": {
+    "sprite": "market_s3_back",
+    "at": [
+     23,
+     11
+    ],
+    "shelf": [
+     208,
+     104
+    ],
+    "matShelf": [
+     -163,
+     -82
+    ],
+    "cash": [
+     95,
+     152
+    ],
+    "registers": {
+     "mat": [
+      -116,
+      -2
+     ],
+     "fish": [
+      -26,
+      44
+     ],
+     "meat": [
+      65,
+      89
+     ]
+    },
+    "wall": [
+     [
+      -108,
+      -61
+     ],
+     [
+      168,
+      77
+     ]
+    ],
+    "wallR": 46,
+    "sled": {
+     "at": [
+      -466,
+      -34
+     ],
+     "scale": 1,
+     "sprite": "market_sled_s3"
+    }
+   },
+   "4": {
+    "sprite": "market_s4_back",
+    "at": [
+     59,
+     -16
+    ],
+    "shelf": [
+     254,
+     81
+    ],
+    "matShelf": [
+     -258,
+     -106
+    ],
+    "cash": [
+     140,
+     129
+    ],
+    "registers": {
+     "mat": [
+      -31,
+      -5
+     ],
+     "fish": [
+      33,
+      28
+     ],
+     "meat": [
+      124,
+      73
+     ]
+    },
+    "mat2": {
+     "register": [
+      -95,
+      -36
+     ]
+    },
+    "wall": [
+     [
+      -86,
+      -95
+     ],
+     [
+      217,
+      56
+     ]
+    ],
+    "wallR": 46,
+    "lines": {
+     "fish": {
+      "turn": 7
+     },
+     "meat": {
+      "turn": 5,
+      "turn2": 9
+     }
+    },
+    "front": [
+     -4.6,
+     3.6,
+     -3,
+     -0.6
+    ],
+    "sled": {
+     "at": [
+      -470,
+      -18
+     ],
+     "scale": 1,
+     "sprite": "market_sled_s4",
+     "keep": true
+    }
+   }
+  },
+  "reserve4": [
+   -3,
+   1.3,
+   7,
+   6.3
+  ]
+ },
+ "trade": {
+  "sprite": "trade_post",
+  "x": 737,
+  "y": 719,
+  "zone": "forest",
+  "shelf": [
+   -84,
+   41
+  ],
+  "cash": [
+   34,
+   96
+  ],
+  "merchant": [
+   93,
+   46
+  ],
+  "register": [
+   113,
+   -7
+  ],
+  "staff": [
+   61,
+   -21
+  ],
+  "clerk": [
+   "npc_clerk_b",
+   "npc_merchant"
+  ]
+ },
+ "trash": {
+  "x": -45,
+  "y": 585,
+  "fire": [
+   -45,
+   489
+  ]
+ },
+ "bench": {
+  "sprite": "workshop43",
+  "x": 945,
+  "y": 986,
+  "pads": {
+   "capacity": [
+    -132,
+    -42
+   ],
+   "speed": [
+    -48,
+    54
+   ]
+  },
+  "labels": {
+   "speed": [
+    0,
+    64
+   ]
+  }
+ },
+ "bakery43": {
+  "x": 1316,
+  "y": 1144,
+  "sprite": "bakery43_back",
+  "front": "bakery43_front",
+  "signText": "sign_bakery43",
+  "walls": [
+   [
+    9,
+    -45,
+    30
+   ],
+   [
+    50,
+    -25,
+    30
+   ],
+   [
+    91,
+    -5,
+    30
+   ],
+   [
+    -32,
+    -34,
+    30
+   ],
+   [
+    -72,
+    -14,
+    30
+   ],
+   [
+    68,
+    16,
+    30
+   ],
+   [
+    27,
+    36,
+    30
+   ],
+   [
+    -91,
+    5,
+    30
+   ],
+   [
+    -63,
+    18,
+    30
+   ]
+  ],
+  "ovenMouth": [
+   -37,
+   -23
+  ],
+  "stall": {
+   "at": [
+    -140,
+    25
+   ],
+   "sprite": "bakery43_stall_back",
+   "shelf": [
+    -10,
+    30
+   ],
+   "cash": [
+    9,
+    90
+   ],
+   "register": [
+    68,
+    54
+   ],
+   "staff": [
+    24,
+    -13
+   ],
+   "queueStart": [
+    -73,
+    -5
+   ],
+   "queueStep": [
+    0,
+    40
+   ],
+   "queueTurn": 99,
+   "faceTo": [
+    24,
+    -24
+   ],
+   "clerk": [
+    "npc_clerk_b",
+    "npc_clerk_a"
+   ]
+  },
+  "decorClear": [
+   [
+    1316,
+    1144,
+    200
+   ],
+   [
+    1176,
+    1169,
+    150
+   ],
+   [
+    1103,
+    1244,
+    120
+   ],
+   [
+    1596,
+    1112,
+    150
+   ],
+   [
+    1497,
+    1117,
+    110
+   ],
+   [
+    1560,
+    1056,
+    120
+   ]
+  ]
+ },
+ "deck": {
+  "x": 1073,
+  "y": 299,
+  "reel": [
+   1089,
+   386
+  ],
+  "landing": {
+   "at": [
+    1100,
+    380
+   ],
+   "size": [
+    1,
+    1.2
+   ],
+   "lift": 8,
+   "planks": [
+    -0.5,
+    0.5,
+    -0.62,
+    0.6
+   ],
+   "walk": [
+    -0.3,
+    0.3,
+    -0.42,
+    0.36
+   ],
+   "fan": 20,
+   "bob": [
+    -0.2,
+    1.7
+   ],
+   "cast": 0.25,
+   "leap": 50
+  },
+  "foot": [
+   890,
+   420
+  ],
+  "crate": [
+   1000,
+   440
+  ],
+  "tiers": {
+   "1": [
+    -1.3,
+    1.3,
+    -1.3,
+    1.3
+   ],
+   "2": [
+    -2.5,
+    1.3,
+    -1.3,
+    1.3
+   ],
+   "3": [
+    -3.7,
+    1.3,
+    -1.3,
+    1.3
+   ]
+  },
+  "gangway": [
+   0.1,
+   1.2
+  ],
+  "lift": 17,
+  "stools": [
+   [
+    -0.35,
+    0.75
+   ],
+   [
+    -1.55,
+    0.75
+   ],
+   [
+    -2.75,
+    0.75
+   ]
+  ],
+  "rods": [
+   [
+    1.12,
+    1.12
+   ],
+   [
+    1.12,
+    0.32
+   ],
+   [
+    0.32,
+    1.12
+   ]
+  ]
+ },
+ "trees": {
+  "zone": "forest",
+  "grid": 2.05,
+  "jitter": 0.3,
+  "margin": 0.95,
+  "scale": 0.9,
+  "cornerCut": -5.5,
+  "extra": [
+   [
+    0.6,
+    -3.4
+   ],
+   [
+    1,
+    -0.6
+   ],
+   [
+    1.8,
+    -2.4
+   ]
+  ],
+  "avoid": [
+   [
+    646,
+    1221,
+    170
+   ],
+   [
+    542,
+    1169,
+    90
+   ],
+   [
+    750,
+    1273,
+    90
+   ],
+   [
+    574,
+    1257,
+    120
+   ],
+   [
+    526,
+    1305,
+    80
+   ],
+   [
+    434,
+    1123,
+    90
+   ]
+  ]
+ },
+ "rocks": [
+  [
+   412,
+   1954,
+   "rock_ore"
+  ],
+  [
+   330,
+   1923,
+   "rock_ore_b"
+  ],
+  [
+   177,
+   1900,
+   "rock_ore_b"
+  ],
+  [
+   394,
+   2031,
+   "rock_ore"
+  ],
+  [
+   480,
+   1925,
+   "rock_ore"
+  ],
+  [
+   502,
+   1981,
+   "rock_ore_b"
+  ],
+  [
+   199,
+   1961,
+   "rock_ore"
+  ]
+ ],
+ "wheat": {
+  "zone": "farm",
+  "origin": [
+   1401,
+   1347
+  ],
+  "rows": 3,
+  "cols": 3,
+  "step": 1.5,
+  "skip": [
+   [
+    0,
+    2
+   ]
+  ]
+ },
+ "hunt": {
+  "zone": "hunt"
+ },
+ "pads": {
+  "hire_fisherman": {
+   "x": 925,
+   "y": 745,
+   "worker": "fisherman",
+   "hut": [
+    -760,
+    490
+   ]
+  },
+  "zone_forest": {
+   "x": 760,
+   "y": 1130,
+   "zone": "forest"
+  },
+  "hire_lumberjack": {
+   "x": 640,
+   "y": 1340,
+   "worker": "lumberjack",
+   "hut": [
+    300,
+    1010
+   ]
+  },
+  "zone_farm": {
+   "x": 1190,
+   "y": 1135,
+   "zone": "farm"
+  },
+  "hire_farmer": {
+   "x": 1560,
+   "y": 1056,
+   "labelAt": [
+    0,
+    64
+   ],
+   "worker": "farmer"
+  },
+  "bld_bakery": {
+   "x": 1244,
+   "y": 1223
+  },
+  "hire_clerk_bakery": {
+   "x": 1560,
+   "y": 1056,
+   "labelAt": [
+    0,
+    64
+   ],
+   "clerk": "bakery"
+  },
+  "zone_mine": {
+   "x": 760,
+   "y": 1760,
+   "zone": "mine"
+  },
+  "hire_miner": {
+   "x": 650,
+   "y": 2030,
+   "worker": "miner",
+   "hut": [
+    236,
+    1730
+   ]
+  },
+  "zone_hunt": {
+   "x": 1160,
+   "y": 1800,
+   "zone": "hunt"
+  },
+  "hire_hunter": {
+   "x": 1140,
+   "y": 1858,
+   "worker": "hunter",
+   "hut": [
+    1616,
+    1790
+   ]
+  },
+  "hire_clerk_market": {
+   "x": 1525,
+   "y": 900,
+   "clerk": "market"
+  },
+  "hire_clerk_trade": {
+   "x": 640,
+   "y": 830,
+   "clerk": "trade"
+  },
+  "mkt_s3": {
+   "x": 1525,
+   "y": 900,
+   "labelAt": [
+    -40,
+    64
+   ]
+  },
+  "hire_clerk_s3": {
+   "x": 1525,
+   "y": 900,
+   "clerk": "meat",
+   "labelAt": [
+    -40,
+    64
+   ]
+  },
+  "mkt_s4": {
+   "x": 1525,
+   "y": 900,
+   "labelAt": [
+    -40,
+    64
+   ]
+  },
+  "porter_grill": {
+   "x": 925,
+   "y": 745,
+   "station": "grill"
+  },
+  "porter_sawmill": {
+   "x": 640,
+   "y": 1340,
+   "station": "sawmill"
+  },
+  "porter_bakery": {
+   "x": 1560,
+   "y": 1056,
+   "labelAt": [
+    0,
+    64
+   ],
+   "station": "bakery"
+  },
+  "porter_smelter": {
+   "x": 650,
+   "y": 2030,
+   "station": "smelter"
+  },
+  "porter_smokehouse": {
+   "x": 1140,
+   "y": 1858,
+   "station": "smokehouse"
+  }
+ },
+ "pads35": {
+  "op_grill": {
+   "x": 925,
+   "y": 745,
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "raw_grill": {
+   "x": 925,
+   "y": 745
+  },
+  "op_sawmill": {
+   "x": 640,
+   "y": 1340
+  },
+  "raw_sawmill": {
+   "x": 640,
+   "y": 1340
+  },
+  "op_bakery": {
+   "x": 1560,
+   "y": 1056,
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "raw_bakery": {
+   "x": 1560,
+   "y": 1056,
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "op_smelter": {
+   "x": 650,
+   "y": 2030
+  },
+  "raw_smelter": {
+   "x": 650,
+   "y": 2030
+  },
+  "op_smokehouse": {
+   "x": 1140,
+   "y": 1858
+  },
+  "raw_smokehouse": {
+   "x": 1140,
+   "y": 1858
+  },
+  "hire3_fisherman": {
+   "x": 925,
+   "y": 745,
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "hire3_lumberjack": {
+   "x": 720,
+   "y": 1415,
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "hire3_farmer": {
+   "x": 1557,
+   "y": 1466
+  },
+  "hire3_hunter": {
+   "x": 1140,
+   "y": 2195
+  }
+ },
+ "stationPads": {
+  "grill": {
+   "line": [
+    -79,
+    155,
+    "lb"
+   ],
+   "p2": null
+  },
+  "sawmill": {
+   "line": [
+    -6,
+    119
+   ],
+   "p2": [
+    168,
+    112,
+    [
+     100,
+     -62
+    ]
+   ]
+  },
+  "bakery": {
+   "line": [
+    244,
+    -88,
+    "lb"
+   ],
+   "p2": null
+  },
+  "smelter": {
+   "line": [
+    39,
+    148
+   ],
+   "p2": [
+    199,
+    128,
+    "lb"
+   ]
+  },
+  "smokehouse": {
+   "line": [
+    -251,
+    -25
+   ],
+   "p2": [
+    -284,
+    170
+   ]
+  }
+ },
+ "workerHome": {
+  "fisherman": [
+   845,
+   430
+  ],
+  "lumberjack": [
+   452,
+   1169
+  ],
+  "farmer": [
+   1560,
+   1239
+  ],
+  "miner": [
+   521,
+   1846
+  ],
+  "hunter": [
+   1527,
+   1924
+  ]
+ },
+ "roads": {
+  "nodes": {
+   "plaza_c": [
+    1000,
+    770
+   ],
+   "plaza_s": [
+    990,
+    1095
+   ],
+   "plaza_sw": [
+    705,
+    965
+   ],
+   "plaza_se": [
+    1262,
+    968
+   ],
+   "plaza_w": [
+    600,
+    830
+   ],
+   "forest_link": [
+    772,
+    1148
+   ],
+   "bakery_q": [
+    1060,
+    1335
+   ],
+   "field_gate": [
+    1469,
+    1222
+   ],
+   "cross_n": [
+    990,
+    1440
+   ],
+   "forest_gate": [
+    790,
+    1300
+   ],
+   "farm_gate": [
+    1180,
+    1320
+   ],
+   "green": [
+    990,
+    1700
+   ],
+   "cross_s": [
+    990,
+    2040
+   ],
+   "mine_gate": [
+    790,
+    1950
+   ],
+   "hunt_gate": [
+    1170,
+    1980
+   ],
+   "village": [
+    990,
+    2240
+   ],
+   "tents_w": [
+    620,
+    2380
+   ],
+   "tents_e": [
+    1360,
+    2380
+   ],
+   "gate": [
+    990,
+    2560
+   ],
+   "forest_in": [
+    690,
+    1290
+   ],
+   "farm_in": [
+    1290,
+    1290
+   ],
+   "mine_in": [
+    700,
+    1960
+   ],
+   "hunt_in": [
+    1260,
+    1980
+   ],
+   "beach_w": [
+    790,
+    565
+   ],
+   "beach_n": [
+    1000,
+    500
+   ],
+   "beach_e": [
+    1300,
+    572
+   ],
+   "plaza_e": [
+    1335,
+    905
+   ],
+   "gap_n": [
+    1078,
+    556
+   ],
+   "east_link": [
+    1600,
+    930
+   ],
+   "east_gate": [
+    1830,
+    950
+   ],
+   "e_mid": [
+    2120,
+    980
+   ],
+   "e_dock": [
+    2270,
+    790
+   ],
+   "e_east": [
+    2560,
+    1180
+   ],
+   "e_south": [
+    2330,
+    1290
+   ],
+   "s_gate": [
+    990,
+    2760
+   ],
+   "s_cross": [
+    990,
+    2980
+   ],
+   "s_w": [
+    600,
+    3090
+   ],
+   "s_e": [
+    1360,
+    3050
+   ],
+   "s_s": [
+    990,
+    3290
+   ],
+   "se_n": [
+    2330,
+    1650
+   ],
+   "se_c": [
+    2330,
+    2330
+   ],
+   "se_s": [
+    2320,
+    2960
+   ],
+   "se_gate": [
+    1830,
+    2400
+   ],
+   "se_e": [
+    2700,
+    2420
+   ],
+   "v_link_w": [
+    2640,
+    1139
+   ],
+   "v_link_e": [
+    3184,
+    1411
+   ],
+   "hut_door": [
+    420,
+    700
+   ],
+   "w_b2": [
+    230,
+    620
+   ],
+   "w_gate_n": [
+    -60,
+    640
+   ],
+   "hall_front": [
+    -110,
+    1000
+   ],
+   "deck_head": [
+    890,
+    470
+   ],
+   "w_m1": [
+    560,
+    1700
+   ],
+   "w_m2": [
+    300,
+    1660
+   ],
+   "w_gate_m": [
+    -40,
+    1640
+   ],
+   "w_rest": [
+    -330,
+    900
+   ],
+   "w_x": [
+    -470,
+    1190
+   ],
+   "w_hall": [
+    -560,
+    1640
+   ],
+   "w_sq": [
+    -900,
+    1640
+   ],
+   "w_s": [
+    -420,
+    2120
+   ],
+   "w_nw": [
+    -860,
+    1040
+   ],
+   "w_front": [
+    -880,
+    2110
+   ]
+  },
+  "edges": [
+   [
+    "plaza_c",
+    "plaza_s",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_c",
+    "plaza_sw",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_c",
+    "plaza_se",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_c",
+    "plaza_w",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_w",
+    "plaza_sw",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_c",
+    "plaza_e",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_e",
+    "plaza_se",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "beach_w",
+    "beach_n",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "beach_n",
+    "beach_e",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "beach_w",
+    "deck_head",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "deck_head",
+    "beach_n",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_c",
+    "gap_n",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "gap_n",
+    "beach_n",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "gap_n",
+    "beach_e",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "beach_w",
+    "plaza_c",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "plaza_s",
+    "cross_n",
+    {
+     "via": [
+      [
+       990,
+       1150
+      ]
+     ],
+     "spine": true
+    }
+   ],
+   [
+    "plaza_sw",
+    "forest_link"
+   ],
+   [
+    "forest_link",
+    "forest_gate",
+    {
+     "via": [
+      [
+       786,
+       1230
+      ]
+     ]
+    }
+   ],
+   [
+    "cross_n",
+    "bakery_q",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "bakery_q",
+    "farm_gate",
+    {
+     "draw": false
+    }
+   ],
+   [
+    "cross_n",
+    "forest_gate",
+    {
+     "via": [
+      [
+       880,
+       1390
+      ]
+     ]
+    }
+   ],
+   [
+    "cross_n",
+    "farm_gate",
+    {
+     "via": [
+      [
+       1090,
+       1390
+      ]
+     ]
+    }
+   ],
+   [
+    "cross_n",
+    "green",
+    {
+     "spine": true
+    }
+   ],
+   [
+    "green",
+    "cross_s",
+    {
+     "spine": true
+    }
+   ],
+   [
+    "cross_s",
+    "mine_gate",
+    {
+     "via": [
+      [
+       880,
+       2000
+      ]
+     ]
+    }
+   ],
+   [
+    "cross_s",
+    "hunt_gate",
+    {
+     "via": [
+      [
+       1090,
+       2010
+      ]
+     ]
+    }
+   ],
+   [
+    "cross_s",
+    "village"
+   ],
+   [
+    "village",
+    "tents_w",
+    {
+     "via": [
+      [
+       800,
+       2330
+      ]
+     ]
+    }
+   ],
+   [
+    "village",
+    "tents_e",
+    {
+     "via": [
+      [
+       1180,
+       2330
+      ]
+     ]
+    }
+   ],
+   [
+    "village",
+    "gate"
+   ],
+   [
+    "forest_gate",
+    "forest_in",
+    {
+     "zone": "forest"
+    }
+   ],
+   [
+    "farm_gate",
+    "farm_in",
+    {
+     "zone": "farm"
+    }
+   ],
+   [
+    "farm_in",
+    "field_gate",
+    {
+     "zone": "farm",
+     "draw": false,
+     "walk": false
+    }
+   ],
+   [
+    "mine_gate",
+    "mine_in",
+    {
+     "zone": "mine"
+    }
+   ],
+   [
+    "hunt_gate",
+    "hunt_in",
+    {
+     "zone": "hunt"
+    }
+   ],
+   [
+    "plaza_e",
+    "east_link",
+    {
+     "region": "east",
+     "spine": true
+    }
+   ],
+   [
+    "east_link",
+    "east_gate",
+    {
+     "region": "east",
+     "spine": true
+    }
+   ],
+   [
+    "east_gate",
+    "e_mid",
+    {
+     "region": "east"
+    }
+   ],
+   [
+    "e_mid",
+    "e_dock",
+    {
+     "region": "east",
+     "via": [
+      [
+       2200,
+       880
+      ]
+     ]
+    }
+   ],
+   [
+    "e_mid",
+    "e_south",
+    {
+     "region": "east",
+     "via": [
+      [
+       2230,
+       1150
+      ]
+     ]
+    }
+   ],
+   [
+    "e_south",
+    "e_east",
+    {
+     "region": "east"
+    }
+   ],
+   [
+    "gate",
+    "s_gate",
+    {
+     "region": "south"
+    }
+   ],
+   [
+    "s_gate",
+    "s_cross",
+    {
+     "region": "south"
+    }
+   ],
+   [
+    "s_cross",
+    "s_w",
+    {
+     "region": "south",
+     "via": [
+      [
+       800,
+       3040
+      ]
+     ]
+    }
+   ],
+   [
+    "s_cross",
+    "s_e",
+    {
+     "region": "south",
+     "via": [
+      [
+       1180,
+       3010
+      ]
+     ]
+    }
+   ],
+   [
+    "s_cross",
+    "s_s",
+    {
+     "region": "south"
+    }
+   ],
+   [
+    "e_south",
+    "se_n",
+    {
+     "region": "se"
+    }
+   ],
+   [
+    "se_n",
+    "se_c",
+    {
+     "region": "se",
+     "via": [
+      [
+       2360,
+       2000
+      ]
+     ]
+    }
+   ],
+   [
+    "se_c",
+    "se_s",
+    {
+     "region": "se",
+     "via": [
+      [
+       2300,
+       2650
+      ]
+     ]
+    }
+   ],
+   [
+    "tents_e",
+    "se_gate",
+    {
+     "region": "se",
+     "via": [
+      [
+       1600,
+       2400
+      ]
+     ]
+    }
+   ],
+   [
+    "se_gate",
+    "se_c",
+    {
+     "region": "se",
+     "via": [
+      [
+       2080,
+       2360
+      ]
+     ]
+    }
+   ],
+   [
+    "se_c",
+    "se_e",
+    {
+     "region": "se"
+    }
+   ],
+   [
+    "e_east",
+    "v_link_w",
+    {
+     "region": "rail"
+    }
+   ],
+   [
+    "v_link_w",
+    "v_link_e",
+    {
+     "region": "rail"
+    }
+   ],
+   [
+    "plaza_w",
+    "hut_door",
+    {
+     "spine": true
+    }
+   ],
+   [
+    "hut_door",
+    "w_b2",
+    {
+     "spine": true
+    }
+   ],
+   [
+    "w_b2",
+    "w_gate_n",
+    {
+     "spine": true
+    }
+   ],
+   [
+    "green",
+    "w_m1"
+   ],
+   [
+    "w_m1",
+    "w_m2"
+   ],
+   [
+    "w_m2",
+    "w_gate_m"
+   ],
+   [
+    "w_gate_n",
+    "w_rest",
+    {
+     "via": [
+      [
+       -200,
+       760
+      ]
+     ],
+     "spine": true
+    }
+   ],
+   [
+    "w_rest",
+    "hall_front",
+    {
+     "spine": true
+    }
+   ],
+   [
+    "w_rest",
+    "w_x"
+   ],
+   [
+    "w_x",
+    "w_nw"
+   ],
+   [
+    "w_x",
+    "w_hall",
+    {
+     "via": [
+      [
+       -520,
+       1420
+      ]
+     ]
+    }
+   ],
+   [
+    "w_gate_m",
+    "w_hall"
+   ],
+   [
+    "w_hall",
+    "w_sq"
+   ],
+   [
+    "w_hall",
+    "w_s",
+    {
+     "via": [
+      [
+       -400,
+       1900
+      ]
+     ]
+    }
+   ],
+   [
+    "w_s",
+    "w_front"
+   ]
+  ]
+ },
+ "paths": [
+  [
+   [
+    990,
+    1095
+   ],
+   [
+    990,
+    1150
+   ],
+   [
+    990,
+    1440
+   ]
+  ],
+  [
+   [
+    705,
+    965
+   ],
+   [
+    772,
+    1148
+   ]
+  ],
+  [
+   [
+    772,
+    1148
+   ],
+   [
+    786,
+    1230
+   ],
+   [
+    790,
+    1300
+   ]
+  ],
+  [
+   [
+    990,
+    1440
+   ],
+   [
+    880,
+    1390
+   ],
+   [
+    790,
+    1300
+   ]
+  ],
+  [
+   [
+    990,
+    1440
+   ],
+   [
+    1090,
+    1390
+   ],
+   [
+    1180,
+    1320
+   ]
+  ],
+  [
+   [
+    990,
+    1440
+   ],
+   [
+    990,
+    1700
+   ]
+  ],
+  [
+   [
+    990,
+    1700
+   ],
+   [
+    990,
+    2040
+   ]
+  ],
+  [
+   [
+    990,
+    2040
+   ],
+   [
+    880,
+    2000
+   ],
+   [
+    790,
+    1950
+   ]
+  ],
+  [
+   [
+    990,
+    2040
+   ],
+   [
+    1090,
+    2010
+   ],
+   [
+    1170,
+    1980
+   ]
+  ],
+  [
+   [
+    990,
+    2040
+   ],
+   [
+    990,
+    2240
+   ]
+  ],
+  [
+   [
+    990,
+    2240
+   ],
+   [
+    800,
+    2330
+   ],
+   [
+    620,
+    2380
+   ]
+  ],
+  [
+   [
+    990,
+    2240
+   ],
+   [
+    1180,
+    2330
+   ],
+   [
+    1360,
+    2380
+   ]
+  ],
+  [
+   [
+    990,
+    2240
+   ],
+   [
+    990,
+    2560
+   ]
+  ],
+  [
+   [
+    600,
+    830
+   ],
+   [
+    420,
+    700
+   ]
+  ],
+  [
+   [
+    420,
+    700
+   ],
+   [
+    230,
+    620
+   ]
+  ],
+  [
+   [
+    230,
+    620
+   ],
+   [
+    -60,
+    640
+   ]
+  ],
+  [
+   [
+    990,
+    1700
+   ],
+   [
+    560,
+    1700
+   ]
+  ],
+  [
+   [
+    560,
+    1700
+   ],
+   [
+    300,
+    1660
+   ]
+  ],
+  [
+   [
+    300,
+    1660
+   ],
+   [
+    -40,
+    1640
+   ]
+  ],
+  [
+   [
+    -60,
+    640
+   ],
+   [
+    -200,
+    760
+   ],
+   [
+    -330,
+    900
+   ]
+  ],
+  [
+   [
+    -330,
+    900
+   ],
+   [
+    -110,
+    1000
+   ]
+  ],
+  [
+   [
+    -330,
+    900
+   ],
+   [
+    -470,
+    1190
+   ]
+  ],
+  [
+   [
+    -470,
+    1190
+   ],
+   [
+    -860,
+    1040
+   ]
+  ],
+  [
+   [
+    -470,
+    1190
+   ],
+   [
+    -520,
+    1420
+   ],
+   [
+    -560,
+    1640
+   ]
+  ],
+  [
+   [
+    -40,
+    1640
+   ],
+   [
+    -560,
+    1640
+   ]
+  ],
+  [
+   [
+    -560,
+    1640
+   ],
+   [
+    -900,
+    1640
+   ]
+  ],
+  [
+   [
+    -560,
+    1640
+   ],
+   [
+    -400,
+    1900
+   ],
+   [
+    -420,
+    2120
+   ]
+  ],
+  [
+   [
+    -420,
+    2120
+   ],
+   [
+    -880,
+    2110
+   ]
+  ]
+ ],
+ "fences": [
+  {
+   "zone": "plaza",
+   "edges": {
+    "tr": [
+     [
+      0,
+      3.2
+     ]
+    ]
+   }
+  },
+  {
+   "zone": "forest",
+   "edges": {
+    "tl": [],
+    "bl": []
+   }
+  },
+  {
+   "zone": "farm",
+   "edges": {
+    "tr": [],
+    "br": [],
+    "tl": [
+     [
+      1.4,
+      3
+     ],
+     [
+      5.4,
+      6.8
+     ]
+    ]
+   }
+  },
+  {
+   "zone": "mine",
+   "edges": {
+    "tl": [
+     [
+      6.2,
+      9
+     ]
+    ],
+    "bl": []
+   }
+  },
+  {
+   "zone": "hunt",
+   "edges": {
+    "tr": [],
+    "br": [],
+    "bl": [
+     [
+      0,
+      2.5
+     ]
+    ],
+    "tl": [
+     [
+      0.8,
+      5.2
+     ]
+    ]
+   }
+  }
+ ],
+ "decor": [
+  [
+   "dock_pier",
+   1460,
+   300
+  ],
+  [
+   "boat_small",
+   1650,
+   250
+  ],
+  [
+   "ice_chunk",
+   210,
+   318
+  ],
+  [
+   "ice_chunk",
+   470,
+   340,
+   {
+    "scale": 0.7
+   }
+  ],
+  [
+   "boat_small",
+   1290,
+   214,
+   {
+    "flip": true,
+    "scale": 0.85
+   }
+  ],
+  [
+   "ice_chunk",
+   1305,
+   330,
+   {
+    "scale": 0.55
+   }
+  ],
+  [
+   "lamp_post",
+   800,
+   480
+  ],
+  [
+   "barrel",
+   1150,
+   470
+  ],
+  [
+   "crate",
+   1205,
+   492
+  ],
+  [
+   "crate",
+   1182,
+   448,
+   {
+    "scale": 0.8
+   }
+  ],
+  [
+   "flag_pole",
+   1250,
+   530
+  ],
+  [
+   "snow_pile_a",
+   236,
+   512
+  ],
+  [
+   "snow_pile_b",
+   345,
+   700
+  ],
+  [
+   "bush_snow",
+   1620,
+   545
+  ],
+  [
+   "bush_snow",
+   1640,
+   660
+  ],
+  [
+   "snow_pile_b",
+   1720,
+   600
+  ],
+  [
+   "campfire",
+   -45,
+   505
+  ],
+  [
+   "firewood_pile",
+   470,
+   498
+  ],
+  [
+   "barrel",
+   728,
+   503
+  ],
+  [
+   "lamp_post",
+   393,
+   800
+  ],
+  [
+   "lamp_post",
+   990,
+   1099
+  ],
+  [
+   "lamp_post",
+   1271,
+   637
+  ],
+  [
+   "bench",
+   637,
+   913
+  ],
+  [
+   "barrel",
+   1545,
+   800
+  ],
+  [
+   "crate",
+   1522,
+   826,
+   {
+    "scale": 0.85
+   }
+  ],
+  [
+   "bush_snow",
+   1366,
+   657
+  ],
+  [
+   "snow_pile_b",
+   1393,
+   934
+  ],
+  [
+   "tent_a",
+   660,
+   2380,
+   {
+    "id": "tent43_1"
+   }
+  ],
+  [
+   "tent_a",
+   1260,
+   2370,
+   {
+    "flip": true,
+    "id": "tent43_2"
+   }
+  ],
+  [
+   "tent_a",
+   880,
+   2392,
+   {
+    "id": "tent43_3"
+   }
+  ],
+  [
+   "tent_a",
+   1112,
+   2422,
+   {
+    "flip": true,
+    "id": "tent43_4"
+   }
+  ],
+  [
+   "campfire",
+   870,
+   2525
+  ],
+  [
+   "flag_pole",
+   1345,
+   2285
+  ],
+  [
+   "lamp_post",
+   700,
+   2270
+  ],
+  [
+   "lamp_post",
+   1080,
+   2560
+  ],
+  [
+   "firewood_pile",
+   760,
+   2500
+  ],
+  [
+   "barrel",
+   1200,
+   2500
+  ],
+  [
+   "crate",
+   1240,
+   2530
+  ],
+  [
+   "bench",
+   975,
+   2555
+  ],
+  [
+   "hay_bale",
+   1340,
+   2470
+  ],
+  [
+   "snow_pile_a",
+   520,
+   2490
+  ],
+  [
+   "bush_snow",
+   1420,
+   2480
+  ],
+  [
+   "snow_pile_b",
+   780,
+   2250
+  ],
+  [
+   "barrel",
+   820,
+   2420
+  ],
+  [
+   "lamp_post",
+   1040,
+   1500
+  ],
+  [
+   "lamp_post",
+   940,
+   1850
+  ],
+  [
+   "signpost",
+   940,
+   1520
+  ],
+  [
+   "bush_snow",
+   1052,
+   1660
+  ],
+  [
+   "snow_pile_b",
+   900,
+   1720
+  ],
+  [
+   "barrel",
+   1050,
+   1900
+  ],
+  [
+   "crate",
+   920,
+   2080
+  ],
+  [
+   "bush_snow",
+   900,
+   1250
+  ],
+  [
+   "lamp_post",
+   920,
+   1215
+  ],
+  [
+   "ice_chunk",
+   1060,
+   1760,
+   {
+    "scale": 0.6
+   }
+  ],
+  [
+   "campfire",
+   740,
+   1575
+  ],
+  [
+   "tree_stump",
+   533,
+   1336,
+   {
+    "zone": "forest"
+   }
+  ],
+  [
+   "farm43_hut",
+   1669,
+   1266,
+   {
+    "zone": "farm",
+    "r": 62,
+    "id": "farm43_hut"
+   }
+  ],
+  [
+   "farm43_scarecrow",
+   1401,
+   1279,
+   {
+    "zone": "farm",
+    "r": 14
+   }
+  ],
+  [
+   "farm43_sledcart",
+   1587,
+   1207,
+   {
+    "zone": "farm",
+    "r": 34
+   }
+  ],
+  [
+   "mine_entrance",
+   430,
+   1782,
+   {
+    "zone": "mine"
+   }
+  ],
+  [
+   "lamp_post",
+   625,
+   1821,
+   {
+    "zone": "mine"
+   }
+  ],
+  [
+   "hay_bale",
+   1391,
+   2082,
+   {
+    "zone": "hunt"
+   }
+  ],
+  [
+   "bush_snow",
+   1563,
+   2023,
+   {
+    "zone": "hunt"
+   }
+  ],
+  [
+   "bush_snow",
+   1156,
+   1955,
+   {
+    "zone": "hunt"
+   }
+  ],
+  [
+   "snow_pile_b",
+   1264,
+   2046,
+   {
+    "zone": "hunt"
+   }
+  ],
+  [
+   "signpost",
+   1880,
+   1005,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "lamp_post",
+   2010,
+   905,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "lamp_post",
+   2230,
+   1060,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "barrel",
+   2150,
+   690,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "crate",
+   2180,
+   712,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "crate",
+   2158,
+   735,
+   {
+    "region": "east",
+    "scale": 0.8
+   }
+  ],
+  [
+   "ice_chunk",
+   2620,
+   520,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "ice_chunk",
+   2380,
+   420,
+   {
+    "region": "east",
+    "scale": 0.7
+   }
+  ],
+  [
+   "boat_small",
+   2760,
+   560,
+   {
+    "region": "east",
+    "flip": true,
+    "scale": 0.9
+   }
+  ],
+  [
+   "firewood_pile",
+   2440,
+   1310,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "tree_stump",
+   2700,
+   1360,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "tree_stump",
+   2580,
+   1400,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "bush_snow",
+   2180,
+   1020,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "snow_pile_a",
+   2440,
+   1440,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "snow_pile_b",
+   2860,
+   880,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "campfire",
+   2060,
+   790,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "bench",
+   2330,
+   960,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "flag_pole",
+   2480,
+   760,
+   {
+    "region": "east"
+   }
+  ],
+  [
+   "hay_bale",
+   840,
+   2900,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "hay_bale",
+   880,
+   2930,
+   {
+    "region": "south",
+    "scale": 0.85
+   }
+  ],
+  [
+   "hay_bale",
+   260,
+   3260,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "lamp_post",
+   1060,
+   2920,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "lamp_post",
+   920,
+   3200,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "signpost",
+   1060,
+   3060,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "barrel",
+   640,
+   2760,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "crate",
+   670,
+   2785,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "bush_snow",
+   1560,
+   2780,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "snow_pile_a",
+   420,
+   3290,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "snow_pile_b",
+   1640,
+   3100,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "campfire",
+   560,
+   2700,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "bench",
+   640,
+   2668,
+   {
+    "region": "south"
+   }
+  ],
+  [
+   "mine_entrance",
+   2770,
+   1960,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "crate",
+   2380,
+   1880,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "barrel",
+   2410,
+   1905,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "lamp_post",
+   2420,
+   2240,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "lamp_post",
+   2260,
+   2700,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "signpost",
+   2250,
+   2400,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "tree_stump",
+   2150,
+   1960,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "snow_pile_a",
+   2600,
+   2350,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "snow_pile_b",
+   1980,
+   3200,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "bush_snow",
+   2850,
+   2520,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "bush_snow",
+   2200,
+   3150,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "firewood_pile",
+   2480,
+   2520,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "campfire",
+   2440,
+   2620,
+   {
+    "region": "se"
+   }
+  ],
+  [
+   "ice_chunk",
+   2750,
+   3220,
+   {
+    "region": "se",
+    "scale": 0.6
+   }
+  ],
+  [
+   "ice_chunk",
+   -380,
+   330
+  ],
+  [
+   "ice_chunk",
+   -1050,
+   322,
+   {
+    "scale": 0.7
+   }
+  ],
+  [
+   "boat_small",
+   -760,
+   262,
+   {
+    "flip": true,
+    "scale": 0.85
+   }
+  ],
+  [
+   "signpost",
+   -40,
+   720
+  ],
+  [
+   "lamp_post",
+   -190,
+   690
+  ],
+  [
+   "lamp_post",
+   -470,
+   1080
+  ],
+  [
+   "lamp_post",
+   -640,
+   1580
+  ],
+  [
+   "lamp_post",
+   -245,
+   1835
+  ],
+  [
+   "snow_pile_a",
+   -140,
+   500
+  ],
+  [
+   "bush_snow",
+   -520,
+   520
+  ],
+  [
+   "barrel",
+   -960,
+   520
+  ],
+  [
+   "crate",
+   -930,
+   546
+  ],
+  [
+   "snow_pile_b",
+   -1250,
+   520
+  ],
+  [
+   "bush_snow",
+   -1300,
+   1250
+  ],
+  [
+   "snow_pile_a",
+   -1000,
+   1450
+  ],
+  [
+   "bush_snow",
+   -60,
+   1500
+  ],
+  [
+   "snow_pile_b",
+   -180,
+   2300
+  ],
+  [
+   "campfire",
+   -260,
+   2350
+  ],
+  [
+   "firewood_pile",
+   -310,
+   2450
+  ],
+  [
+   "hay_bale",
+   -1220,
+   2100,
+   {
+    "scale": 0.9
+   }
+  ],
+  [
+   "bush_snow",
+   -820,
+   2200
+  ],
+  [
+   "flag_pole",
+   -1000,
+   1520
+  ]
+ ],
+ "borderTrees": [
+  [
+   0,
+   420,
+   150,
+   2620,
+   100,
+   null,
+   "west"
+  ],
+  [
+   1650,
+   420,
+   1800,
+   2620,
+   100
+  ],
+  [
+   0,
+   2560,
+   760,
+   2620,
+   115
+  ],
+  [
+   1180,
+   2560,
+   1800,
+   2620,
+   115
+  ],
+  [
+   2880,
+   300,
+   3000,
+   1500,
+   100,
+   "east",
+   "rail"
+  ],
+  [
+   2880,
+   1500,
+   3000,
+   3450,
+   100,
+   "se",
+   "rail"
+  ],
+  [
+   1800,
+   3380,
+   3000,
+   3450,
+   115,
+   "se"
+  ],
+  [
+   0,
+   2620,
+   150,
+   3450,
+   100,
+   "south",
+   "west_s"
+  ],
+  [
+   0,
+   3380,
+   1800,
+   3450,
+   115,
+   "south"
+  ],
+  [
+   3000,
+   3380,
+   4150,
+   3450,
+   115,
+   "rail"
+  ],
+  [
+   4150,
+   3380,
+   6144,
+   3450,
+   115,
+   "town"
+  ],
+  [
+   6024,
+   300,
+   6144,
+   3450,
+   100,
+   "town"
+  ],
+  [
+   -1400,
+   420,
+   -1250,
+   2620,
+   100
+  ],
+  [
+   -1400,
+   2560,
+   0,
+   2620,
+   115
+  ],
+  [
+   -1400,
+   2620,
+   -1250,
+   3450,
+   100,
+   "west_s"
+  ],
+  [
+   -1400,
+   3380,
+   0,
+   3450,
+   115,
+   "west_s"
+  ],
+  [
+   -1240,
+   2180,
+   -980,
+   2520,
+   120
+  ],
+  [
+   -820,
+   2280,
+   -560,
+   2520,
+   120
+  ]
+ ],
+ "extraTrees": [
+  [
+   260,
+   720,
+   "tree_pine_snow"
+  ],
+  [
+   190,
+   860,
+   "tree_pine_a"
+  ],
+  [
+   300,
+   930,
+   "tree_pine_b"
+  ],
+  [
+   1600,
+   760,
+   "tree_pine_snow"
+  ],
+  [
+   1560,
+   900,
+   "tree_pine_a"
+  ],
+  [
+   1680,
+   980,
+   "tree_pine_b"
+  ],
+  [
+   880,
+   1350,
+   "tree_pine_snow"
+  ],
+  [
+   1100,
+   1460,
+   "tree_pine_a"
+  ],
+  [
+   190,
+   1560,
+   "tree_pine_snow"
+  ],
+  [
+   1660,
+   1640,
+   "tree_pine_snow"
+  ],
+  [
+   760,
+   2220,
+   "tree_pine_a"
+  ],
+  [
+   1540,
+   2300,
+   "tree_pine_snow"
+  ],
+  [
+   330,
+   2330,
+   "tree_pine_b"
+  ],
+  [
+   600,
+   2570,
+   "tree_pine_snow"
+  ],
+  [
+   1340,
+   2580,
+   "tree_pine_a"
+  ],
+  [
+   180,
+   2260,
+   "tree_pine_a"
+  ],
+  [
+   1700,
+   2230,
+   "tree_pine_b"
+  ],
+  [
+   1240,
+   2260,
+   "tree_pine_a"
+  ],
+  [
+   520,
+   2240,
+   "tree_pine_snow"
+  ],
+  [
+   -1180,
+   1390,
+   "tree_pine_snow"
+  ],
+  [
+   -1060,
+   1440,
+   "tree_pine_a"
+  ],
+  [
+   -1230,
+   1480,
+   "tree_pine_b"
+  ],
+  [
+   -130,
+   1900,
+   "tree_pine_b"
+  ],
+  [
+   -60,
+   2060,
+   "tree_pine_snow"
+  ],
+  [
+   -1210,
+   1820,
+   "tree_pine_a"
+  ],
+  [
+   -180,
+   560,
+   "tree_pine_snow"
+  ],
+  [
+   -1120,
+   1260,
+   "tree_pine_b"
+  ],
+  [
+   1960,
+   1380,
+   "tree_pine_a",
+   "east"
+  ],
+  [
+   2120,
+   1420,
+   "tree_pine_snow",
+   "east"
+  ],
+  [
+   2480,
+   860,
+   "tree_pine_snow",
+   "east"
+  ],
+  [
+   2700,
+   840,
+   "tree_pine_a",
+   "east"
+  ],
+  [
+   2250,
+   1440,
+   "tree_pine_b",
+   "east"
+  ],
+  [
+   300,
+   2780,
+   "tree_pine_snow",
+   "south"
+  ],
+  [
+   180,
+   3150,
+   "tree_pine_a",
+   "south"
+  ],
+  [
+   1650,
+   2760,
+   "tree_pine_b",
+   "south"
+  ],
+  [
+   1700,
+   3020,
+   "tree_pine_snow",
+   "south"
+  ],
+  [
+   880,
+   2800,
+   "tree_pine_a",
+   "south"
+  ],
+  [
+   1660,
+   3250,
+   "tree_pine_b",
+   "south"
+  ],
+  [
+   1240,
+   2720,
+   "tree_pine_snow",
+   "south"
+  ],
+  [
+   1980,
+   1700,
+   "tree_pine_snow",
+   "se"
+  ],
+  [
+   2700,
+   1700,
+   "tree_pine_a",
+   "se"
+  ],
+  [
+   2850,
+   2250,
+   "tree_pine_b",
+   "se"
+  ],
+  [
+   1950,
+   2600,
+   "tree_pine_a",
+   "se"
+  ],
+  [
+   2820,
+   2950,
+   "tree_pine_a",
+   "se"
+  ],
+  [
+   2150,
+   2150,
+   "tree_pine_snow",
+   "se"
+  ],
+  [
+   2480,
+   2860,
+   "tree_pine_b",
+   "se"
+  ]
+ ],
+ "decals": [
+  [
+   "decal_snow_drift_a",
+   360,
+   660,
+   1
+  ],
+  [
+   "decal_snow_drift_b",
+   1580,
+   700,
+   1
+  ],
+  [
+   "decal_snow_drift_a",
+   760,
+   1580,
+   1.1
+  ],
+  [
+   "decal_snow_drift_b",
+   1220,
+   1590,
+   1
+  ],
+  [
+   "decal_snow_drift_a",
+   1580,
+   2420,
+   1
+  ],
+  [
+   "decal_snow_drift_b",
+   330,
+   2440,
+   1
+  ],
+  [
+   "decal_puddle_ice",
+   1120,
+   1520,
+   1
+  ],
+  [
+   "decal_puddle_ice",
+   640,
+   2250,
+   0.9
+  ],
+  [
+   "decal_dirt_patch",
+   560,
+   1720,
+   0.9
+  ],
+  [
+   "decal_dirt_patch",
+   300,
+   2120,
+   1
+  ],
+  [
+   "decal_footprints",
+   1010,
+   1720,
+   1
+  ],
+  [
+   "decal_footprints",
+   970,
+   2100,
+   1
+  ],
+  [
+   "decal_footprints",
+   760,
+   520,
+   0.9
+  ],
+  [
+   "decal_snow_drift_a",
+   -700,
+   1200,
+   1.1
+  ],
+  [
+   "decal_snow_drift_b",
+   -1150,
+   1450,
+   1
+  ],
+  [
+   "decal_puddle_ice",
+   -980,
+   1880,
+   1.2
+  ],
+  [
+   "decal_snow_drift_a",
+   -360,
+   2200,
+   1
+  ],
+  [
+   "decal_footprints",
+   -280,
+   820,
+   0.9
+  ],
+  [
+   "decal_dirt_patch",
+   -1000,
+   980,
+   0.9
+  ]
+ ],
+ "territory": {
+  "start": {
+   "rect": [
+    0,
+    0,
+    1800,
+    2620
+   ]
+  },
+  "east": {
+   "rect": [
+    1800,
+    0,
+    3000,
+    1500
+   ],
+   "tower": "tower_east",
+   "name": "r_east",
+   "center": [
+    2330,
+    1020
+   ]
+  },
+  "south": {
+   "rect": [
+    0,
+    2620,
+    1800,
+    3450
+   ],
+   "tower": "tower_south",
+   "name": "r_south",
+   "center": [
+    960,
+    3000
+   ]
+  },
+  "se": {
+   "rect": [
+    1800,
+    1500,
+    3000,
+    3450
+   ],
+   "tower": "tower_se",
+   "name": "r_se",
+   "center": [
+    2360,
+    2380
+   ]
+  },
+  "rail": {
+   "rect": [
+    3000,
+    0,
+    4150,
+    3450
+   ],
+   "name": "r_rail",
+   "center": [
+    3420,
+    1560
+   ],
+   "openWith": "east"
+  },
+  "town": {
+   "rect": [
+    4150,
+    0,
+    6144,
+    3450
+   ],
+   "name": "r_town",
+   "center": [
+    4900,
+    2450
+   ],
+   "openFlag": "townInvite"
+  },
+  "west": {
+   "rect": [
+    -1400,
+    0,
+    0,
+    2620
+   ],
+   "name": "r_west",
+   "center": [
+    -660,
+    1250
+   ],
+   "open": true
+  },
+  "west_s": {
+   "rect": [
+    -1400,
+    2620,
+    0,
+    3450
+   ],
+   "name": "r_west_s",
+   "center": [
+    -700,
+    3000
+   ],
+   "openWith": "south"
+  }
+ },
+ "towers": {
+  "tower_east": {
+   "x": 1660,
+   "y": 845,
+   "region": "east"
+  },
+  "tower_south": {
+   "x": 1450,
+   "y": 2505,
+   "region": "south",
+   "pad": [
+    -20,
+    -106
+   ]
+  },
+  "tower_se": {
+   "x": 2870,
+   "y": 1370,
+   "region": "se",
+   "in": "east",
+   "pad": [
+    -8,
+    -94
+   ]
+  }
+ },
+ "plots": {
+  "v_house1": {
+   "x": 1600,
+   "y": 2235,
+   "size": "S",
+   "region": "start",
+   "after": "hire_miner"
+  },
+  "v_house2": {
+   "x": 430,
+   "y": 2310,
+   "size": "S",
+   "region": "start",
+   "after": "hire_miner"
+  },
+  "h43_1": {
+   "x": 600,
+   "y": 1040,
+   "size": "S",
+   "region": "start",
+   "after": "zone_forest",
+   "only": "house_c",
+   "price": 0,
+   "side43": true,
+   "tents": [
+    "tent43_1",
+    "tent43_3"
+   ],
+   "family": [
+    "npc_aunt",
+    "npc_kid_girl"
+   ]
+  },
+  "h43_2": {
+   "x": 1560,
+   "y": 1640,
+   "size": "S",
+   "region": "start",
+   "after": "zone_forest",
+   "only": "house_a",
+   "price": 1,
+   "side43": true,
+   "tents": [
+    "tent43_2",
+    "tent43_4"
+   ],
+   "family": [
+    "npc_grandpa",
+    "npc_kid_prankster",
+    "npc_kid_boy"
+   ]
+  },
+  "d_tool": {
+   "x": 60,
+   "y": 1530,
+   "size": "M",
+   "region": "start",
+   "after": "r:east",
+   "only": "toolsmith",
+   "pads": {
+    "line": [
+     -260,
+     70
+    ],
+    "p2": [
+     20,
+     220
+    ]
+   }
+  },
+  "d_wh": {
+   "x": 475,
+   "y": 1525,
+   "size": "M",
+   "region": "start",
+   "after": "hire_hunter",
+   "only": "warehouse"
+  },
+  "d_cannery": {
+   "x": 1890,
+   "y": 485,
+   "size": "M",
+   "region": "east",
+   "after": "boat_rowboat",
+   "only": "cannery",
+   "drop": [
+    2000,
+    700
+   ],
+   "clear": [
+    [
+     -200,
+     80,
+     180
+    ]
+   ],
+   "pads": {
+    "line": [
+     -60,
+     120
+    ],
+    "p2": [
+     -40,
+     270
+    ],
+    "mcan": [
+     -340,
+     10
+    ]
+   }
+  },
+  "d_store": {
+   "x": 1990,
+   "y": 1070,
+   "size": "M",
+   "region": "east",
+   "after": "b:cannery",
+   "only": "store",
+   "clear": [
+    [
+     -250,
+     -40,
+     250
+    ],
+    [
+     -250,
+     60,
+     150
+    ],
+    [
+     -250,
+     180,
+     200
+    ]
+   ],
+   "storeLine": {
+    "queueStart": [
+     -100,
+     53
+    ],
+    "queueStep": [
+     -40.7,
+     -20.4
+    ],
+    "queueTurn": 99
+   }
+  },
+  "e_dock": {
+   "x": 2330,
+   "shore": 46,
+   "size": "M",
+   "region": "east",
+   "only": "boathouse",
+   "y": 595
+  },
+  "e_m1": {
+   "x": 2600,
+   "y": 830,
+   "size": "M",
+   "region": "east",
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "drop": [
+    2750,
+    880
+   ],
+   "pads": {
+    "line": [
+     -310,
+     40
+    ],
+    "p2": [
+     -310,
+     40
+    ]
+   }
+  },
+  "e_m2": {
+   "x": 2520,
+   "y": 985,
+   "size": "M",
+   "region": "east",
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "pads": {
+    "line": [
+     200,
+     -15
+    ],
+    "p2": [
+     21,
+     135
+    ]
+   }
+  },
+  "s_m1": {
+   "x": 1360,
+   "y": 2860,
+   "size": "M",
+   "region": "south",
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "pads": {
+    "line": [
+     200,
+     40
+    ],
+    "p2": [
+     200,
+     40
+    ]
+   }
+  },
+  "s_m2": {
+   "x": 1470,
+   "y": 3235,
+   "size": "M",
+   "region": "south",
+   "types": [
+    "house_*",
+    "deco_*"
+   ]
+  },
+  "s_l1": {
+   "x": 780,
+   "y": 3220,
+   "size": "L",
+   "region": "south",
+   "types": [
+    "house_*",
+    "deco_*"
+   ]
+  },
+  "s_s1": {
+   "x": 1160,
+   "y": 3190,
+   "size": "S",
+   "region": "south"
+  },
+  "se_m1": {
+   "x": 2700,
+   "y": 2640,
+   "size": "M",
+   "region": "se",
+   "types": [
+    "house_*",
+    "deco_*"
+   ]
+  },
+  "se_l1": {
+   "x": 2060,
+   "y": 2860,
+   "size": "L",
+   "region": "se",
+   "types": [
+    "house_*",
+    "deco_*"
+   ]
+  },
+  "se_s1": {
+   "x": 2560,
+   "y": 3090,
+   "size": "S",
+   "region": "se"
+  },
+  "se_s3": {
+   "x": 2560,
+   "y": 1700,
+   "size": "S",
+   "region": "se"
+  },
+  "se_s2": {
+   "x": 2060,
+   "y": 1820,
+   "size": "S",
+   "region": "se"
+  },
+  "r_station": {
+   "x": 3410,
+   "y": 1330,
+   "size": "XL",
+   "region": "rail",
+   "only": "station",
+   "drop": [
+    3200,
+    1441
+   ]
+  },
+  "w_rest": {
+   "x": -600,
+   "y": 880,
+   "size": "XL",
+   "region": "west",
+   "after": "tower_east",
+   "types": [
+    "big_restaurant"
+   ],
+   "drop": [
+    -390,
+    1000
+   ]
+  },
+  "w_hall": {
+   "x": 180,
+   "y": 760,
+   "size": "XL",
+   "region": "start",
+   "after": "hire_hunter",
+   "only": "town_hall",
+   "drop": [
+    -30,
+    870
+   ],
+   "clear": [
+    [
+     -140,
+     230,
+     220
+    ],
+    [
+     -20,
+     200,
+     130
+    ]
+   ]
+  },
+  "w_m1": {
+   "x": -250,
+   "y": 1360,
+   "size": "M",
+   "region": "west",
+   "after": "zone_hunt",
+   "types": [
+    "house_*",
+    "deco_*"
+   ]
+  },
+  "w_m2": {
+   "x": -1100,
+   "y": 1130,
+   "size": "M",
+   "region": "west",
+   "after": "hire_hunter",
+   "types": [
+    "house_*",
+    "deco_*"
+   ],
+   "pads": {
+    "p2": [
+     200,
+     60
+    ],
+    "mcan": [
+     217,
+     -102
+    ]
+   }
+  },
+  "w_s1": {
+   "x": -170,
+   "y": 1080,
+   "size": "S",
+   "region": "west",
+   "after": "hire_miner",
+   "drop": [
+    -60,
+    1110
+   ]
+  },
+  "w_s2": {
+   "x": -330,
+   "y": 1660,
+   "size": "S",
+   "region": "west",
+   "after": "hire_miner"
+  },
+  "w_s3": {
+   "x": -1150,
+   "y": 1660,
+   "size": "S",
+   "region": "west",
+   "after": "hire_hunter"
+  },
+  "w_s4": {
+   "x": -440,
+   "y": 2290,
+   "size": "S",
+   "region": "west",
+   "after": "hire_hunter"
+  },
+  "w_s5": {
+   "x": -250,
+   "y": 2010,
+   "size": "S",
+   "region": "west",
+   "after": "hire_hunter"
+  },
+  "w_civic": {
+   "x": -780,
+   "y": 1880,
+   "size": "XL",
+   "region": "west",
+   "hidden": true,
+   "only": "civic43",
+   "clear": [
+    [
+     0,
+     0,
+     250
+    ],
+    [
+     0,
+     100,
+     150
+    ],
+    [
+     0,
+     220,
+     200
+    ],
+    [
+     -150,
+     300,
+     260
+    ],
+    [
+     60,
+     300,
+     240
+    ]
+   ]
+  },
+  "d_school": {
+   "x": -1080,
+   "y": 2000,
+   "size": "XL",
+   "region": "west",
+   "hidden": true,
+   "only": "school43"
+  },
+  "d_clinic": {
+   "x": -1160,
+   "y": 870,
+   "size": "L",
+   "region": "west",
+   "hidden": true,
+   "only": "clinic43"
+  },
+  "d_labour": {
+   "x": -760,
+   "y": 1440,
+   "size": "L",
+   "region": "west",
+   "hidden": true,
+   "after": "f:rankEup",
+   "only": "labour_office"
+  },
+  "v42_office": {
+   "x": 600,
+   "y": 640,
+   "size": "M",
+   "region": "start",
+   "after": "zone_mine",
+   "only": "chief_office",
+   "v42": true,
+   "replace": "chief_hut",
+   "drop": [
+    545,
+    790
+   ]
+  },
+  "v42_bank": {
+   "x": -340,
+   "y": 570,
+   "size": "M",
+   "region": "west",
+   "after": "f:rankEup",
+   "also": "b:chief_office",
+   "only": "bank42",
+   "v42": true,
+   "drop": [
+    -210,
+    660
+   ]
+  },
+  "v42_depot": {
+   "x": 3184,
+   "y": 3101,
+   "size": "L",
+   "region": "rail",
+   "after": "f:rankEup",
+   "also": [
+    "b:warehouse",
+    "r:se"
+   ],
+   "only": "depot42",
+   "v42": true
+  }
+ },
+ "reserves": {
+  "p47_plaza": {
+   "zone": "plaza",
+   "m": [
+    13,
+    22.8,
+    -22,
+    -11
+   ],
+   "poly": [
+    [
+     583,
+     1592
+    ],
+    [
+     1081,
+     1343
+    ],
+    [
+     1524,
+     1565
+    ],
+    [
+     1026,
+     1814
+    ]
+   ]
+  }
+ },
+ "regionTrees": [
+  [
+   2620,
+   1290,
+   "tree_pine_a",
+   "east"
+  ],
+  [
+   2690,
+   1360,
+   "tree_pine_b",
+   "east"
+  ],
+  [
+   2590,
+   1420,
+   "tree_pine_a",
+   "east"
+  ],
+  [
+   2780,
+   1420,
+   "tree_pine_snow",
+   "east"
+  ],
+  [
+   2950,
+   1150,
+   "tree_pine_b",
+   "east"
+  ],
+  [
+   2930,
+   1010,
+   "tree_pine_a",
+   "east"
+  ],
+  [
+   230,
+   2860,
+   "tree_pine_snow",
+   "south"
+  ],
+  [
+   320,
+   2940,
+   "tree_pine_a",
+   "south"
+  ],
+  [
+   220,
+   3020,
+   "tree_pine_b",
+   "south"
+  ],
+  [
+   300,
+   3150,
+   "tree_pine_snow",
+   "south"
+  ],
+  [
+   2770,
+   1900,
+   "tree_pine_a",
+   "se"
+  ],
+  [
+   2860,
+   1990,
+   "tree_pine_snow",
+   "se"
+  ],
+  [
+   2780,
+   2090,
+   "tree_pine_b",
+   "se"
+  ],
+  [
+   2880,
+   2140,
+   "tree_pine_a",
+   "se"
+  ],
+  [
+   -1170,
+   660,
+   "tree_pine_a",
+   "west"
+  ],
+  [
+   -1080,
+   720,
+   "tree_pine_snow",
+   "west"
+  ],
+  [
+   -1200,
+   780,
+   "tree_pine_b",
+   "west"
+  ],
+  [
+   -1010,
+   640,
+   "tree_pine_snow",
+   "west"
+  ],
+  [
+   -990,
+   780,
+   "tree_pine_b",
+   "west"
+  ]
+ ],
+ "regionRocks": [
+  [
+   2460,
+   2037,
+   "rock_ore"
+  ],
+  [
+   2497,
+   2110,
+   "rock_ore_b"
+  ],
+  [
+   2641,
+   2092,
+   "rock_ore"
+  ],
+  [
+   2596,
+   2015,
+   "rock_ore_b"
+  ],
+  [
+   2374,
+   2067,
+   "rock_ore"
+  ]
+ ],
+ "regionWheat": {
+  "zone": "field2",
+  "origin": [
+   520,
+   2980
+  ],
+  "rows": 3,
+  "cols": 3,
+  "step": 1.6
+ },
+ "foodBox": {
+  "x": 690,
+  "y": 1752
+ },
+ "pads2": {
+  "hire2_fisherman": {
+   "x": 925,
+   "y": 745,
+   "worker": "fisherman",
+   "tool": "item_rod",
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "hire2_lumberjack": {
+   "x": 720,
+   "y": 1415,
+   "worker": "lumberjack",
+   "tool": "item_axe",
+   "labelAt": [
+    0,
+    64
+   ]
+  },
+  "hire2_farmer": {
+   "x": 1557,
+   "y": 1466,
+   "worker": "farmer",
+   "tool": "item_sickle"
+  },
+  "hire2_miner": {
+   "x": 835,
+   "y": 1800,
+   "worker": "miner",
+   "tool": "item_pickaxe"
+  },
+  "hire2_hunter": {
+   "x": 1140,
+   "y": 2195,
+   "worker": "hunter",
+   "tool": "item_bow"
+  }
+ },
+ "boathouse": {
+  "boatPad": [
+   -184,
+   -26
+  ],
+  "route": [
+   [
+    90,
+    -110
+   ],
+   [
+    190,
+    -250
+   ],
+   [
+    230,
+    -420
+   ]
+  ],
+  "fishArea": [
+   240,
+   -470,
+   150
+  ]
+ },
+ "labour": {
+  "ops": {
+   "grill": {
+    "pad": [
+     -70,
+     35
+    ],
+    "op": [
+     57,
+     -28
+    ],
+    "dir": "SW",
+    "who": "npc_chef",
+    "chiefAnim": "give",
+    "chiefDir": "SE"
+   },
+   "sawmill": {
+    "pad": [
+     -72,
+     36
+    ],
+    "op": [
+     54,
+     -27
+    ],
+    "dir": "SW",
+    "who": "npc_sawyer",
+    "chiefAnim": "chop",
+    "chiefDir": "SE"
+   },
+   "bakery": {
+    "pad": [
+     -20,
+     33
+    ],
+    "op": [
+     0,
+     5
+    ],
+    "dir": "SE",
+    "ovenDir": "W",
+    "who": "npc_aunt",
+    "chiefAnim": "give",
+    "chiefDir": "W",
+    "padDepth": 0.4
+   },
+   "smelter": {
+    "pad": [
+     -14,
+     66
+    ],
+    "op": [
+     -6,
+     48
+    ],
+    "dir": "S",
+    "who": "npc_blacksmith",
+    "chiefAnim": "mine",
+    "chiefDir": "SE"
+   },
+   "smokehouse": {
+    "pad": [
+     -10,
+     66
+    ],
+    "op": [
+     -22,
+     46
+    ],
+    "dir": "S",
+    "who": "npc_smoker",
+    "chiefAnim": "give",
+    "chiefDir": "SE"
+   },
+   "toolsmith": {
+    "pad": [
+     -70,
+     66
+    ],
+    "op": [
+     -66,
+     8
+    ],
+    "dir": "E",
+    "who": "miner_b",
+    "chiefAnim": "mine",
+    "chiefDir": "SE"
+   },
+   "cannery": {
+    "pad": [
+     -60,
+     70
+    ],
+    "op": [
+     -44,
+     20
+    ],
+    "dir": "E",
+    "who": "npc_cannery",
+    "chiefAnim": "give",
+    "chiefDir": "SE"
+   }
+  },
+  "piles": {
+   "fish": {
+    "x": 1000,
+    "y": 440,
+    "item": "item_fish_raw",
+    "station": "grill",
+    "worker": "fisherman",
+    "prop": "fish_crate",
+    "propOld": "crate",
+    "propAt": [
+     -62,
+     14
+    ],
+    "stackAt": [
+     -57,
+     -5
+    ],
+    "stackScale": 0.7,
+    "stackCols": [
+     [
+      -19,
+      -7
+     ],
+     [
+      0,
+      -8
+     ],
+     [
+      19,
+      -7
+     ],
+     [
+      -19,
+      0
+     ],
+     [
+      0,
+      -1
+     ],
+     [
+      19,
+      0
+     ],
+     [
+      -19,
+      7
+     ],
+     [
+      0,
+      6
+     ],
+     [
+      19,
+      7
+     ]
+    ],
+    "propR": 24,
+    "labelX": -44,
+    "labelY": -78,
+    "zone": "plaza"
+   },
+   "log": {
+    "x": 330,
+    "y": 1250,
+    "item": "item_log",
+    "station": "sawmill",
+    "worker": "lumberjack",
+    "prop": "firewood_pile",
+    "propAt": [
+     -58,
+     -22
+    ],
+    "propR": 30,
+    "zone": "forest"
+   },
+   "wheat": {
+    "x": 1573,
+    "y": 1302,
+    "item": "item_wheat",
+    "station": "bakery",
+    "worker": "farmer",
+    "prop": "farm43_sacks",
+    "propOld": "hay_bale",
+    "propAt": [
+     40,
+     8
+    ],
+    "propR": 26,
+    "porterHome": [
+     -44,
+     -26
+    ],
+    "zone": "farm"
+   },
+   "ore": {
+    "x": 403,
+    "y": 1850,
+    "item": "item_ore",
+    "station": "smelter",
+    "worker": "miner",
+    "prop": "crate",
+    "propAt": [
+     46,
+     -30
+    ],
+    "propR": 24,
+    "zone": "mine"
+   },
+   "meat": {
+    "x": 1491,
+    "y": 2032,
+    "item": "item_meat_raw",
+    "station": "smokehouse",
+    "worker": "hunter",
+    "prop": "rack",
+    "propAt": [
+     -84,
+     -4
+    ],
+    "labelY": -100,
+    "zone": "hunt"
+   }
+  }
+ },
+ "worker2Offset": [
+  52,
+  26
+ ],
+ "workerRest": {
+  "farmer": {
+   "spots": [
+    [
+     1666,
+     1307
+    ],
+    [
+     1583,
+     1273
+    ]
+   ],
+   "zone": "farm",
+   "afterS": 8
+  }
+ },
+ "life": {
+  "gate": "gate",
+  "props": [
+   [
+    "log_seat",
+    -45,
+    452,
+    {
+     "id": "seat_beach_n"
+    }
+   ],
+   [
+    "log_seat_y",
+    -125,
+    520,
+    {
+     "id": "seat_beach_w"
+    }
+   ],
+   [
+    "notice_board",
+    500,
+    890,
+    {
+     "id": "notice"
+    }
+   ],
+   [
+    "lantern_string",
+    990,
+    1182,
+    {
+     "id": "lanterns_s"
+    }
+   ],
+   [
+    "snowman_0",
+    1352,
+    486,
+    {
+     "id": "snowman"
+    }
+   ],
+   [
+    "snow_fort",
+    1530,
+    612,
+    {
+     "id": "fort"
+    }
+   ],
+   [
+    "snowball_pile",
+    1440,
+    556,
+    {
+     "id": "pile"
+    }
+   ],
+   [
+    "sled",
+    1600,
+    470,
+    {
+     "id": "sled_beach",
+     "after": "hire_fisherman"
+    }
+   ],
+   [
+    "dog_house",
+    1490,
+    1000,
+    {
+     "id": "doghouse"
+    }
+   ],
+   [
+    "log_seat",
+    740,
+    1521,
+    {
+     "id": "seat_green_n",
+     "after": "zone_forest"
+    }
+   ],
+   [
+    "log_seat_y",
+    645,
+    1546,
+    {
+     "id": "seat_green_w",
+     "after": "zone_forest"
+    }
+   ],
+   [
+    "log_seat_x",
+    835,
+    1546,
+    {
+     "id": "seat_green_e",
+     "after": "zone_forest"
+    }
+   ],
+   [
+    "music_stand",
+    640,
+    1630,
+    {
+     "id": "stand",
+     "after": "hire_lumberjack"
+    }
+   ],
+   [
+    "picnic_table",
+    1235,
+    1555,
+    {
+     "id": "picnic",
+     "after": "zone_farm"
+    }
+   ],
+   [
+    "kids_swing",
+    1440,
+    1610,
+    {
+     "id": "swing",
+     "after": "hire_farmer"
+    }
+   ],
+   [
+    "ice_rink",
+    1215,
+    1700,
+    {
+     "id": "rink",
+     "after": "zone_mine"
+    }
+   ],
+   [
+    "igloo",
+    230,
+    1420,
+    {
+     "id": "igloo",
+     "after": "hire_miner"
+    }
+   ],
+   [
+    "clothesline",
+    575,
+    2475,
+    {
+     "id": "clothes",
+     "after": "zone_hunt"
+    }
+   ],
+   [
+    "lantern_string",
+    800,
+    2290,
+    {
+     "id": "lanterns_v",
+     "after": "zone_hunt"
+    }
+   ],
+   [
+    "log_seat",
+    2060,
+    740,
+    {
+     "id": "seat_east_n",
+     "after": "r:east"
+    }
+   ],
+   [
+    "log_seat_y",
+    1965,
+    765,
+    {
+     "id": "seat_east_w",
+     "after": "r:east"
+    }
+   ],
+   [
+    "picnic_table",
+    470,
+    2760,
+    {
+     "id": "picnic_s",
+     "after": "r:south"
+    }
+   ],
+   [
+    "sled",
+    700,
+    2840,
+    {
+     "id": "sled_s",
+     "after": "r:south"
+    }
+   ],
+   [
+    "log_seat",
+    2440,
+    2570,
+    {
+     "id": "seat_se_n",
+     "after": "r:se"
+    }
+   ],
+   [
+    "log_seat_x",
+    2535,
+    2595,
+    {
+     "id": "seat_se_e",
+     "after": "r:se"
+    }
+   ],
+   [
+    "igloo",
+    2120,
+    2420,
+    {
+     "id": "igloo_se",
+     "after": "r:se"
+    }
+   ],
+   [
+    "snow_fort",
+    2620,
+    2860,
+    {
+     "id": "fort_se",
+     "after": "r:se"
+    }
+   ],
+   [
+    "log_seat",
+    -260,
+    2296,
+    {
+     "id": "seat_west_n",
+     "after": "zone_forest"
+    }
+   ],
+   [
+    "log_seat_y",
+    -355,
+    2321,
+    {
+     "id": "seat_west_w",
+     "after": "zone_forest"
+    }
+   ],
+   [
+    "log_seat_x",
+    -165,
+    2321,
+    {
+     "id": "seat_west_e",
+     "after": "zone_forest"
+    }
+   ],
+   [
+    "snow_fort",
+    -880,
+    1260,
+    {
+     "id": "fort_west",
+     "after": "zone_farm"
+    }
+   ]
+  ],
+  "areas": {
+   "beach_w": {
+    "at": [
+     -55,
+     520
+    ],
+    "r": 95,
+    "acts": [
+     "sit",
+     "warm",
+     "chat"
+    ],
+    "fire": [
+     -45,
+     505
+    ],
+    "stage": [
+     5,
+     440
+    ]
+   },
+   "notice": {
+    "at": [
+     520,
+     925
+    ],
+    "r": 120,
+    "acts": [
+     "read",
+     "chat"
+    ]
+   },
+   "playground": {
+    "at": [
+     1440,
+     560
+    ],
+    "r": 150,
+    "acts": [
+     "play",
+     "chat",
+     "wander"
+    ]
+   },
+   "plaza_s": {
+    "at": [
+     990,
+     1210
+    ],
+    "r": 110,
+    "acts": [
+     "chat",
+     "wander"
+    ]
+   },
+   "doghouse": {
+    "at": [
+     1430,
+     1030
+    ],
+    "r": 90,
+    "acts": [
+     "chat",
+     "wander"
+    ]
+   },
+   "green_fire": {
+    "at": [
+     740,
+     1610
+    ],
+    "r": 150,
+    "acts": [
+     "sit",
+     "warm",
+     "chat",
+     "concert"
+    ],
+    "fire": [
+     740,
+     1575
+    ],
+    "after": "zone_forest"
+   },
+   "green_e": {
+    "at": [
+     1280,
+     1600
+    ],
+    "r": 170,
+    "acts": [
+     "chat",
+     "play",
+     "wander",
+     "sit"
+    ],
+    "after": "zone_farm"
+   },
+   "green_w": {
+    "at": [
+     225,
+     1440
+    ],
+    "r": 110,
+    "acts": [
+     "chat",
+     "wander",
+     "play"
+    ],
+    "after": "hire_miner"
+   },
+   "south": {
+    "at": [
+     990,
+     2470
+    ],
+    "r": 220,
+    "acts": [
+     "chat",
+     "sit",
+     "warm",
+     "wander"
+    ],
+    "fire": [
+     870,
+     2525
+    ],
+    "stage": [
+     955,
+     2572
+    ],
+    "after": "zone_hunt"
+   },
+   "east_dock": {
+    "at": [
+     2080,
+     830
+    ],
+    "r": 140,
+    "acts": [
+     "sit",
+     "warm",
+     "chat",
+     "wander"
+    ],
+    "fire": [
+     2060,
+     790
+    ],
+    "after": "r:east"
+   },
+   "south_fields": {
+    "at": [
+     560,
+     2730
+    ],
+    "r": 140,
+    "acts": [
+     "chat",
+     "wander",
+     "warm",
+     "play"
+    ],
+    "fire": [
+     560,
+     2700
+    ],
+    "after": "r:south"
+   },
+   "se_hill": {
+    "at": [
+     2400,
+     2650
+    ],
+    "r": 170,
+    "acts": [
+     "sit",
+     "warm",
+     "chat",
+     "play",
+     "wander"
+    ],
+    "fire": [
+     2440,
+     2620
+    ],
+    "after": "r:se"
+   },
+   "west_camp": {
+    "at": [
+     -260,
+     2370
+    ],
+    "r": 140,
+    "acts": [
+     "sit",
+     "warm",
+     "chat"
+    ],
+    "fire": [
+     -260,
+     2350
+    ],
+    "after": "zone_forest"
+   },
+   "west_field": {
+    "at": [
+     -760,
+     1220
+    ],
+    "r": 170,
+    "acts": [
+     "play",
+     "chat",
+     "wander"
+    ],
+    "after": "zone_farm"
+   }
+  },
+  "moveIns": {
+   "start": [
+    "npc_grandpa",
+    "npc_aunt",
+    "npc_kid_girl",
+    "npc_kid_prankster",
+    "pet_dog"
+   ],
+   "first_sale": [
+    "npc_kid_boy"
+   ],
+   "hire_fisherman": [
+    "npc_grandma",
+    "npc_young_man"
+   ],
+   "zone_forest": [
+    "npc_teen_girl",
+    "pet_cat",
+    "npc_postman"
+   ],
+   "hire_lumberjack": [
+    "npc_bard",
+    "npc_uncle"
+   ],
+   "zone_farm": [
+    "npc_blacksmith",
+    "npc_fashion",
+    "npc_chef"
+   ],
+   "hire_farmer": [
+    "npc_herbalist",
+    "pet_penguin",
+    "npc_toddler"
+   ],
+   "zone_mine": [
+    "npc_yellow",
+    "npc_red",
+    "npc_painter"
+   ],
+   "hire_miner": [
+    "npc_blue",
+    "npc_doctor"
+   ],
+   "zone_hunt": [
+    "npc_skater",
+    "npc_guard",
+    "npc_merchant"
+   ],
+   "hire_hunter": [
+    "npc_captain"
+   ]
+  }
+ },
+ "allPaths": [
+  [
+   [
+    990,
+    1095
+   ],
+   [
+    990,
+    1150
+   ],
+   [
+    990,
+    1440
+   ]
+  ],
+  [
+   [
+    705,
+    965
+   ],
+   [
+    772,
+    1148
+   ]
+  ],
+  [
+   [
+    772,
+    1148
+   ],
+   [
+    786,
+    1230
+   ],
+   [
+    790,
+    1300
+   ]
+  ],
+  [
+   [
+    990,
+    1440
+   ],
+   [
+    880,
+    1390
+   ],
+   [
+    790,
+    1300
+   ]
+  ],
+  [
+   [
+    990,
+    1440
+   ],
+   [
+    1090,
+    1390
+   ],
+   [
+    1180,
+    1320
+   ]
+  ],
+  [
+   [
+    990,
+    1440
+   ],
+   [
+    990,
+    1700
+   ]
+  ],
+  [
+   [
+    990,
+    1700
+   ],
+   [
+    990,
+    2040
+   ]
+  ],
+  [
+   [
+    990,
+    2040
+   ],
+   [
+    880,
+    2000
+   ],
+   [
+    790,
+    1950
+   ]
+  ],
+  [
+   [
+    990,
+    2040
+   ],
+   [
+    1090,
+    2010
+   ],
+   [
+    1170,
+    1980
+   ]
+  ],
+  [
+   [
+    990,
+    2040
+   ],
+   [
+    990,
+    2240
+   ]
+  ],
+  [
+   [
+    990,
+    2240
+   ],
+   [
+    800,
+    2330
+   ],
+   [
+    620,
+    2380
+   ]
+  ],
+  [
+   [
+    990,
+    2240
+   ],
+   [
+    1180,
+    2330
+   ],
+   [
+    1360,
+    2380
+   ]
+  ],
+  [
+   [
+    990,
+    2240
+   ],
+   [
+    990,
+    2560
+   ]
+  ],
+  [
+   [
+    790,
+    1300
+   ],
+   [
+    690,
+    1290
+   ]
+  ],
+  [
+   [
+    1180,
+    1320
+   ],
+   [
+    1290,
+    1290
+   ]
+  ],
+  [
+   [
+    790,
+    1950
+   ],
+   [
+    700,
+    1960
+   ]
+  ],
+  [
+   [
+    1170,
+    1980
+   ],
+   [
+    1260,
+    1980
+   ]
+  ],
+  [
+   [
+    1335,
+    905
+   ],
+   [
+    1600,
+    930
+   ]
+  ],
+  [
+   [
+    1600,
+    930
+   ],
+   [
+    1830,
+    950
+   ]
+  ],
+  [
+   [
+    1830,
+    950
+   ],
+   [
+    2120,
+    980
+   ]
+  ],
+  [
+   [
+    2120,
+    980
+   ],
+   [
+    2200,
+    880
+   ],
+   [
+    2270,
+    790
+   ]
+  ],
+  [
+   [
+    2120,
+    980
+   ],
+   [
+    2230,
+    1150
+   ],
+   [
+    2330,
+    1290
+   ]
+  ],
+  [
+   [
+    2330,
+    1290
+   ],
+   [
+    2560,
+    1180
+   ]
+  ],
+  [
+   [
+    990,
+    2560
+   ],
+   [
+    990,
+    2760
+   ]
+  ],
+  [
+   [
+    990,
+    2760
+   ],
+   [
+    990,
+    2980
+   ]
+  ],
+  [
+   [
+    990,
+    2980
+   ],
+   [
+    800,
+    3040
+   ],
+   [
+    600,
+    3090
+   ]
+  ],
+  [
+   [
+    990,
+    2980
+   ],
+   [
+    1180,
+    3010
+   ],
+   [
+    1360,
+    3050
+   ]
+  ],
+  [
+   [
+    990,
+    2980
+   ],
+   [
+    990,
+    3290
+   ]
+  ],
+  [
+   [
+    2330,
+    1290
+   ],
+   [
+    2330,
+    1650
+   ]
+  ],
+  [
+   [
+    2330,
+    1650
+   ],
+   [
+    2360,
+    2000
+   ],
+   [
+    2330,
+    2330
+   ]
+  ],
+  [
+   [
+    2330,
+    2330
+   ],
+   [
+    2300,
+    2650
+   ],
+   [
+    2320,
+    2960
+   ]
+  ],
+  [
+   [
+    1360,
+    2380
+   ],
+   [
+    1600,
+    2400
+   ],
+   [
+    1830,
+    2400
+   ]
+  ],
+  [
+   [
+    1830,
+    2400
+   ],
+   [
+    2080,
+    2360
+   ],
+   [
+    2330,
+    2330
+   ]
+  ],
+  [
+   [
+    2330,
+    2330
+   ],
+   [
+    2700,
+    2420
+   ]
+  ],
+  [
+   [
+    2560,
+    1180
+   ],
+   [
+    2640,
+    1139
+   ]
+  ],
+  [
+   [
+    2640,
+    1139
+   ],
+   [
+    3184,
+    1411
+   ]
+  ],
+  [
+   [
+    600,
+    830
+   ],
+   [
+    420,
+    700
+   ]
+  ],
+  [
+   [
+    420,
+    700
+   ],
+   [
+    230,
+    620
+   ]
+  ],
+  [
+   [
+    230,
+    620
+   ],
+   [
+    -60,
+    640
+   ]
+  ],
+  [
+   [
+    990,
+    1700
+   ],
+   [
+    560,
+    1700
+   ]
+  ],
+  [
+   [
+    560,
+    1700
+   ],
+   [
+    300,
+    1660
+   ]
+  ],
+  [
+   [
+    300,
+    1660
+   ],
+   [
+    -40,
+    1640
+   ]
+  ],
+  [
+   [
+    -60,
+    640
+   ],
+   [
+    -200,
+    760
+   ],
+   [
+    -330,
+    900
+   ]
+  ],
+  [
+   [
+    -330,
+    900
+   ],
+   [
+    -110,
+    1000
+   ]
+  ],
+  [
+   [
+    -330,
+    900
+   ],
+   [
+    -470,
+    1190
+   ]
+  ],
+  [
+   [
+    -470,
+    1190
+   ],
+   [
+    -860,
+    1040
+   ]
+  ],
+  [
+   [
+    -470,
+    1190
+   ],
+   [
+    -520,
+    1420
+   ],
+   [
+    -560,
+    1640
+   ]
+  ],
+  [
+   [
+    -40,
+    1640
+   ],
+   [
+    -560,
+    1640
+   ]
+  ],
+  [
+   [
+    -560,
+    1640
+   ],
+   [
+    -900,
+    1640
+   ]
+  ],
+  [
+   [
+    -560,
+    1640
+   ],
+   [
+    -400,
+    1900
+   ],
+   [
+    -420,
+    2120
+   ]
+  ],
+  [
+   [
+    -420,
+    2120
+   ],
+   [
+    -880,
+    2110
+   ]
+  ]
+ ],
+ "v4": {
+  "G": [
+   3120,
+   1315
+  ],
+  "rail": {
+   "j": 0,
+   "from": -1,
+   "to": 46,
+   "crossings": [
+    8,
+    33
+   ],
+   "sign": {
+    "i": 46.6,
+    "j": -1.2
+   }
+  },
+  "stations": {
+   "ours": {
+    "key": "train_station",
+    "i": 2.5,
+    "j": 2.03,
+    "carA": 2.5,
+    "plot": "r_station",
+    "name": "stn_ours",
+    "x": 3410,
+    "y": 1330
+   },
+   "town": {
+    "key": "train_station",
+    "i": 28,
+    "j": 2.03,
+    "carA": 28,
+    "name": "stn_town",
+    "x": 5042,
+    "y": 2146
+   }
+  },
+  "square": {
+   "cargo": {
+    "i": 4.1,
+    "j": -1.8,
+    "x": 3267,
+    "y": 1504
+   },
+   "board": {
+    "i": 2.6,
+    "j": -2.4,
+    "x": 3133,
+    "y": 1475
+   },
+   "cash": {
+    "i": 6.3,
+    "j": -1.6,
+    "x": 3421,
+    "y": 1568
+   },
+   "porter": {
+    "i": 6,
+    "j": -3.4,
+    "x": 3286,
+    "y": 1616
+   },
+   "rank": {
+    "i": 4,
+    "j": -3.9,
+    "x": 3126,
+    "y": 1568
+   },
+   "labels": {
+    "board": [
+     0,
+     -150
+    ],
+    "cargo": [
+     -34,
+     -70
+    ],
+    "cash": [
+     36,
+     -172
+    ],
+    "porter": [
+     0,
+     64
+    ],
+    "rank": [
+     70,
+     -62
+    ]
+   }
+  },
+  "lots": {
+   "lotA1": {
+    "i": 9.65,
+    "j": -1.9,
+    "size": "M",
+    "m": [
+     3.4,
+     3
+    ],
+    "x": 3616,
+    "y": 1685
+   },
+   "lotA2": {
+    "i": 12.3,
+    "j": -1.9,
+    "size": "M",
+    "m": [
+     3.4,
+     3
+    ],
+    "x": 3786,
+    "y": 1769
+   },
+   "lotA3": {
+    "i": 14.95,
+    "j": -1.9,
+    "size": "M",
+    "m": [
+     3.4,
+     3
+    ],
+    "x": 3955,
+    "y": 1854
+   },
+   "lotB1": {
+    "i": 12.8,
+    "j": -10.25,
+    "size": "M",
+    "m": [
+     3.4,
+     3
+    ],
+    "x": 3283,
+    "y": 2053
+   },
+   "lotB2": {
+    "i": 15.45,
+    "j": -10.25,
+    "size": "M",
+    "m": [
+     3.4,
+     3
+    ],
+    "x": 3453,
+    "y": 2137
+   },
+   "lotB3": {
+    "i": 18.1,
+    "j": -10.25,
+    "size": "M",
+    "m": [
+     3.4,
+     3
+    ],
+    "x": 3622,
+    "y": 2222
+   },
+   "lotB5": {
+    "i": 21.2,
+    "j": -10.25,
+    "size": "L",
+    "m": [
+     4.4,
+     3.4
+    ],
+    "x": 3821,
+    "y": 2321
+   },
+   "lotH1": {
+    "i": 16,
+    "j": -15.2,
+    "size": "S",
+    "m": [
+     2.6,
+     2.6
+    ],
+    "x": 3171,
+    "y": 2313
+   },
+   "lotH2": {
+    "i": 18.4,
+    "j": -15.2,
+    "size": "S",
+    "m": [
+     2.6,
+     2.6
+    ],
+    "x": 3325,
+    "y": 2390
+   },
+   "lotH3": {
+    "i": 20.8,
+    "j": -15.2,
+    "size": "S",
+    "m": [
+     2.6,
+     2.6
+    ],
+    "x": 3478,
+    "y": 2467
+   },
+   "lotH4": {
+    "i": 25.5,
+    "j": -15.2,
+    "size": "S",
+    "m": [
+     2.6,
+     2.6
+    ],
+    "x": 3779,
+    "y": 2617
+   },
+   "lotH5": {
+    "i": 27.9,
+    "j": -15.2,
+    "size": "S",
+    "m": [
+     2.6,
+     2.6
+    ],
+    "x": 3933,
+    "y": 2694
+   }
+  },
+  "streets": [
+   {
+    "id": "link",
+    "axis": "x",
+    "i": [
+     -6.5,
+     2
+    ],
+    "j": [
+     -1.5,
+     -0.5
+    ],
+    "cls": "path",
+    "name": "st_link"
+   },
+   {
+    "id": "square",
+    "axis": "x",
+    "i": [
+     2,
+     8.3
+    ],
+    "j": [
+     -3,
+     -0.75
+    ],
+    "cls": "square",
+    "walk": -1.6,
+    "walkSpan": [
+     2,
+     8.5
+    ],
+    "name": "st_square"
+   },
+   {
+    "id": "main",
+    "axis": "x",
+    "i": [
+     8,
+     49.5
+    ],
+    "j": [
+     -9,
+     -3
+    ],
+    "cls": "dirt",
+    "paint": [
+     -6,
+     -4
+    ],
+    "walk": -4.5,
+    "walkSpan": [
+     8.2,
+     49.5
+    ],
+    "name": "st_main"
+   },
+   {
+    "id": "back",
+    "axis": "x",
+    "i": [
+     13,
+     50
+    ],
+    "j": [
+     -14,
+     -12
+    ],
+    "cls": "dirt",
+    "paint": [
+     -14,
+     -12
+    ],
+    "walk": -13,
+    "name": "st_back"
+   },
+   {
+    "id": "ave",
+    "axis": "y",
+    "i": [
+     30,
+     34
+    ],
+    "j": [
+     -18,
+     -9
+    ],
+    "cls": "dirt",
+    "paint": [
+     30,
+     34
+    ],
+    "paintSpan": [
+     -18,
+     -4
+    ],
+    "walk": 30.4,
+    "walkSpan": [
+     -17.5,
+     -4.5
+    ],
+    "name": "st_ave"
+   },
+   {
+    "id": "shopalley",
+    "axis": "y",
+    "i": [
+     23.3,
+     24.3
+    ],
+    "j": [
+     -18,
+     -9
+    ],
+    "cls": "path",
+    "walk": 23.8,
+    "walkSpan": [
+     -17.5,
+     -4.5
+    ],
+    "name": "st_shopalley"
+   },
+   {
+    "id": "homes",
+    "axis": "x",
+    "i": [
+     17,
+     30
+    ],
+    "j": [
+     -18,
+     -17
+    ],
+    "cls": "path",
+    "walk": -17.5,
+    "walkSpan": [
+     17,
+     30.4
+    ],
+    "name": "st_homes"
+   },
+   {
+    "id": "apts",
+    "axis": "x",
+    "i": [
+     34,
+     47
+    ],
+    "j": [
+     -18,
+     -17
+    ],
+    "cls": "path",
+    "walk": -17.5,
+    "walkSpan": [
+     30.4,
+     47
+    ],
+    "name": "st_apts"
+   },
+   {
+    "id": "alley_t",
+    "axis": "y",
+    "i": [
+     33,
+     34
+    ],
+    "j": [
+     -3,
+     -0.75
+    ],
+    "cls": "path",
+    "walk": 33.5,
+    "walkSpan": [
+     -4.5,
+     -0.75
+    ],
+    "name": "st_alley"
+   },
+   {
+    "id": "platform_e",
+    "axis": "x",
+    "i": [
+     30.5,
+     34
+    ],
+    "j": [
+     0.75,
+     1.75
+    ],
+    "cls": "path",
+    "walk": 1.25,
+    "walkSpan": [
+     25.6,
+     33.5
+    ],
+    "name": "st_platform"
+   },
+   {
+    "id": "xing_ours",
+    "axis": "y",
+    "i": [
+     8,
+     9
+    ],
+    "j": [
+     -0.75,
+     1
+    ],
+    "cls": "xing",
+    "walk": 8.5,
+    "walkSpan": [
+     -1.6,
+     1
+    ],
+    "xing": 8,
+    "name": "st_xing"
+   },
+   {
+    "id": "xing_town",
+    "axis": "y",
+    "i": [
+     33,
+     34
+    ],
+    "j": [
+     -0.75,
+     1
+    ],
+    "cls": "xing",
+    "walk": 33.5,
+    "walkSpan": [
+     -0.75,
+     1.25
+    ],
+    "xing": 33,
+    "name": "st_xing"
+   }
+  ],
+  "walkExtra": [
+   [
+    "y",
+    2,
+    -1.6,
+    -1
+   ],
+   [
+    "x",
+    1,
+    0.8,
+    8.5
+   ],
+   [
+    "y",
+    8.2,
+    -4.5,
+    -1.6
+   ]
+  ],
+  "houseFade": [
+   10.5,
+   29.5,
+   -12.8,
+   -3
+  ],
+  "town": {
+   "buildings": [
+    {
+     "id": "t_station",
+     "key": "train_station",
+     "i": 28,
+     "j": 2.03,
+     "role": "station",
+     "home": 1,
+     "x": 5042,
+     "y": 2146
+    },
+    {
+     "id": "t_police",
+     "key": "police_box",
+     "i": 31.6,
+     "j": 2.6,
+     "role": "police",
+     "label": "tb_police",
+     "x": 5309,
+     "y": 2243
+    },
+    {
+     "id": "t_cafe",
+     "key": "cafe",
+     "i": 21,
+     "j": -1.9,
+     "role": "shop",
+     "home": 2,
+     "x": 4342,
+     "y": 2048
+    },
+    {
+     "id": "t_book",
+     "key": "bookstore",
+     "i": 23.5,
+     "j": -1.9,
+     "role": "shop",
+     "home": 1,
+     "x": 4502,
+     "y": 2128
+    },
+    {
+     "id": "t_play",
+     "key": "playground",
+     "i": 26.4,
+     "j": -1.9,
+     "role": "play",
+     "x": 4688,
+     "y": 2221
+    },
+    {
+     "id": "t_fountain",
+     "key": "park_fountain",
+     "i": 29.5,
+     "j": -1.9,
+     "role": "park",
+     "x": 4886,
+     "y": 2320
+    },
+    {
+     "id": "t_sled",
+     "key": "sled_stop",
+     "i": 31.7,
+     "j": -1.9,
+     "role": "stop",
+     "x": 5027,
+     "y": 2390
+    },
+    {
+     "id": "t_toy",
+     "key": "toy_shop",
+     "i": 35.3,
+     "j": -1.9,
+     "role": "shop",
+     "home": 1,
+     "x": 5258,
+     "y": 2505
+    },
+    {
+     "id": "t_cloth",
+     "key": "clothing_store",
+     "i": 37.9,
+     "j": -1.9,
+     "role": "shop",
+     "home": 2,
+     "x": 5424,
+     "y": 2589
+    },
+    {
+     "id": "t_flower",
+     "key": "flower_shop",
+     "i": 40.5,
+     "j": -1.9,
+     "role": "shop",
+     "home": 1,
+     "x": 5590,
+     "y": 2672
+    },
+    {
+     "id": "t_hair",
+     "key": "hair_salon",
+     "i": 43.1,
+     "j": -1.9,
+     "role": "shop",
+     "home": 1,
+     "x": 5757,
+     "y": 2755
+    },
+    {
+     "id": "t_rest",
+     "key": "restaurant",
+     "i": 45.8,
+     "j": -1.9,
+     "role": "shop",
+     "home": 2,
+     "x": 5930,
+     "y": 2841
+    },
+    {
+     "id": "t_post",
+     "key": "post_office",
+     "i": 35.5,
+     "j": -10.5,
+     "role": "post",
+     "x": 4720,
+     "y": 2787
+    },
+    {
+     "id": "t_school",
+     "key": "school",
+     "i": 39.3,
+     "j": -10.5,
+     "role": "school",
+     "x": 4963,
+     "y": 2909
+    },
+    {
+     "id": "t_hall",
+     "key": "town_hall",
+     "i": 43.5,
+     "j": -10.5,
+     "role": "hall",
+     "home": 3,
+     "x": 5232,
+     "y": 3043
+    },
+    {
+     "id": "t_clinic",
+     "key": "clinic",
+     "i": 46.8,
+     "j": -10.5,
+     "role": "clinic",
+     "x": 5443,
+     "y": 3149
+    },
+    {
+     "id": "t_fire",
+     "key": "fire_station",
+     "i": 49.9,
+     "j": -10.5,
+     "role": "fire",
+     "home": 2,
+     "x": 5642,
+     "y": 3248
+    },
+    {
+     "id": "t_apt1",
+     "key": "apartment_a",
+     "i": 35.7,
+     "j": -15.3,
+     "role": "home",
+     "home": 24,
+     "fadeZone": [
+      33.5,
+      51.5,
+      -14.6,
+      -3
+     ],
+     "x": 4426,
+     "y": 2947
+    },
+    {
+     "id": "t_apt2",
+     "key": "apartment_b",
+     "i": 38.95,
+     "j": -15.3,
+     "role": "home",
+     "home": 18,
+     "fadeZone": [
+      33.5,
+      51.5,
+      -14.6,
+      -3
+     ],
+     "x": 4634,
+     "y": 3051
+    },
+    {
+     "id": "t_apt3",
+     "key": "apartment_a",
+     "i": 42.2,
+     "j": -15.3,
+     "role": "home",
+     "home": 24,
+     "fadeZone": [
+      33.5,
+      51.5,
+      -14.6,
+      -3
+     ],
+     "x": 4842,
+     "y": 3155
+    },
+    {
+     "id": "t_apt4",
+     "key": "apartment_b",
+     "i": 45.45,
+     "j": -15.3,
+     "role": "home",
+     "home": 18,
+     "fadeZone": [
+      33.5,
+      51.5,
+      -14.6,
+      -3
+     ],
+     "x": 5050,
+     "y": 3259
+    },
+    {
+     "id": "t_gate",
+     "key": "town_gate",
+     "i": 18.05,
+     "j": -2.2,
+     "role": "gate",
+     "region": "rail",
+     "board": "townName",
+     "x": 4134,
+     "y": 1963
+    }
+   ],
+   "props": [
+    [
+     "streetlight",
+     19.8,
+     -3.5
+    ],
+    [
+     "streetlight",
+     25,
+     -3.5
+    ],
+    [
+     "streetlight",
+     31.4,
+     -3.5
+    ],
+    [
+     "streetlight",
+     36.9,
+     -3.5
+    ],
+    [
+     "streetlight",
+     41.9,
+     -3.5
+    ],
+    [
+     "streetlight",
+     47.6,
+     -3.5
+    ],
+    [
+     "streetlight_double",
+     7.55,
+     -0.85
+    ],
+    [
+     "streetlight_double",
+     32.75,
+     -1
+    ],
+    [
+     "bench_x",
+     28.9,
+     -3.35
+    ],
+    [
+     "bench_x",
+     30.1,
+     -3.35
+    ],
+    [
+     "bench_x",
+     26.6,
+     -3.35
+    ]
+   ]
+  },
+  "windowGlows": [],
+  "eup": {
+   "main": {
+    "road": [
+     -8,
+     -4
+    ],
+    "walk": [
+     [
+      -4,
+      -3
+     ]
+    ],
+    "cls": "cobble"
+   },
+   "back": {
+    "road": [
+     -14,
+     -12
+    ],
+    "cls": "cobble"
+   },
+   "ave": {
+    "road": [
+     30,
+     34
+    ],
+    "cls": "cobble"
+   },
+   "sidewalks": [
+    "shopalley",
+    "homes",
+    "apts",
+    "alley_t"
+   ]
+  }
+ },
+ "v42": {
+  "rail": {
+   "j": 0,
+   "from": -6,
+   "to": 41,
+   "crossings": [
+    8,
+    33
+   ],
+   "loops": {
+    "ours": {
+     "t": -1,
+     "a": -6,
+     "r": 1.75,
+     "bc": 1.5,
+     "side": 1
+    },
+    "town": {
+     "t": 37,
+     "a": 42,
+     "r": 1.75,
+     "bc": 1.5,
+     "side": 1
+    }
+   },
+   "sign": {
+    "i": 44.6,
+    "j": -1.2
+   },
+   "fence": [
+    [
+     -6,
+     -0.75,
+     -1.5,
+     -0.75
+    ]
+   ]
+  },
+  "stops": {
+   "ours": {
+    "1": -0.8,
+    "2": -2.9
+   },
+   "town": 31.6
+  },
+  "office": {
+   "x": 600,
+   "y": 640,
+   "key": "chief_office",
+   "hire": [
+    490,
+    745
+   ],
+   "node": "hut_door",
+   "door": [
+    -62,
+    824
+   ],
+   "desk": [
+    150,
+    760
+   ]
+  },
+  "hut": {
+   "x": 600,
+   "y": 640,
+   "key": "chief_hut",
+   "sprite": "chief_lodge",
+   "door": [
+    -172,
+    23
+   ],
+   "desk": [
+    32,
+    2
+   ],
+   "mailbox": [
+    -110,
+    50
+   ],
+   "yard": [
+    245,
+    -142
+   ],
+   "walls": [
+    [
+     -86,
+     -29,
+     50
+    ],
+    [
+     -36,
+     -5,
+     50
+    ],
+    [
+     9,
+     23,
+     50
+    ],
+    [
+     54,
+     45,
+     46
+    ],
+    [
+     -36,
+     -54,
+     50
+    ],
+    [
+     18,
+     -32,
+     50
+    ],
+    [
+     68,
+     -7,
+     50
+    ],
+    [
+     109,
+     18,
+     46
+    ],
+    [
+     90,
+     45,
+     40
+    ]
+   ]
+  },
+  "bank": {
+   "x": -340,
+   "y": 570,
+   "key": "bank",
+   "door": [
+    -458,
+    629
+   ]
+  },
+  "depot": {
+   "i": 28.4,
+   "j": -27.4,
+   "key": "logistics_center",
+   "bay": 2,
+   "bayPt": [
+    34.1,
+    -26.2
+   ],
+   "door": [
+    27.3,
+    -30.6
+   ],
+   "till": [
+    30,
+    -31.4
+   ],
+   "sleighStop": [
+    5,
+    -5
+   ]
+  },
+  "streets": [
+   {
+    "id": "ave_s",
+    "axis": "y",
+    "i": [
+     30,
+     34
+    ],
+    "j": [
+     -22.2,
+     -18
+    ],
+    "paint": [
+     30,
+     31.5
+    ],
+    "cls": "dirt",
+    "v42": true,
+    "region": "se",
+    "name": "st_ave_s"
+   },
+   {
+    "id": "bank_st",
+    "axis": "x",
+    "i": [
+     23.1,
+     40.9
+    ],
+    "j": [
+     -24.2,
+     -22.2
+    ],
+    "paint": [
+     -24,
+     -22.6
+    ],
+    "paintI": [
+     23.1,
+     37
+    ],
+    "cls": "dirt",
+    "v42": true,
+    "region": "se",
+    "name": "st_bank"
+   },
+   {
+    "id": "lgx_dock",
+    "axis": "y",
+    "i": [
+     34.8,
+     36.3
+    ],
+    "j": [
+     -27.6,
+     -24.2
+    ],
+    "cls": "dirt",
+    "apron": [
+     32.3,
+     36.3,
+     -27.6,
+     -25
+    ],
+    "v42": true,
+    "region": "se",
+    "name": "st_lgx_dock"
+   },
+   {
+    "id": "lgx_walk",
+    "axis": "path",
+    "pts": [
+     [
+      23.8,
+      -24.2
+     ],
+     [
+      23.8,
+      -31
+     ],
+     [
+      27.3,
+      -31
+     ]
+    ],
+    "cls": "path",
+    "v42": true,
+    "region": "se",
+    "name": "st_lgx_walk"
+   }
+  ],
+  "sleighRoute": [
+   [
+    5,
+    -5
+   ],
+   [
+    31,
+    -5
+   ],
+   [
+    31,
+    -22.2
+   ],
+   [
+    31,
+    -23.2
+   ],
+   [
+    35.8,
+    -23.2
+   ],
+   [
+    35.8,
+    -26.2
+   ],
+   [
+    34.1,
+    -26.2
+   ]
+  ],
+  "roads": {
+   "nodes": {
+    "w_bank": [
+     -458,
+     640
+    ]
+   },
+   "edges": [
+    [
+     "w_bank",
+     "w_gate_n",
+     {
+      "via": [
+       [
+        -200,
+        760
+       ]
+      ]
+     }
+    ]
+   ]
+  },
+  "removeDecor": [
+   [
+    "tree",
+    190,
+    860,
+    "hall"
+   ],
+   [
+    "tree",
+    260,
+    720,
+    "hall"
+   ],
+   [
+    "tree",
+    300,
+    930,
+    "hall"
+   ],
+   [
+    "tree",
+    -180,
+    560,
+    "bank"
+   ],
+   [
+    "snow_pile_a",
+    236,
+    512,
+    "hall"
+   ],
+   [
+    "snow_pile_b",
+    345,
+    700,
+    "hall"
+   ],
+   [
+    "snow_pile_a",
+    -140,
+    500,
+    "bank"
+   ],
+   [
+    "regionTree",
+    2950,
+    1150,
+    "rail"
+   ],
+   [
+    "regionTree",
+    2930,
+    1010,
+    "rail"
+   ]
+  ],
+  "moveDecor": [
+   [
+    "lamp_post",
+    -190,
+    690,
+    -290,
+    770,
+    "bank"
+   ]
+  ],
+  "treeGaps": [
+   [
+    6000,
+    2450,
+    6150,
+    2850
+   ],
+   [
+    3300,
+    3300,
+    3700,
+    3460
+   ],
+   [
+    -640,
+    2380,
+    -530,
+    2480
+   ],
+   [
+    2990,
+    3370,
+    3240,
+    3460
+   ],
+   [
+    1600,
+    1510,
+    1645,
+    1560
+   ],
+   [
+    1600,
+    3370,
+    1800,
+    3440
+   ]
+  ]
+ },
+ "v43": {
+  "oldStart": [
+   370,
+   680
+  ],
+  "shopFront": [
+   1250,
+   1000
+  ]
+ }
+}

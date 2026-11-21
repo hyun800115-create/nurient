@@ -1,0 +1,73 @@
+{
+ "CODE_FMT": 2,
+ "EV43": {
+  "card": "card",
+  "goalwin": "goalwin",
+  "milestone": "milestone",
+  "offer": "offer",
+  "letter": "letter",
+  "tour": "tour",
+  "hold": "hold",
+  "remap": "remap",
+  "goal43": "goal43",
+  "taste": "taste"
+ },
+ "FLAG43": {
+  "s4half": "s4half",
+  "g43s4": "g43s4"
+ },
+ "G43": {
+  "staff": "g43_staff",
+  "fork": "g43_fork",
+  "st2": "g43_st2",
+  "deco": "g43_deco",
+  "house": "g43_house",
+  "dlv": "g43_dlv",
+  "train": "g43_train",
+  "shop": "g43_shop",
+  "s4": "mkt_s4",
+  "taste": "g43_taste"
+ },
+ "HALL_UNLOCK": "hire_hunter",
+ "LAY": 2,
+ "LV": 43,
+ "PLOT43": {
+  "hall": "w_hall",
+  "rest": "w_rest",
+  "civic": "w_civic",
+  "tool": "d_tool",
+  "wh": "d_wh",
+  "cannery": "d_cannery",
+  "store": "d_store",
+  "labour": "d_labour",
+  "school": "d_school",
+  "clinic": "d_clinic",
+  "house1": "h43_1",
+  "house2": "h43_2",
+  "office": "v42_office"
+ },
+ "PRE43_KEY": "frostVillage.save.backup.pre43",
+ "SEEN43": {
+  "letter": "letter43",
+  "tour": "tour43",
+  "s4offer": "s4offer",
+  "g43open": "g43open",
+  "g43all": "g43all",
+  "g43ready": "g43ready",
+  "taste": "eup_taste"
+ },
+ "STEP43": {
+  "shop4": "mkt_s4",
+  "hall": "town_hall"
+ },
+ "WORKSHOP_PLOT43": {
+  "toolsmith": "d_tool",
+  "warehouse": "d_wh",
+  "cannery": "d_cannery",
+  "store": "d_store",
+  "labour_office": "d_labour"
+ },
+ "X43KEY": {
+  "goals": "g43"
+ }
+}
